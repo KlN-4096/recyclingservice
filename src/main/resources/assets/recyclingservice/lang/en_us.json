@@ -1,0 +1,13 @@
+{
+  "itemGroup.recyclingservice": "Example Mod Tab",
+  "block.recyclingservice.example_block": "Example Block",
+  "item.recyclingservice.example_item": "Example Item",
+
+  "recyclingservice.configuration.title": "Recyclingservice Configs",
+  "recyclingservice.configuration.section.recyclingservice.common.toml": "Recyclingservice Configs",
+  "recyclingservice.configuration.section.recyclingservice.common.toml.title": "Recyclingservice Configs",
+  "recyclingservice.configuration.items": "Item List",
+  "recyclingservice.configuration.logDirtBlock": "Log Dirt Block",
+  "recyclingservice.configuration.magicNumberIntroduction": "Magic Number Text",
+  "recyclingservice.configuration.magicNumber": "Magic Number"
+}
