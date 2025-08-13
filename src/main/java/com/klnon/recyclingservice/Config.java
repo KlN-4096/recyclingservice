@@ -1,15 +1,9 @@
 package com.klnon.recyclingservice;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 // 一个示例配置类。这不是必需的，但拥有一个来保持配置有序是个好主意。
