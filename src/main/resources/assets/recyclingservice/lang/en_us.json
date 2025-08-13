@@ -1,13 +1,63 @@
 {
-  "itemGroup.recyclingservice": "Example Mod Tab",
-  "block.recyclingservice.example_block": "Example Block",
-  "item.recyclingservice.example_item": "Example Item",
-
-  "recyclingservice.configuration.title": "Recyclingservice Configs",
-  "recyclingservice.configuration.section.recyclingservice.common.toml": "Recyclingservice Configs",
-  "recyclingservice.configuration.section.recyclingservice.common.toml.title": "Recyclingservice Configs",
-  "recyclingservice.configuration.items": "Item List",
-  "recyclingservice.configuration.logDirtBlock": "Log Dirt Block",
-  "recyclingservice.configuration.magicNumberIntroduction": "Magic Number Text",
-  "recyclingservice.configuration.magicNumber": "Magic Number"
+  "_comment": "RecyclingService Mod - English Language File",
+  
+  "recycle.config.auto_clean_time": "Auto Clean Time (seconds)",
+  "recycle.config.auto_clean_time.tooltip": "How often the mod automatically cleans up dropped items. Default: 300 seconds (5 minutes)",
+  
+  "recycle.config.show_cleanup_warnings": "Show Cleanup Warnings",
+  "recycle.config.show_cleanup_warnings.tooltip": "Whether to show warning messages before cleaning up items (60s, 30s, 10s countdown)",
+  
+  "recycle.config.warning_60s_message": "60 Second Warning Message",
+  "recycle.config.warning_60s_message.tooltip": "Message displayed 60 seconds before cleanup. Use color codes like §e for yellow",
+  
+  "recycle.config.warning_30s_message": "30 Second Warning Message", 
+  "recycle.config.warning_30s_message.tooltip": "Message displayed 30 seconds before cleanup. Use color codes like §6 for gold",
+  
+  "recycle.config.warning_10s_message": "10 Second Warning Message",
+  "recycle.config.warning_10s_message.tooltip": "Message displayed 10 seconds before cleanup. Use color codes like §c for red",
+  
+  "recycle.config.warning_countdown_message": "Countdown Message",
+  "recycle.config.warning_countdown_message.tooltip": "Message for final 10-second countdown. Use {time} to show remaining seconds",
+  
+  "recycle.config.cleanup_complete_message": "Cleanup Complete Message",
+  "recycle.config.cleanup_complete_message.tooltip": "Message shown after cleanup finishes. Use {count} to show number of items cleaned",
+  
+  "recycle.config.trash_box_size": "Trash Box Size",
+  "recycle.config.trash_box_size.tooltip": "Number of slots in each trash box. Larger sizes allow more items to be stored",
+  
+  "recycle.config.global_trash_allow_put_in": "Global Trash: Allow Put In",
+  "recycle.config.global_trash_allow_put_in.tooltip": "Allow players to put their own items into the global trash box",
+  
+  "recycle.config.local_trash_allow_put_in": "Local Trash: Allow Put In",
+  "recycle.config.local_trash_allow_put_in.tooltip": "Allow players to put their own items into the local trash box",
+  
+  "recycle.config.local_trash_range": "Local Trash Range (chunks)",
+  "recycle.config.local_trash_range.tooltip": "How many chunks around the player to include in the local trash box",
+  
+  "recycle.config.payment_item_type": "Payment Item",
+  "recycle.config.payment_item_type.tooltip": "What item players need to pay to take items from global trash box",
+  
+  "recycle.config.payment_cost_amount": "Payment Cost",
+  "recycle.config.payment_cost_amount.tooltip": "How many payment items needed to take out up to 64 items at once",
+  
+  "recycle.config.only_clean_listed_items": "Only Clean Listed Items",
+  "recycle.config.only_clean_listed_items.tooltip": "If enabled, only items in the 'Always Clean' list will be cleaned. If disabled, everything except 'Never Clean' items will be cleaned",
+  
+  "recycle.config.always_clean_items": "Always Clean Items",
+  "recycle.config.always_clean_items.tooltip": "List of items that will always be cleaned up (when 'Only Clean Listed Items' is enabled)",
+  
+  "recycle.config.never_clean_items": "Never Clean Items",
+  "recycle.config.never_clean_items.tooltip": "List of items that will never be cleaned up, regardless of other settings",
+  
+  "recycle.config.max_items_per_second": "Max Items Per Second",
+  "recycle.config.max_items_per_second.tooltip": "Maximum number of items to process each second to prevent server lag",
+  
+  "recycle.config.area_scan_size": "Area Scan Size",
+  "recycle.config.area_scan_size.tooltip": "How many chunks to scan at once during cleanup",
+  
+  "recycle.config.too_many_items_warning_limit": "Too Many Items Warning",
+  "recycle.config.too_many_items_warning_limit.tooltip": "Show warning when an area has more than this many dropped items",
+  
+  "recycle.config.auto_stop_chunk_loading": "Auto Stop Chunk Loading",
+  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically disable chunk loading in areas with too many items"
 }

@@ -1,0 +1,63 @@
+{
+  "_comment": "RecyclingService Mod - 中文语言文件",
+  
+  "recycle.config.auto_clean_time": "自动清理时间（秒）",
+  "recycle.config.auto_clean_time.tooltip": "mod自动清理掉落物品的间隔时间。默认：300秒（5分钟）",
+  
+  "recycle.config.show_cleanup_warnings": "显示清理警告",
+  "recycle.config.show_cleanup_warnings.tooltip": "是否在清理物品前显示警告消息（60秒、30秒、10秒倒计时）",
+  
+  "recycle.config.warning_60s_message": "60秒警告消息",
+  "recycle.config.warning_60s_message.tooltip": "在清理前60秒显示的消息。可以使用颜色代码如§e表示黄色",
+  
+  "recycle.config.warning_30s_message": "30秒警告消息",
+  "recycle.config.warning_30s_message.tooltip": "在清理前30秒显示的消息。可以使用颜色代码如§6表示金色",
+  
+  "recycle.config.warning_10s_message": "10秒警告消息", 
+  "recycle.config.warning_10s_message.tooltip": "在清理前10秒显示的消息。可以使用颜色代码如§c表示红色",
+  
+  "recycle.config.warning_countdown_message": "倒计时消息",
+  "recycle.config.warning_countdown_message.tooltip": "最后10秒倒计时的消息。使用{time}显示剩余秒数",
+  
+  "recycle.config.cleanup_complete_message": "清理完成消息",
+  "recycle.config.cleanup_complete_message.tooltip": "清理完成后显示的消息。使用{count}显示清理的物品数量",
+  
+  "recycle.config.trash_box_size": "垃圾箱大小",
+  "recycle.config.trash_box_size.tooltip": "每个垃圾箱的格子数量。更大的容量可以存储更多物品",
+  
+  "recycle.config.global_trash_allow_put_in": "全局垃圾箱：允许放入",
+  "recycle.config.global_trash_allow_put_in.tooltip": "是否允许玩家主动将物品放入全局垃圾箱",
+  
+  "recycle.config.local_trash_allow_put_in": "区域垃圾箱：允许放入",
+  "recycle.config.local_trash_allow_put_in.tooltip": "是否允许玩家主动将物品放入区域垃圾箱",
+  
+  "recycle.config.local_trash_range": "区域垃圾箱范围（区块）",
+  "recycle.config.local_trash_range.tooltip": "玩家周围多少个区块的物品会显示在区域垃圾箱中",
+  
+  "recycle.config.payment_item_type": "付费物品",
+  "recycle.config.payment_item_type.tooltip": "玩家从全局垃圾箱取物品时需要支付的物品类型",
+  
+  "recycle.config.payment_cost_amount": "付费数量",
+  "recycle.config.payment_cost_amount.tooltip": "一次取出最多64个物品需要支付的物品数量",
+  
+  "recycle.config.only_clean_listed_items": "仅清理指定物品",
+  "recycle.config.only_clean_listed_items.tooltip": "如果启用，只清理'总是清理'列表中的物品。如果禁用，清理除'永不清理'外的所有物品",
+  
+  "recycle.config.always_clean_items": "总是清理的物品",
+  "recycle.config.always_clean_items.tooltip": "这些物品总是会被清理（当'仅清理指定物品'启用时）",
+  
+  "recycle.config.never_clean_items": "永不清理的物品",
+  "recycle.config.never_clean_items.tooltip": "这些物品永远不会被清理，无论其他设置如何",
+  
+  "recycle.config.max_items_per_second": "每秒最大处理物品数",
+  "recycle.config.max_items_per_second.tooltip": "每秒处理的最大物品数量，防止服务器卡顿",
+  
+  "recycle.config.area_scan_size": "区域扫描大小",
+  "recycle.config.area_scan_size.tooltip": "清理时一次扫描多少个区块",
+  
+  "recycle.config.too_many_items_warning_limit": "物品过多警告",
+  "recycle.config.too_many_items_warning_limit.tooltip": "当某个区域的掉落物品超过此数量时显示警告",
+  
+  "recycle.config.auto_stop_chunk_loading": "自动停止区块加载",
+  "recycle.config.auto_stop_chunk_loading.tooltip": "在物品过多的区域自动禁用区块加载"
+}
