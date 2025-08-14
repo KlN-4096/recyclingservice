@@ -328,7 +328,7 @@ public class Config {
      * 检查特定实体类型是否应该被清理
      */
     public static boolean shouldCleanEntityType(String entityTypeId) {
-        if (!CLEAN_PROJECTILES.get()) {
+        if (!shouldCleanProjectiles()) {
             return false;
         }
         return PROJECTILE_TYPES_TO_CLEAN.get().contains(entityTypeId);

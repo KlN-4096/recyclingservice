@@ -17,6 +17,11 @@ import java.util.*;
  */
 public class ItemScanner {
     
+    // 空结果常量，避免重复创建
+    private static final ScanResult EMPTY_RESULT = new ScanResult(
+        Collections.emptyList(), Collections.emptyList()
+    );
+    
     /**
      * 扫描单个维度的所有掉落物和弹射物
      * @param level 服务器维度
@@ -52,7 +57,7 @@ public class ItemScanner {
     public static ScanResult scanDimension(MinecraftServer server, ResourceKey<Level> dimensionKey) {
         ServerLevel level = server.getLevel(dimensionKey);
         if (level == null) {
-            return new ScanResult(new ArrayList<>(), new ArrayList<>());
+            return EMPTY_RESULT;
         }
         
         return scanDimension(level);

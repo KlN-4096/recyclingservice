@@ -35,12 +35,14 @@ public class TrashBox {
      */
     public int addItems(List<ItemStack> itemsToAdd) {
         int addedCount = 0;
+        final int remainingSpace = capacity - items.size(); // 预计算剩余空间
+        
         for (ItemStack item : itemsToAdd) {
-            if (addItem(item)) {
-                addedCount++;
-            } else {
-                break; // 满了就停止
+            if (addedCount >= remainingSpace || item.isEmpty()) {
+                break; // 提前终止，优化性能
             }
+            items.add(item.copy());
+            addedCount++;
         }
         return addedCount;
     }

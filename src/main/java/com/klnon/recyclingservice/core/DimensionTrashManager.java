@@ -48,18 +48,21 @@ public class DimensionTrashManager {
         
         int totalAdded = 0;
         int currentBoxNumber = 1;
+        final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get(); // 只调用一次配置
         
         for (ItemStack item : items) {
             boolean added = false;
+            int attempts = 0;
             
-            // 从当前垃圾箱开始尝试添加
-            while (currentBoxNumber <= Config.MAX_BOXES_PER_DIMENSION.get() && !added) {
+            // 限制搜索次数，避免无限循环
+            while (attempts < maxBoxes && !added) {
                 TrashBox box = getOrCreateTrashBox(dimensionId, currentBoxNumber);
                 if (box != null && box.addItem(item)) {
                     totalAdded++;
                     added = true;
                 } else {
-                    currentBoxNumber++;
+                    currentBoxNumber = (currentBoxNumber % maxBoxes) + 1; // 循环搜索
+                    attempts++;
                 }
             }
             
