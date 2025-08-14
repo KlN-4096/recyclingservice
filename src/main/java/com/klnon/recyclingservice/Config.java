@@ -156,7 +156,7 @@ public class Config {
                 .define("only_clean_listed_items", false);
         
         ALWAYS_CLEAN_ITEMS = BUILDER
-                .comment("Items that will always be cleaned up (when 'only clean listed items' is true) / 总是会被清理的物品（当'仅清理指定物品'启用时）",
+                .comment("Items that will always be cleaned up (when 'only clean listed items' is true) / 黑名单（当'仅清理指定物品'启用时）",
                         "Default: [minecraft:cobblestone, minecraft:dirt, minecraft:gravel]")
                 .translation("recycle.config.always_clean_items")
                 .defineListAllowEmpty("always_clean_items", 
@@ -165,7 +165,7 @@ public class Config {
                     Config::validateItemId);
         
         NEVER_CLEAN_ITEMS = BUILDER
-                .comment("Items that will never be cleaned up / 永远不会被清理的物品",
+                .comment("Items that will never be cleaned up / 白名单",
                         "Default: [minecraft:diamond, minecraft:netherite_ingot, minecraft:elytra]")
                 .translation("recycle.config.never_clean_items")
                 .defineListAllowEmpty("never_clean_items",
