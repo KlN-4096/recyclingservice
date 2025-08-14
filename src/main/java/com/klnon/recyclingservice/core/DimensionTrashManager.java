@@ -8,8 +8,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 维度垃圾箱管理器 - 简化版，内存存储
- * 服务器重启时自动清空，符合垃圾桶的临时存储特性
+ * 维度垃圾箱管理器
  */
 public class DimensionTrashManager {
     
@@ -24,7 +23,7 @@ public class DimensionTrashManager {
      * 获取或创建指定维度的垃圾箱
      */
     public TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        if (!isDimensionSupported(dimensionId) || !isValidBoxNumber(boxNumber)) {
+        if (!Config.isDimensionSupported(dimensionId.toString()) || !TrashBoxFactory.isValidBoxNumber(boxNumber)) {
             return null;
         }
         
@@ -44,7 +43,7 @@ public class DimensionTrashManager {
      * 为指定维度添加物品到垃圾箱
      */
     public int addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        if (items.isEmpty()) 
+        if (items.isEmpty())
             return 0;
         
         int totalAdded = 0;
@@ -81,14 +80,7 @@ public class DimensionTrashManager {
     }
     
     /**
-     * 获取所有已创建的维度ID
-     */
-    public Set<ResourceLocation> getAllDimensions() {
-        return new HashSet<>(dimensionBoxes.keySet());
-    }
-    
-    /**
-     * 清空指定维度的所有垃圾箱
+     * 清空指定维度的所有垃圾箱内容
      */
     public void clearDimension(ResourceLocation dimensionId) {
         List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
@@ -98,54 +90,7 @@ public class DimensionTrashManager {
     }
     
     /**
-     * 删除指定维度的所有垃圾箱
-     */
-    public void removeDimension(ResourceLocation dimensionId) {
-        dimensionBoxes.remove(dimensionId);
-    }
-    
-    /**
-     * 获取指定维度的垃圾箱数量
-     */
-    public int getDimensionBoxCount(ResourceLocation dimensionId) {
-        List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
-        return boxes != null ? boxes.size() : 0;
-    }
-    
-    /**
-     * 检查维度是否受支持
-     */
-    private boolean isDimensionSupported(ResourceLocation dimensionId) {
-        if (Config.AUTO_CREATE_DIMENSION_TRASH.get()) {
-            return true;
-        }
-        return Config.isDimensionSupported(dimensionId.toString());
-    }
-    
-    /**
-     * 检查垃圾箱编号是否有效
-     */
-    private boolean isValidBoxNumber(int boxNumber) {
-        return TrashBoxFactory.isValidBoxNumber(boxNumber);
-    }
-    
-    /**
-     * 获取统计信息
-     */
-    public String getStatistics() {
-        int totalDimensions = dimensionBoxes.size();
-        int totalBoxes = dimensionBoxes.values().stream().mapToInt(List::size).sum();
-        int totalItems = dimensionBoxes.values().stream()
-                .flatMap(List::stream)
-                .mapToInt(TrashBox::getItemCount)
-                .sum();
-        
-        return String.format("Dimensions: %d, Boxes: %d, Items: %d", 
-                           totalDimensions, totalBoxes, totalItems);
-    }
-    
-    /**
-     * 清空所有垃圾箱（服务器重启或维护时使用）
+     * 删除所有垃圾箱
      */
     public void clearAll() {
         dimensionBoxes.clear();

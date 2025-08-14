@@ -117,9 +117,9 @@ public class Config {
         
         MAX_BOXES_PER_DIMENSION = BUILDER
                 .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
-                        "Default: 10, Min: 1, Max: 50")
+                        "Default: 5, Min: 1, Max: 5")
                 .translation("recycle.config.max_boxes_per_dimension")
-                .defineInRange("max_boxes_per_dimension", 10, 1, 50);
+                .defineInRange("max_boxes_per_dimension", 5, 1, 5);
         
         AUTO_CREATE_DIMENSION_TRASH = BUILDER
                 .comment("Automatically create trash boxes for new dimensions / 自动为新维度创建垃圾箱",
@@ -289,6 +289,9 @@ public class Config {
      * 检查维度是否在支持列表中
      */
     public static boolean isDimensionSupported(String dimensionId) {
+        if (Config.AUTO_CREATE_DIMENSION_TRASH.get()) {
+            return true;
+        }
         return SUPPORTED_DIMENSIONS.get().contains(dimensionId);
     }
     
