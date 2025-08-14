@@ -11,23 +11,17 @@ import java.util.stream.Collectors;
 
 /**
  * 物品和实体过滤器 - 专注于清理判断
- * 遵循KISS原则：简单的过滤逻辑
+ * 遵循KISS原则：简单的过滤逻辑，统一所有过滤方法
  */
 public class ItemFilter {
     
     /**
-     * 检查物品是否应该被清理
-     * @param itemStack 物品堆
+     * 检查物品ID是否应该被清理（核心方法）
+     * @param itemId 物品资源ID
      * @return 是否应该清理
      */
-    public static boolean shouldCleanItem(ItemStack itemStack) {
-        if (itemStack.isEmpty()) {
-            return false;
-        }
-        
-        String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
-        
-        // 检查永不清理列表
+    public static boolean shouldCleanItem(String itemId) {
+        // 检查白名单
         if (Config.NEVER_CLEAN_ITEMS.get().contains(itemId)) {
             return false;
         }
@@ -37,10 +31,48 @@ public class ItemFilter {
             return Config.ALWAYS_CLEAN_ITEMS.get().contains(itemId);
         }
         
-        // 默认：清理所有不在永不清理列表中的物品
+        // 默认：清理所有不在白名单中的物品
         return true;
     }
     
+    /**
+     * 检查物品堆是否应该被清理
+     * @param itemStack 物品堆
+     * @return 是否应该清理
+     */
+    public static boolean shouldCleanItem(ItemStack itemStack) {
+        if (itemStack.isEmpty()) {
+            return false;
+        }
+        
+        String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
+        return shouldCleanItem(itemId);
+    }
+
+        /**
+     * 过滤掉落物实体，返回应该被清理的物品内容
+     * @param itemEntities 掉落物实体列表
+     * @return 应该被清理的物品堆列表（用于放入垃圾箱）
+     */
+    public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
+        return itemEntities.stream()
+                .filter(entity -> shouldCleanItem(entity.getItem()))
+                .map(ItemEntity::getItem)
+                .map(ItemStack::copy)
+                .collect(Collectors.toList());
+    }
+    
+        /**
+     * 过滤弹射物实体，返回应该被清理的
+     * @param projectiles 弹射物实体列表
+     * @return 应该被清理的弹射物实体列表（用于直接删除）
+     */
+    public static List<Entity> filterProjectiles(List<Entity> projectiles) {
+        return projectiles.stream()
+                .filter(ItemFilter::shouldCleanProjectile)
+                .collect(Collectors.toList());
+    }
+
     /**
      * 检查弹射物是否应该被清理
      * @param entity 弹射物实体
@@ -55,27 +87,6 @@ public class ItemFilter {
         return Config.shouldCleanEntityType(entityTypeId);
     }
     
-    /**
-     * 过滤掉落物实体，返回应该被清理的物品内容
-     * @param itemEntities 掉落物实体列表
-     * @return 应该被清理的物品堆列表（用于放入垃圾箱）
-     */
-    public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
-        return itemEntities.stream()
-                .filter(entity -> shouldCleanItem(entity.getItem()))
-                .map(ItemEntity::getItem)
-                .map(ItemStack::copy)
-                .collect(Collectors.toList());
-    }
     
-    /**
-     * 过滤弹射物实体，返回应该被清理的
-     * @param projectiles 弹射物实体列表
-     * @return 应该被清理的弹射物实体列表（用于直接删除）
-     */
-    public static List<Entity> filterProjectiles(List<Entity> projectiles) {
-        return projectiles.stream()
-                .filter(ItemFilter::shouldCleanProjectile)
-                .collect(Collectors.toList());
-    }
+
 }

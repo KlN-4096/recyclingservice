@@ -30,10 +30,10 @@ public class DimensionTrashManager {
         
         List<TrashBox> boxes = dimensionBoxes.computeIfAbsent(dimensionId, k -> new ArrayList<>());
         
-        // 确保列表足够大
+        // 确保列表足够大，使用工厂创建
         while (boxes.size() < boxNumber) {
             int newBoxNumber = boxes.size() + 1;
-            TrashBox newBox = new TrashBox(Config.TRASH_BOX_SIZE.get(), newBoxNumber);
+            TrashBox newBox = TrashBoxFactory.createForDimension(dimensionId, newBoxNumber);
             boxes.add(newBox);
         }
         
@@ -41,23 +41,11 @@ public class DimensionTrashManager {
     }
     
     /**
-     * 获取指定维度的垃圾箱，不创建新的
-     */
-    public TrashBox getTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
-        if (boxes == null || !isValidBoxNumber(boxNumber) || boxNumber > boxes.size()) {
-            return null;
-        }
-        return boxes.get(boxNumber - 1);
-    }
-    
-    /**
      * 为指定维度添加物品到垃圾箱
      */
     public int addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        if (items.isEmpty()) {
+        if (items.isEmpty()) 
             return 0;
-        }
         
         int totalAdded = 0;
         int currentBoxNumber = 1;
@@ -138,7 +126,7 @@ public class DimensionTrashManager {
      * 检查垃圾箱编号是否有效
      */
     private boolean isValidBoxNumber(int boxNumber) {
-        return boxNumber >= 1 && boxNumber <= Config.MAX_BOXES_PER_DIMENSION.get();
+        return TrashBoxFactory.isValidBoxNumber(boxNumber);
     }
     
     /**

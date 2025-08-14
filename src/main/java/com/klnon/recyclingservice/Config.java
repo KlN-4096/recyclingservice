@@ -113,7 +113,7 @@ public class Config {
                 .defineListAllowEmpty("supported_dimensions",
                     List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
                     () -> "",
-                    Config::validateDimensionId);
+                    Config::validateResourceLocation);
         
         MAX_BOXES_PER_DIMENSION = BUILDER
                 .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
@@ -162,7 +162,7 @@ public class Config {
                 .defineListAllowEmpty("always_clean_items", 
                     List.of("minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel"),
                     () -> "",
-                    Config::validateItemId);
+                    Config::validateResourceLocation);
         
         NEVER_CLEAN_ITEMS = BUILDER
                 .comment("Items that will never be cleaned up / 白名单",
@@ -171,7 +171,7 @@ public class Config {
                 .defineListAllowEmpty("never_clean_items",
                     List.of("minecraft:diamond", "minecraft:netherite_ingot", "minecraft:elytra"),
                     () -> "",
-                    Config::validateItemId);
+                    Config::validateResourceLocation);
         
         BUILDER.pop();
 
@@ -205,7 +205,7 @@ public class Config {
                     "minecraft:llama_spit"
                 ),
                 () -> "",
-                Config::validateEntityType);
+                Config::validateResourceLocation);
 
         BUILDER.pop();
         
@@ -248,37 +248,20 @@ public class Config {
     }
     
     /**
-     * 验证物品ID格式是否正确
+     * 验证资源ID格式是否正确
      */
-    private static boolean validateItemId(Object obj) {
+    private static boolean validateResourceLocation(Object obj) {
         if (!(obj instanceof String)) {
             return false;
         }
-        String itemId = (String) obj;
+        String Id = (String) obj;
         try {
-            ResourceLocation.parse(itemId);
+            ResourceLocation.parse(Id);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
-    
-    /**
-     * 验证维度ID格式是否正确
-     */
-    private static boolean validateDimensionId(Object obj) {
-        if (!(obj instanceof String)) {
-            return false;
-        }
-        String dimensionId = (String) obj;
-        try {
-            ResourceLocation.parse(dimensionId);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-    
     // === 便捷访问方法 ===
     
     /**
@@ -293,24 +276,6 @@ public class Config {
      */
     public static ResourceLocation getPaymentItem() {
         return ResourceLocation.parse(PAYMENT_ITEM_TYPE.get());
-    }
-    
-    /**
-     * 检查物品是否应该被清理
-     */
-    public static boolean shouldCleanItem(String itemId) {
-        // 检查永不清理列表
-        if (NEVER_CLEAN_ITEMS.get().contains(itemId)) {
-            return false;
-        }
-        
-        // 如果只清理指定物品，检查是否在列表中
-        if (ONLY_CLEAN_LISTED_ITEMS.get()) {
-            return ALWAYS_CLEAN_ITEMS.get().contains(itemId);
-        }
-        
-        // 默认清理所有不在永不清理列表中的物品
-        return true;
     }
     
     /**
@@ -346,23 +311,6 @@ public class Config {
      */
     public static String getCleanupCompleteMessage(int itemCount) {
         return CLEANUP_COMPLETE_MESSAGE.get().replace("{count}", String.valueOf(itemCount));
-    }
-
-    // === 添加验证方法 ===
-    /**
-     * 验证实体类型ID格式是否正确
-     */
-    private static boolean validateEntityType(Object obj) {
-        if (!(obj instanceof String)) {
-            return false;
-        }
-        String entityType = (String) obj;
-        try {
-            ResourceLocation.parse(entityType);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     // === 添加便捷访问方法 ===
