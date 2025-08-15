@@ -42,14 +42,11 @@ public class Config {
     // === 弹射物过滤 ===
     public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN;
-
-    // === 游戏性能 ===
-    public static final ModConfigSpec.IntValue MAX_ITEMS_PER_SECOND;
-    public static final ModConfigSpec.IntValue AREA_SCAN_SIZE;
     
     // === 区域管理 ===
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.BooleanValue AUTO_STOP_CHUNK_LOADING;
+    public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     
     static {
         // 基础清理设置
@@ -209,22 +206,6 @@ public class Config {
 
         BUILDER.pop();
         
-        // 性能设置
-        BUILDER.comment("Performance settings / 性能优化设置").push("performance");
-        
-        MAX_ITEMS_PER_SECOND = BUILDER
-                .comment("Maximum number of items to process per second (prevents lag) / 每秒处理的最大物品数量（防止卡顿）",
-                        "Default: 100, Min: 10, Max: 1000")
-                .translation("recycle.config.max_items_per_second")
-                .defineInRange("max_items_per_second", 100, 10, 1000);
-        
-        AREA_SCAN_SIZE = BUILDER
-                .comment("How many chunks to scan at once / 一次扫描多少个区块",
-                        "Default: 16, Min: 1, Max: 64")
-                .translation("recycle.config.area_scan_size")
-                .defineInRange("area_scan_size", 16, 1, 64);
-        
-        BUILDER.pop();
         
         // 区块管理
         BUILDER.comment("Chunk management settings / 区块管理设置").push("chunk_management");
@@ -240,6 +221,12 @@ public class Config {
                         "Default: true")
                 .translation("recycle.config.auto_stop_chunk_loading")
                 .define("auto_stop_chunk_loading", true);
+        
+        TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
+                .comment("Warning message for too many items (use {count} for item count, {threshold} for threshold) / 物品过多警告消息（使用{count}显示物品数量，{threshold}显示阈值）",
+                        "Default: recycle.warning.too_many_items")
+                .translation("recycle.config.too_many_items_warning_message")
+                .define("too_many_items_warning_message", "recycle.warning.too_many_items");
         
         BUILDER.pop();
         

@@ -10,10 +10,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 
 /**
- * 物品扫描器 - 扫描维度中的掉落物和弹射物
- * 遵循KISS原则：专注于核心扫描功能
+ * 物品扫描器 - 异步扫描维度中的掉落物和弹射物
+ * 使用CompletableFuture避免阻塞主线程，提升性能
  */
 public class ItemScanner {
     
@@ -23,65 +25,82 @@ public class ItemScanner {
     );
     
     /**
-     * 扫描单个维度的所有掉落物和弹射物
+     * 异步扫描单个维度的所有掉落物和弹射物
      * @param level 服务器维度
-     * @return 扫描结果，包含物品和弹射物
+     * @return CompletableFuture包装的扫描结果
      */
-    public static ScanResult scanDimension(ServerLevel level) {
-        List<ItemEntity> items = new ArrayList<>();
-        List<Entity> projectiles = new ArrayList<>();
-        
-        // 一次遍历同时检测物品和弹射物
-        level.getAllEntities().forEach(entity -> {
-            if (entity instanceof ItemEntity itemEntity) {
-                // 检查物品是否有效
-                ItemStack itemStack = itemEntity.getItem();
-                if (!itemStack.isEmpty()) {
-                    items.add(itemEntity);
+    public static CompletableFuture<ScanResult> scanDimensionAsync(ServerLevel level) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<ItemEntity> items = new ArrayList<>();
+            List<Entity> projectiles = new ArrayList<>();
+            
+            // 异步扫描不需要性能限制，因为不在主线程执行
+            level.getAllEntities().forEach(entity -> {
+                if (entity instanceof ItemEntity itemEntity) {
+                    // 检查物品是否有效
+                    ItemStack itemStack = itemEntity.getItem();
+                    if (!itemStack.isEmpty()) {
+                        items.add(itemEntity);
+                    }
+                } else if (ItemFilter.shouldCleanProjectile(entity)) {
+                    // 检查弹射物是否应该被清理
+                    projectiles.add(entity);
                 }
-            } else if (ItemFilter.shouldCleanProjectile(entity)) {
-                // 检查弹射物是否应该被清理
-                projectiles.add(entity);
-            }
-        });
-        
-        return new ScanResult(items, projectiles);
+            });
+            
+            return new ScanResult(items, projectiles);
+        }, ForkJoinPool.commonPool());
     }
 
     /**
-     * 扫描指定维度的掉落物和弹射物
+     * 异步扫描指定维度的掉落物和弹射物
      * @param server 服务器实例
      * @param dimensionKey 维度Key
-     * @return 扫描结果，如果维度不存在返回空结果
+     * @return CompletableFuture包装的扫描结果
      */
-    public static ScanResult scanDimension(MinecraftServer server, ResourceKey<Level> dimensionKey) {
+    public static CompletableFuture<ScanResult> scanDimensionAsync(MinecraftServer server, ResourceKey<Level> dimensionKey) {
         ServerLevel level = server.getLevel(dimensionKey);
         if (level == null) {
-            return EMPTY_RESULT;
+            return CompletableFuture.completedFuture(EMPTY_RESULT);
         }
         
-        return scanDimension(level);
+        return scanDimensionAsync(level);
     }
-
     /**
-     * 扫描所有维度的掉落物和弹射物，按维度分类返回
+     * 异步扫描所有维度的掉落物和弹射物，按维度分类返回
      * @param server 服务器实例
-     * @return 维度ID -> 扫描结果的映射
+     * @return CompletableFuture包装的维度ID -> 扫描结果映射
      */
-    public static Map<ResourceLocation, ScanResult> scanAllDimensions(MinecraftServer server) {
-        Map<ResourceLocation, ScanResult> dimensionResults = new HashMap<>();
+    public static CompletableFuture<Map<ResourceLocation, ScanResult>> scanAllDimensionsAsync(MinecraftServer server) {
+        List<CompletableFuture<Map.Entry<ResourceLocation, ScanResult>>> futures = new ArrayList<>();
         
-        // 遍历所有已加载的维度
+        // 并行扫描所有维度
         for (ServerLevel level : server.getAllLevels()) {
             ResourceLocation dimensionId = level.dimension().location();
-            ScanResult result = scanDimension(level);
             
-            if (!result.isEmpty()) {
-                dimensionResults.put(dimensionId, result);
-            }
+            CompletableFuture<Map.Entry<ResourceLocation, ScanResult>> future = 
+                scanDimensionAsync(level).thenApply(result -> 
+                    result.isEmpty() ? null : Map.entry(dimensionId, result)
+                );
+            futures.add(future);
         }
         
-        return dimensionResults;
+        // 等待所有扫描完成并收集结果
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> {
+                    Map<ResourceLocation, ScanResult> dimensionResults = new HashMap<>();
+                    for (CompletableFuture<Map.Entry<ResourceLocation, ScanResult>> future : futures) {
+                        try {
+                            Map.Entry<ResourceLocation, ScanResult> entry = future.get();
+                            if (entry != null) {
+                                dimensionResults.put(entry.getKey(), entry.getValue());
+                            }
+                        } catch (Exception e) {
+                            // 忽略单个维度的扫描失败，继续处理其他维度
+                        }
+                    }
+                    return dimensionResults;
+                });
     }
     
     /**
