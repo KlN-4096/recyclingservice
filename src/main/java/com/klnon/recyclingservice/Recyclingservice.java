@@ -12,7 +12,9 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import com.klnon.recyclingservice.event.AutoCleanupHandler;
+import com.klnon.recyclingservice.command.BinCommand;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
 @Mod(Recyclingservice.MODID)
@@ -50,5 +52,12 @@ public class Recyclingservice {
     public void onServerStarting(ServerStartingEvent event) {
         // 在服务器启动时做一些事情
         LOGGER.info("HELLO from server starting");
+    }
+    
+    // 注册命令事件
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        LOGGER.info("Registering bin command");
+        BinCommand.register(event.getDispatcher());
     }
 }

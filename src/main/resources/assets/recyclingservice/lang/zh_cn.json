@@ -59,5 +59,12 @@
   "recycle.config.too_many_items_warning_limit.tooltip": "当某个区域的掉落物品超过此数量时显示警告",
   
   "recycle.config.auto_stop_chunk_loading": "自动停止区块加载",
-  "recycle.config.auto_stop_chunk_loading.tooltip": "在物品过多的区域自动禁用区块加载"
+  "recycle.config.auto_stop_chunk_loading.tooltip": "在物品过多的区域自动禁用区块加载",
+  
+  "container.recyclingservice.trash_box": "垃圾箱 #{0}",
+  "container.recyclingservice.trash_box_with_dimension": "垃圾箱 {0} #{1}",
+  "trash_box.error.not_found": "§c无法找到指定的垃圾箱",
+  "trash_box.error.general": "§c打开垃圾箱时发生错误",
+  "trash_box.ui.type.enhanced": "增强版",
+  "trash_box.ui.type.vanilla": "原版"
 }

@@ -59,5 +59,12 @@
   "recycle.config.too_many_items_warning_limit.tooltip": "Show warning when an area has more than this many dropped items",
   
   "recycle.config.auto_stop_chunk_loading": "Auto Stop Chunk Loading",
-  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically disable chunk loading in areas with too many items"
+  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically disable chunk loading in areas with too many items",
+  
+  "container.recyclingservice.trash_box": "Trash Box #{0}",
+  "container.recyclingservice.trash_box_with_dimension": "Trash Box {0} #{1}",
+  "trash_box.error.not_found": "§cCannot find the specified trash box",
+  "trash_box.error.general": "§cError occurred while opening trash box",
+  "trash_box.ui.type.enhanced": "Enhanced",
+  "trash_box.ui.type.vanilla": "Vanilla"
 }
