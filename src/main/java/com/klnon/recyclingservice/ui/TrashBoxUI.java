@@ -138,7 +138,7 @@ public class TrashBoxUI {
             
             // 添加一些测试物品
             testBox.addItem(new net.minecraft.world.item.ItemStack(
-                net.minecraft.world.item.Items.COBBLESTONE, 64));
+                net.minecraft.world.item.Items.COBBLESTONE, 96));
             testBox.addItem(new net.minecraft.world.item.ItemStack(
                 net.minecraft.world.item.Items.DIRT, 32));
             

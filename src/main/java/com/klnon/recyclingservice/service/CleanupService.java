@@ -7,6 +7,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.util.ItemFilter;
+import com.klnon.recyclingservice.util.ItemMerge;
 import com.klnon.recyclingservice.util.ItemScanner;
 import com.klnon.recyclingservice.Config;
 
@@ -75,6 +76,8 @@ public class CleanupService {
             int totalItemsCleaned = 0;
             int totalProjectilesCleaned = 0;
             
+            // 添加物品前,先清空所有垃圾桶的旧物品
+            trashManager.clearAll();
             // 遍历所有维度，执行清理任务
             for (Map.Entry<ResourceLocation, ItemScanner.ScanResult> entry : scanResults.entrySet()) {
                 ResourceLocation dimensionId = entry.getKey();
@@ -118,6 +121,8 @@ public class CleanupService {
         // 第一步：处理掉落物品
         // 使用ItemFilter过滤出需要清理的物品内容
         List<ItemStack> itemsToClean = ItemFilter.filterItems(scanResult.getItems());
+        itemsToClean = ItemMerge.combine(itemsToClean);
+
         // 将物品内容存储到对应维度的垃圾箱
         int itemsAddedToTrash = trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
