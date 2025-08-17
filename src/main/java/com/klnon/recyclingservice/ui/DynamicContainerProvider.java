@@ -9,6 +9,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceLocation;
 import com.klnon.recyclingservice.core.TrashBox;
+
+import javax.annotation.Nonnull;
+
 import com.klnon.recyclingservice.Recyclingservice;
 
 /**
@@ -54,7 +57,7 @@ public class DynamicContainerProvider implements MenuProvider {
     }
     
     @Override
-    public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
+    public AbstractContainerMenu createMenu(int containerId,@Nonnull Inventory playerInventory,@Nonnull Player player) {
         // 创建通用容器适配器
         UniversalTrashContainer container = new UniversalTrashContainer(trashBox);
         

@@ -8,6 +8,8 @@ import com.klnon.recyclingservice.core.TrashBox;
 
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 /**
  * 通用垃圾箱容器适配器
  * 
@@ -103,7 +105,7 @@ public class UniversalTrashContainer implements Container {
     }
     
     @Override
-    public void setItem(int slot, ItemStack stack) {
+    public void setItem(int slot,@Nonnull ItemStack stack) {
         ensureDataSynced();
         if (slot < 0 || slot >= items.size()) {
             return;
@@ -121,7 +123,7 @@ public class UniversalTrashContainer implements Container {
     }
     
     @Override
-    public boolean stillValid(Player player) {
+    public boolean stillValid(@Nonnull Player player) {
         // 垃圾箱始终可访问（这是设计特性）
         return true;
     }
