@@ -1,13 +1,11 @@
 package com.klnon.recyclingservice.util;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -18,12 +16,6 @@ import java.util.concurrent.ForkJoinPool;
  * 使用CompletableFuture避免阻塞主线程，提升性能
  */
 public class ItemScanner {
-    
-    // 空结果常量，避免重复创建
-    private static final ScanResult EMPTY_RESULT = new ScanResult(
-        Collections.emptyList(), Collections.emptyList()
-    );
-    
     /**
      * 异步扫描单个维度的所有掉落物和弹射物
      * @param level 服务器维度
@@ -52,20 +44,6 @@ public class ItemScanner {
         }, ForkJoinPool.commonPool());
     }
 
-    /**
-     * 异步扫描指定维度的掉落物和弹射物
-     * @param server 服务器实例
-     * @param dimensionKey 维度Key
-     * @return CompletableFuture包装的扫描结果
-     */
-    public static CompletableFuture<ScanResult> scanDimensionAsync(MinecraftServer server, ResourceKey<Level> dimensionKey) {
-        ServerLevel level = server.getLevel(dimensionKey);
-        if (level == null) {
-            return CompletableFuture.completedFuture(EMPTY_RESULT);
-        }
-        
-        return scanDimensionAsync(level);
-    }
     /**
      * 异步扫描所有维度的掉落物和弹射物，按维度分类返回
      * @param server 服务器实例
@@ -114,7 +92,7 @@ public class ItemScanner {
             this.items = items;
             this.projectiles = projectiles;
         }
-        
+
         public List<ItemEntity> getItems() {
             return items;
         }

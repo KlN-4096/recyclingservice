@@ -1,76 +1,154 @@
 package com.klnon.recyclingservice.ui;
 
+import java.util.List;
+
 import javax.annotation.Nonnull;
+
+import com.klnon.recyclingservice.core.TrashBox;
+import com.klnon.recyclingservice.util.ItemFilter;
+import com.klnon.recyclingservice.util.ItemMerge;
+import com.klnon.recyclingservice.util.ItemTooltip;
 
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * 垃圾箱自定义菜单 - 限制快速移动数量
- * 
- * 继承ChestMenu，重写quickMoveStack方法来限制Shift+点击的取出数量
- * 保持与原版UI的完全兼容，只修改行为逻辑
+ * 垃圾箱自定义菜单 - 简化版本
+ * 遵循KISS原则：减少重复代码，统一处理逻辑
  */
 public class TrashBoxMenu extends ChestMenu {
     
+    private static final int MAX_QUICK_MOVE = 64;
+    private final UniversalTrashContainer container;
+    
     public TrashBoxMenu(int containerId, Inventory playerInventory, UniversalTrashContainer container) {
         super(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6);
+        this.container = container;
     }
     
     @Override
     public ItemStack quickMoveStack(@Nonnull Player player, int index) {
-        ItemStack itemstack = ItemStack.EMPTY;
-        var slot = this.slots.get(index);
+        Slot slot = this.slots.get(index);
+        if (!slot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
         
-        if (slot != null && slot.hasItem()) {
-            ItemStack slotItem = slot.getItem();
-            UniversalTrashContainer container = (UniversalTrashContainer) this.getContainer();
-            
-            // 判断是否是从垃圾箱槽位移动到玩家背包
-            if (index < this.getRowCount() * 9) {
-                // 从垃圾箱移动到玩家背包 - 限制最多64个
-                ItemStack limitedItem = slotItem.copy();
-                limitedItem.setCount(Math.min(slotItem.getCount(), 64));
-                
-                // 尝试移动限制后的物品到玩家背包,并清除lora
-                if (!this.moveItemStackTo(container.cleanItemStack(limitedItem), this.getRowCount() * 9, this.slots.size(), true)) {
-                    return ItemStack.EMPTY;  // 移动失败
-                }
-                
-                // 从原槽位减少对应数量
-                if (slotItem.getCount() <= 64) {
-                    slot.set(ItemStack.EMPTY);
-                } else {
-                    slotItem.shrink(64);
-                    
-                    // 使用已有的container重新生成带有更新Lore的ItemStack
-                    ItemStack updatedItem = container.enhanceTooltip(slotItem);
-                    slot.set(updatedItem);
-                    
-                    slot.setChanged();
-                }
-                return limitedItem;  // 返回实际移动的物品（最多64个）
-                
-            } else {
-                // 从玩家背包移动到垃圾箱
-                itemstack = slotItem.copy();  // 这里才复制原物品
-                if (!this.moveItemStackTo(slotItem, 0, this.getRowCount() * 9, false)) {
-                    return ItemStack.EMPTY;
-                }
-                
-                if (slotItem.isEmpty()) {
-                    slot.set(ItemStack.EMPTY);
-                } else {
-                    slot.setChanged();
-                }
-                
-                return itemstack;  // 返回完整移动的物品
-            }
+        ItemStack slotItem = slot.getItem();
+        int trashSlots = getRowCount() * 9;
+        
+        if (index < trashSlots) {
+            // 从垃圾箱移动到玩家背包
+            return moveFromTrashToPlayer(slot, slotItem, trashSlots);
+        } else {
+            // 从玩家背包移动到垃圾箱
+            return moveFromPlayerToTrash(slot, slotItem, trashSlots);
+        }
+    }
+    
+    private ItemStack moveFromTrashToPlayer(Slot slot, ItemStack slotItem, int trashSlots) {
+        int moveCount = Math.min(slotItem.getCount(), MAX_QUICK_MOVE);
+        ItemStack moveItem = slotItem.copyWithCount(moveCount);
+        ItemStack cleanItem = ItemTooltip.cleanItemStack(moveItem);
+        
+        if (!moveItemStackTo(cleanItem, trashSlots, slots.size(), true)) {
+            return ItemStack.EMPTY;
+        }
+        
+        updateSlotAfterMove(slot, slotItem, moveCount);
+        return ItemStack.EMPTY; // 阻止连续提取
+    }
+    
+    private ItemStack moveFromPlayerToTrash(Slot slot, ItemStack slotItem, int trashSlots) {
+        ItemStack original = slotItem.copy();
+        
+        if (moveItemStackTo(slotItem, 0, trashSlots, false)) {
+            updateSlotAfterMove(slot, slotItem, 0);
+            return original;
         }
         
         return ItemStack.EMPTY;
     }
+    
+    private void updateSlotAfterMove(Slot slot, ItemStack slotItem, int moveCount) {
+        if (moveCount == 0 || slotItem.getCount() <= moveCount) {
+            slot.set(ItemStack.EMPTY);
+        } else {
+            slotItem.shrink(moveCount);
+            slot.set(ItemTooltip.enhanceTooltip(slotItem));
+        }
+    }
+
+    @Override
+    protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
+        // 移动到垃圾箱使用智能合并
+        if (startIndex == 0 && endIndex <= getRowCount() * 9) {
+            return moveToTrashBox(stack);
+        }
+        
+        // 其他情况使用原版逻辑
+        return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
+    }
+    
+    private boolean moveToTrashBox(ItemStack stack) {
+        TrashBox trashBox = container.getTrashBox();
+        int originalCount = stack.getCount();
+        
+        if (ItemMerge.addItemSmart(trashBox.items, stack)) {
+            container.setChanged();
+            return true;
+        }
+        
+        // 检查是否部分成功
+        int movedCount = originalCount - stack.getCount();
+        if (movedCount > 0) {
+            container.setChanged();
+            return true;
+        }
+        
+        return false;
+    }
+
+    @Override
+    public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
+        boolean hadCarriedItem = !getCarried().isEmpty();
+        
+        super.clicked(slotId, button, clickType, player);
+        
+        // 只处理垃圾箱槽位的左键放置
+        if (slotId >= 0 && slotId < getRowCount() * 9 && clickType == ClickType.PICKUP && button == 0 && hadCarriedItem) {
+            handlePostMerge(slotId);
+        }
+    }
+    
+
+    private void handlePostMerge(int slotId) {
+        ItemStack carried = getCarried();
+        Slot slot = slots.get(slotId);
+        ItemStack slotItem = slot.getItem();
+        
+        // 检查是否需要合并
+        if (carried.isEmpty() || slotItem.isEmpty() || !ItemStack.isSameItem(carried, slotItem) || ItemFilter.isComplexItem(carried)) {
+            return;
+        }
+        
+        // 执行合并
+        ItemStack cleanCarried = carried.copy();
+        ItemStack cleanSlotItem = ItemTooltip.cleanItemStack(slotItem.copy());
+        
+        List<ItemStack> merged = ItemMerge.combine(cleanCarried, cleanSlotItem);
+        if (merged.isEmpty()) {
+            return;
+        }
+        
+        // 更新槽位和手持物品
+        slot.set(ItemTooltip.enhanceTooltip(merged.get(0)));
+        setCarried(merged.size() > 1 ? merged.get(1) : ItemStack.EMPTY);
+        container.setChanged();
+    }
+    
 }

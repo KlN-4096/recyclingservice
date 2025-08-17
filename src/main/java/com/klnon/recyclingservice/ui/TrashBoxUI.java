@@ -137,10 +137,44 @@ public class TrashBoxUI {
             TrashBox testBox = new TrashBox(54, 999);
             
             // 添加一些测试物品
-            testBox.addItem(new net.minecraft.world.item.ItemStack(
-                net.minecraft.world.item.Items.COBBLESTONE, 96));
-            testBox.addItem(new net.minecraft.world.item.ItemStack(
-                net.minecraft.world.item.Items.DIRT, 32));
+            // 方块类 (Blocks)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 6400));
+
+            // 原材料类 (Raw Materials)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, 6400));
+
+            // 工具类 (Tools)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 1));
+
+            // 武器类 (Weapons)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD, 1));
+
+            // 防具类 (Armor)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET, 1));
+
+            // 食物类 (Food)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 6400));
+
+            // 药水类 (Potions)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION, 6400));
+
+            // 红石类 (Redstone)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE, 6400));
+
+            // 装饰类 (Decorative)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FLOWER_POT, 6400));
+
+            // 运输类 (Transportation)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MINECART, 6400));
+
+            // 音乐类 (Music)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MUSIC_DISC_CAT, 1));
+
+            // 生物蛋类 (Spawn Eggs)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COW_SPAWN_EGG, 6400));
+
+            // 杂项类 (Miscellaneous)
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOOK, 6400));
             
             // 创建提供者并打开
             Component title = Component.literal("§6测试垃圾箱 §7(UI类型: " + getUIType(player) + ")");

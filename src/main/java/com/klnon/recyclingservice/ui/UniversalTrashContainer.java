@@ -3,43 +3,34 @@ package com.klnon.recyclingservice.ui;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.NonNullList;
-import net.minecraft.network.chat.Component;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.component.ItemLore;
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.ItemMerge;
+import com.klnon.recyclingservice.util.ItemTooltip;
 
-import java.util.List;
-import java.util.ArrayList;
 
 import javax.annotation.Nonnull;
 
 /**
- * 通用垃圾箱容器适配器
+ * 通用垃圾箱容器适配器 - 简化版
  * 
- * 将TrashBox适配为标准Container接口，支持：
- * - 原版ChestMenu.sixRows()直接使用
- * - 定制TrashBoxMenu也可使用
- * - 完全兼容Container接口规范
+ * 直接使用TrashBox作为数据源，移除复杂的同步机制
  * 
  * 设计原则：
- * - 54格固定大小(6行×9列)
- * - 双向数据同步：TrashBox ↔ Container
- * - 性能优化：lazy同步，只在需要时更新
+ * - 直接操作TrashBox，无需双向同步
+ * - 保持54格固定大小(6行×9列)  
+ * - KISS原则：简单直接
  */
 public class UniversalTrashContainer implements Container {
     
     public static final int CONTAINER_SIZE = 54; // 6行×9列
     
     private final TrashBox trashBox;
-    private final NonNullList<ItemStack> items;
-    private boolean needsSync = true; // 标记是否需要从TrashBox同步数据
     
     public UniversalTrashContainer(TrashBox trashBox) {
         this.trashBox = trashBox;
-        this.items = NonNullList.withSize(CONTAINER_SIZE, ItemStack.EMPTY);
-        syncFromTrashBox(); // 初始化时同步数据
+        // 确保TrashBox容量与Container大小匹配
+        if (trashBox.size() != CONTAINER_SIZE) {
+            throw new IllegalArgumentException("TrashBox size must be " + CONTAINER_SIZE);
+        }
     }
     
     @Override
@@ -49,29 +40,27 @@ public class UniversalTrashContainer implements Container {
     
     @Override
     public boolean isEmpty() {
-        ensureDataSynced();
-        for (ItemStack item : items) {
-            if (!item.isEmpty()) {
-                return false;
-            }
-        }
-        return true;
+        return trashBox.isEmpty();
     }
     
     @Override
     public ItemStack getItem(int slot) {
-        ensureDataSynced();
-        return slot >= 0 && slot < items.size() ? items.get(slot) : ItemStack.EMPTY;
+        if (slot < 0 || slot >= CONTAINER_SIZE) {
+            return ItemStack.EMPTY;
+        }
+        
+        // 直接从TrashBox获取，并增强显示
+        ItemStack item = trashBox.items.get(slot);
+        return item.isEmpty() ? ItemStack.EMPTY : ItemTooltip.enhanceTooltip(item);
     }
     
     @Override
     public ItemStack removeItem(int slot, int amount) {
-        ensureDataSynced();
-        if (slot < 0 || slot >= items.size()) {
+        if (slot < 0 || slot >= CONTAINER_SIZE) {
             return ItemStack.EMPTY;
         }
         
-        ItemStack itemStack = items.get(slot);
+        ItemStack itemStack = trashBox.items.get(slot);
         if (itemStack.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -81,55 +70,47 @@ public class UniversalTrashContainer implements Container {
         
         ItemStack removed;
         if (itemStack.getCount() <= actualAmount) {
-            removed = itemStack;
-            items.set(slot, ItemStack.EMPTY);
+            removed = itemStack.copy();
+            trashBox.items.set(slot, ItemStack.EMPTY);
         } else {
-            removed = itemStack.split(actualAmount);
+            removed = itemStack.copy();
+            removed.setCount(actualAmount);
+            itemStack.shrink(actualAmount);
         }
         
         if (!removed.isEmpty()) {
-            syncToTrashBox();
             setChanged();
         }
         
-        return cleanItemStack(removed); // 返回原始物品，移除Lore
+        return ItemTooltip.cleanItemStack(removed); // 返回原始物品，移除Lore
     }
     
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
-        ensureDataSynced();
-        if (slot < 0 || slot >= items.size()) {
+        if (slot < 0 || slot >= CONTAINER_SIZE) {
             return ItemStack.EMPTY;
         }
         
-        ItemStack removed = items.get(slot);
-        items.set(slot, ItemStack.EMPTY);
+        ItemStack removed = trashBox.items.get(slot).copy();
+        trashBox.items.set(slot, ItemStack.EMPTY);
         
-        if (!removed.isEmpty()) {
-            syncToTrashBox();
-        }
-        
-        return cleanItemStack(removed); // 返回原始物品，移除Lore
+        return ItemTooltip.cleanItemStack(removed); // 返回原始物品，移除Lore
     }
     
     @Override
-    public void setItem(int slot,@Nonnull ItemStack stack) {
-        ensureDataSynced();
-        if (slot < 0 || slot >= items.size()) {
+    public void setItem(int slot, @Nonnull ItemStack stack) {
+        if (slot < 0 || slot >= CONTAINER_SIZE) {
             return;
         }
         
-        items.set(slot, ItemStack.EMPTY);
-        if (!stack.isEmpty()) {
-            // 尝试智能合并添加物品
-            if (!addItemWithMerge(stack)) {
-                // 智能合并失败（容量不足），回退到原逻辑
-                // 直接放入指定槽位，覆盖原有物品
-                items.set(slot, enhanceTooltip(cleanItemStack(stack)));
-            }
-            // 如果智能合并成功，addItemWithMerge已经处理了同步和变更标记
+        if (stack.isEmpty()) {
+            trashBox.items.set(slot, ItemStack.EMPTY);
+        } else {
+            // 直接设置，不做任何合并逻辑
+            ItemStack cleanStack = ItemTooltip.cleanItemStack(stack.copy());
+            trashBox.items.set(slot, ItemTooltip.enhanceTooltip(cleanStack));
         }
-        syncToTrashBox();
+        setChanged();
     }
     
     @Override
@@ -146,119 +127,8 @@ public class UniversalTrashContainer implements Container {
     
     @Override
     public void clearContent() {
-        ensureDataSynced();
-        for (int i = 0; i < items.size(); i++) {
-            items.set(i, ItemStack.EMPTY);
-        }
-        syncToTrashBox();
+        trashBox.clear();
         setChanged();
-    }
-    
-    
-    /**
-     * 从TrashBox同步数据到Container格式
-     * 性能优化：只在数据可能变更时调用
-     */
-    protected void syncFromTrashBox() {
-        // 清空现有数据
-        for (int i = 0; i < items.size(); i++) {
-            items.set(i, ItemStack.EMPTY);
-        }
-        
-        // 从TrashBox获取物品列表
-        List<ItemStack> trashItems = trashBox.getItems();
-        
-        // 复制物品到容器槽位（最多54个）
-        int copyCount = Math.min(trashItems.size(), CONTAINER_SIZE);
-        for (int i = 0; i < copyCount; i++) {
-            ItemStack item = trashItems.get(i);
-            if (!item.isEmpty()) {
-                items.set(i, enhanceTooltip(item)); // 使用增强版本
-            }
-        }
-        
-        needsSync = false;
-    }
-    
-    /**
-     * 将Container数据同步回TrashBox
-     * 在容器内容变更时调用
-     */
-    void syncToTrashBox() {
-        trashBox.clear(); // 清空原有内容
-        
-        // 将非空物品添加回TrashBox (清理后的原始版本)
-        for (ItemStack item : items) {
-            if (!item.isEmpty()) {
-                trashBox.addItem(cleanItemStack(item)); // 存储原始版本
-            }
-        }
-        
-        // 标记外部TrashBox可能已变更，下次读取时需重新同步
-        needsSync = true;
-    }
-    
-    /**
-     * 智能合并添加物品到容器
-     * 将新物品与现有物品智能合并，充分利用空间
-     * 
-     * @param itemToAdd 要添加的物品
-     * @return 是否成功添加
-     */
-    public boolean addItemWithMerge(ItemStack itemToAdd) {
-        if (itemToAdd.isEmpty()) {
-            return false;
-        }
-        
-        ensureDataSynced();
-        
-        // 1. 收集当前所有非空物品 (使用原始版本，不包含增强Tooltip)
-        List<ItemStack> currentItems = new ArrayList<>();
-        for (ItemStack item : items) {
-            if (!item.isEmpty()) {
-                currentItems.add(cleanItemStack(item.copy()));
-            }
-        }
-        
-        // 2. 添加新物品 (确保使用原始版本)
-        currentItems.add(cleanItemStack(itemToAdd.copy()));
-        
-        // 3. 调用ItemMerge进行智能合并
-        List<ItemStack> mergedItems = ItemMerge.combine(currentItems);
-        
-        // 4. 检查是否超出容器容量
-        if (mergedItems.size() > CONTAINER_SIZE) {
-            return false; // 容量不足，拒绝添加
-        }
-        
-        // 5. 清空现有槽位并重新分配合并后的物品
-        for (int i = 0; i < items.size(); i++) {
-            items.set(i, ItemStack.EMPTY);
-        }
-        
-        // 6. 将合并后的物品放入槽位 (使用增强版本显示)
-        for (int i = 0; i < mergedItems.size() && i < CONTAINER_SIZE; i++) {
-            ItemStack mergedItem = mergedItems.get(i);
-            if (!mergedItem.isEmpty()) {
-                items.set(i, enhanceTooltip(mergedItem));
-            }
-        }
-        
-        // 7. 同步到TrashBox并标记变更
-        syncToTrashBox();
-        setChanged();
-        
-        return true;
-    }
-    
-    /**
-     * 确保数据已同步
-     * lazy加载机制：只在实际访问时同步
-     */
-    private void ensureDataSynced() {
-        if (needsSync) {
-            syncFromTrashBox();
-        }
     }
     
     /**
@@ -267,63 +137,5 @@ public class UniversalTrashContainer implements Container {
      */
     public TrashBox getTrashBox() {
         return trashBox;
-    }
-    
-    /**
-     * 强制重新同步数据
-     * 在TrashBox外部变更后调用
-     */
-    public void markNeedsSync() {
-        needsSync = true;
-    }
-    
-    /**
-     * 增强物品Tooltip显示真实数量
-     * 使用1.21.1的DataComponent系统添加Lore信息
-     * 
-     * @param original 原始物品堆
-     * @return 增强后的物品堆
-     */
-    public ItemStack enhanceTooltip(ItemStack original) {
-        if (original.getCount() <= 64) {
-            return original.copy();
-        }
-        
-        ItemStack enhanced = original.copy();
-        
-        // 使用DataComponent系统添加Lore
-        List<Component> loreLines = new ArrayList<>();
-        
-        // 保留原有的lore
-        ItemLore existingLore = enhanced.get(DataComponents.LORE);
-        if (existingLore != null) {
-            loreLines.addAll(existingLore.lines());
-        }
-        
-        // 添加真实数量信息
-        loreLines.add(Component.empty()); // 空行分隔
-        loreLines.add(Component.literal("§7可取出: §a" + original.getCount())
-            .withStyle(style -> style.withItalic(false)));
-        
-        // 应用新的lore
-        enhanced.set(DataComponents.LORE, new ItemLore(loreLines));
-        
-        return enhanced;
-    }
-    
-    /**
-     * 清理ItemStack的Lore，返回原始物品
-     * KISS原则：最简单的解决方案
-     * 
-     * @param item 可能包含自定义Lore的物品
-     * @return 清理后的原始物品
-     */
-    public ItemStack cleanItemStack(ItemStack item) {
-        if (item.isEmpty()) {
-            return item;
-        }
-        item.remove(DataComponents.LORE);
-        
-        return item;
     }
 }

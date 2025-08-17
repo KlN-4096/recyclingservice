@@ -121,6 +121,7 @@ public class CleanupService {
         // 第一步：处理掉落物品
         // 使用ItemFilter过滤出需要清理的物品内容
         List<ItemStack> itemsToClean = ItemFilter.filterItems(scanResult.getItems());
+        // 此处的合并是扫描时合并,与玩家操作时合并不同
         itemsToClean = ItemMerge.combine(itemsToClean);
 
         // 将物品内容存储到对应维度的垃圾箱

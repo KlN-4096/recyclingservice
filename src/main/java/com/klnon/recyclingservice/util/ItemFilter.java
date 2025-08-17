@@ -3,6 +3,7 @@ package com.klnon.recyclingservice.util;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.klnon.recyclingservice.Config;
 
@@ -87,6 +88,55 @@ public class ItemFilter {
         return Config.shouldCleanEntityType(entityTypeId);
     }
     
-    
+    /**
+     * 检查物品是否为复杂物品（有附魔、特殊命名、堆叠数为1等）
+     * @param itemStack 物品堆
+     * @return 是否为复杂物品
+     */
+    public static boolean isComplexItem(ItemStack itemStack) {
+        // 检查最大堆叠数是否为1
+        if (itemStack.getMaxStackSize() == 1) {
+            return true;
+        }
+
+        // 检查是否有附魔
+        if (itemStack.isEnchanted()) {
+            return true;
+        }
+        
+        // 检查是否有自定义名称（在1.21中使用DataComponents）
+        if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+            return true;
+        }
+
+        // 检查是否有损坏（耐久度不满）
+        if (itemStack.isDamaged()) {
+            return true;
+        }
+        
+        // 检查是否有特殊组件
+        if (itemStack.has(DataComponents.CUSTOM_NAME) ||
+            itemStack.has(DataComponents.CUSTOM_DATA) ||
+            itemStack.has(DataComponents.WRITTEN_BOOK_CONTENT) ||
+            itemStack.has(DataComponents.WRITABLE_BOOK_CONTENT) ||  // 书与笔
+            itemStack.has(DataComponents.POTION_CONTENTS) ||
+            itemStack.has(DataComponents.FIREWORK_EXPLOSION) ||
+            itemStack.has(DataComponents.FIREWORKS) ||             // 烟花火箭
+            itemStack.has(DataComponents.CONTAINER) ||
+            itemStack.has(DataComponents.STORED_ENCHANTMENTS) ||   // 附魔书
+            itemStack.has(DataComponents.SUSPICIOUS_STEW_EFFECTS) || // 迷之炖菜
+            itemStack.has(DataComponents.TRIM) ||                  // 盔甲纹饰
+            itemStack.has(DataComponents.DYED_COLOR) ||            // 染色物品
+            itemStack.has(DataComponents.BANNER_PATTERNS) ||       // 旗帜图案
+            itemStack.has(DataComponents.MAP_ID)) {                // 地图
+            return true;
+        }
+        
+        if (itemStack.isEmpty()) {
+            return false;
+        }
+        
+        return false;
+    }
 
 }

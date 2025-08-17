@@ -49,7 +49,7 @@ public class DimensionTrashManager {
         int totalAdded = 0;
         int currentBoxNumber = 1;
         final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get(); // 只调用一次配置
-        
+        items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
         for (ItemStack item : items) {
             boolean added = false;
             int attempts = 0;
