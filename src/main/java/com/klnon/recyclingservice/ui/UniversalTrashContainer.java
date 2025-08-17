@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.ItemLore;
 import com.klnon.recyclingservice.core.TrashBox;
+import com.klnon.recyclingservice.util.ItemMerge;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -118,9 +119,23 @@ public class UniversalTrashContainer implements Container {
             return;
         }
         
-        items.set(slot, stack);
-        syncToTrashBox();
-        setChanged();
+        if (stack.isEmpty()) {
+            // 设置为空物品，使用原逻辑
+            items.set(slot, ItemStack.EMPTY);
+            syncToTrashBox();
+            setChanged();
+        } else {
+            // 尝试智能合并添加物品
+            items.set(slot, ItemStack.EMPTY);
+            if (!addItemWithMerge(stack)) {
+                // 智能合并失败（容量不足），回退到原逻辑
+                // 直接放入指定槽位，覆盖原有物品
+                items.set(slot, enhanceTooltip(cleanItemStack(stack)));
+                syncToTrashBox();
+                setChanged();
+            }
+            // 如果智能合并成功，addItemWithMerge已经处理了同步和变更标记
+        }
     }
     
     @Override
@@ -187,6 +202,59 @@ public class UniversalTrashContainer implements Container {
         
         // 标记外部TrashBox可能已变更，下次读取时需重新同步
         needsSync = true;
+    }
+    
+    /**
+     * 智能合并添加物品到容器
+     * 将新物品与现有物品智能合并，充分利用空间
+     * 
+     * @param itemToAdd 要添加的物品
+     * @return 是否成功添加
+     */
+    public boolean addItemWithMerge(ItemStack itemToAdd) {
+        if (itemToAdd.isEmpty()) {
+            return false;
+        }
+        
+        ensureDataSynced();
+        
+        // 1. 收集当前所有非空物品 (使用原始版本，不包含增强Tooltip)
+        List<ItemStack> currentItems = new ArrayList<>();
+        for (ItemStack item : items) {
+            if (!item.isEmpty()) {
+                currentItems.add(cleanItemStack(item.copy()));
+            }
+        }
+        
+        // 2. 添加新物品 (确保使用原始版本)
+        currentItems.add(cleanItemStack(itemToAdd.copy()));
+        
+        // 3. 调用ItemMerge进行智能合并
+        List<ItemStack> mergedItems = ItemMerge.combine(currentItems);
+        
+        // 4. 检查是否超出容器容量
+        if (mergedItems.size() > CONTAINER_SIZE) {
+            return false; // 容量不足，拒绝添加
+        }
+        
+        // 5. 清空现有槽位并重新分配合并后的物品
+        for (int i = 0; i < items.size(); i++) {
+            items.set(i, ItemStack.EMPTY);
+        }
+        
+        // 6. 将合并后的物品放入槽位 (使用增强版本显示)
+        for (int i = 0; i < mergedItems.size() && i < CONTAINER_SIZE; i++) {
+            ItemStack mergedItem = mergedItems.get(i);
+            if (!mergedItem.isEmpty()) {
+                items.set(i, enhanceTooltip(mergedItem));
+            }
+        }
+        
+        // 7. 同步到TrashBox并标记变更
+        syncToTrashBox();
+        setChanged();
+        
+        return true;
     }
     
     /**
