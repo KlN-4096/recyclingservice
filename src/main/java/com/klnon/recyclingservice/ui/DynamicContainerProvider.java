@@ -4,7 +4,6 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceLocation;
@@ -63,14 +62,14 @@ public class DynamicContainerProvider implements MenuProvider {
         
         // 检测客户端是否有mod
         if (hasModOnClient(player)) {
-            // TODO: 客户端有mod时，返回定制TrashBoxMenu
-            // return new TrashBoxMenu(containerId, playerInventory, container);
+            // TODO: 客户端有mod时，返回定制TrashBoxMenu或特殊UI
+            // return new EnhancedTrashBoxMenu(containerId, playerInventory, container);
             
-            // 暂时也使用原版UI，等定制UI实现后再切换
-            return ChestMenu.sixRows(containerId, playerInventory, container);
+            // 暂时使用TrashBoxMenu，等特殊UI实现后再切换
+            return new TrashBoxMenu(containerId, playerInventory, container);
         } else {
-            // 客户端无mod，使用原版ChestMenu
-            return ChestMenu.sixRows(containerId, playerInventory, container);
+            // 客户端无mod，使用TrashBoxMenu（保持64个限制）
+            return new TrashBoxMenu(containerId, playerInventory, container);
         }
     }
     

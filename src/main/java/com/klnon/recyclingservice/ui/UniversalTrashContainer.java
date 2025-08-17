@@ -75,12 +75,15 @@ public class UniversalTrashContainer implements Container {
             return ItemStack.EMPTY;
         }
         
+        // 限制每次最多取出64个
+        int actualAmount = Math.min(amount, 64);
+        
         ItemStack removed;
-        if (itemStack.getCount() <= amount) {
+        if (itemStack.getCount() <= actualAmount) {
             removed = itemStack;
             items.set(slot, ItemStack.EMPTY);
         } else {
-            removed = itemStack.split(amount);
+            removed = itemStack.split(actualAmount);
         }
         
         if (!removed.isEmpty()) {
@@ -88,7 +91,7 @@ public class UniversalTrashContainer implements Container {
             setChanged();
         }
         
-        return removed;
+        return cleanItemStack(removed); // 返回原始物品，移除Lore
     }
     
     @Override
@@ -105,7 +108,7 @@ public class UniversalTrashContainer implements Container {
             syncToTrashBox();
         }
         
-        return removed;
+        return cleanItemStack(removed); // 返回原始物品，移除Lore
     }
     
     @Override
@@ -147,7 +150,7 @@ public class UniversalTrashContainer implements Container {
      * 从TrashBox同步数据到Container格式
      * 性能优化：只在数据可能变更时调用
      */
-    private void syncFromTrashBox() {
+    protected void syncFromTrashBox() {
         // 清空现有数据
         for (int i = 0; i < items.size(); i++) {
             items.set(i, ItemStack.EMPTY);
@@ -172,13 +175,13 @@ public class UniversalTrashContainer implements Container {
      * 将Container数据同步回TrashBox
      * 在容器内容变更时调用
      */
-    private void syncToTrashBox() {
+    void syncToTrashBox() {
         trashBox.clear(); // 清空原有内容
         
-        // 将非空物品添加回TrashBox
+        // 将非空物品添加回TrashBox (清理后的原始版本)
         for (ItemStack item : items) {
             if (!item.isEmpty()) {
-                trashBox.addItem(item.copy()); // 创建副本
+                trashBox.addItem(cleanItemStack(item)); // 存储原始版本
             }
         }
         
@@ -219,7 +222,7 @@ public class UniversalTrashContainer implements Container {
      * @param original 原始物品堆
      * @return 增强后的物品堆
      */
-    private ItemStack enhanceTooltip(ItemStack original) {
+    public ItemStack enhanceTooltip(ItemStack original) {
         if (original.getCount() <= 64) {
             return original.copy();
         }
@@ -244,5 +247,21 @@ public class UniversalTrashContainer implements Container {
         enhanced.set(DataComponents.LORE, new ItemLore(loreLines));
         
         return enhanced;
+    }
+    
+    /**
+     * 清理ItemStack的Lore，返回原始物品
+     * KISS原则：最简单的解决方案
+     * 
+     * @param item 可能包含自定义Lore的物品
+     * @return 清理后的原始物品
+     */
+    public ItemStack cleanItemStack(ItemStack item) {
+        if (item.isEmpty()) {
+            return item;
+        }
+        item.remove(DataComponents.LORE);
+        
+        return item;
     }
 }
