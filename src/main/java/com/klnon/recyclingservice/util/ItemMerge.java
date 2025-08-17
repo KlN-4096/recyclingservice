@@ -41,10 +41,10 @@ public class ItemMerge {
                     result.add(single);
                 }
             } else {
-                // 可堆叠物品按999上限分组
+                // 可堆叠物品按6400上限分组
                 while (total > 0) {
                     ItemStack newStack = template.copy();
-                    int count = Math.min(total, 999);
+                    int count = Math.min(total, 6400);
                     newStack.setCount(count);
                     result.add(newStack);
                     total -= count;

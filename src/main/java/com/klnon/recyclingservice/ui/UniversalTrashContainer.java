@@ -4,9 +4,13 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.chat.Component;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemLore;
 import com.klnon.recyclingservice.core.TrashBox;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import javax.annotation.Nonnull;
 
@@ -157,7 +161,7 @@ public class UniversalTrashContainer implements Container {
         for (int i = 0; i < copyCount; i++) {
             ItemStack item = trashItems.get(i);
             if (!item.isEmpty()) {
-                items.set(i, item.copy()); // 创建副本避免引用问题
+                items.set(i, enhanceTooltip(item)); // 使用增强版本
             }
         }
         
@@ -206,5 +210,39 @@ public class UniversalTrashContainer implements Container {
      */
     public void markNeedsSync() {
         needsSync = true;
+    }
+    
+    /**
+     * 增强物品Tooltip显示真实数量
+     * 使用1.21.1的DataComponent系统添加Lore信息
+     * 
+     * @param original 原始物品堆
+     * @return 增强后的物品堆
+     */
+    private ItemStack enhanceTooltip(ItemStack original) {
+        if (original.getCount() <= 64) {
+            return original.copy();
+        }
+        
+        ItemStack enhanced = original.copy();
+        
+        // 使用DataComponent系统添加Lore
+        List<Component> loreLines = new ArrayList<>();
+        
+        // 保留原有的lore
+        ItemLore existingLore = enhanced.get(DataComponents.LORE);
+        if (existingLore != null) {
+            loreLines.addAll(existingLore.lines());
+        }
+        
+        // 添加真实数量信息
+        loreLines.add(Component.empty()); // 空行分隔
+        loreLines.add(Component.literal("§7可取出: §a" + original.getCount())
+            .withStyle(style -> style.withItalic(false)));
+        
+        // 应用新的lore
+        enhanced.set(DataComponents.LORE, new ItemLore(loreLines));
+        
+        return enhanced;
     }
 }
