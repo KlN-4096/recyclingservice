@@ -119,23 +119,17 @@ public class UniversalTrashContainer implements Container {
             return;
         }
         
-        if (stack.isEmpty()) {
-            // 设置为空物品，使用原逻辑
-            items.set(slot, ItemStack.EMPTY);
-            syncToTrashBox();
-            setChanged();
-        } else {
+        items.set(slot, ItemStack.EMPTY);
+        if (!stack.isEmpty()) {
             // 尝试智能合并添加物品
-            items.set(slot, ItemStack.EMPTY);
             if (!addItemWithMerge(stack)) {
                 // 智能合并失败（容量不足），回退到原逻辑
                 // 直接放入指定槽位，覆盖原有物品
                 items.set(slot, enhanceTooltip(cleanItemStack(stack)));
-                syncToTrashBox();
-                setChanged();
             }
             // 如果智能合并成功，addItemWithMerge已经处理了同步和变更标记
         }
+        syncToTrashBox();
     }
     
     @Override
