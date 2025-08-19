@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
+import com.klnon.recyclingservice.util.ErrorHandler;
 
 /**
  * 垃圾箱测试命令 - /bin
@@ -26,6 +27,7 @@ public class BinCommand {
     
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("bin")
+            .requires(source -> source.isPlayer())
             .requires(source -> source.hasPermission(2)) // 需要管理员权限
             .then(Commands.literal("test")
                 .executes(BinCommand::openTestTrashBox))
@@ -59,28 +61,10 @@ public class BinCommand {
      */
     private static int openTestTrashBox(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal("§c此命令只能由玩家使用"));
-            return 0;
-        }
-        
-        try {
-            boolean success = TrashBoxUI.openTestTrashBox(player);
-            
-            if (success) {
-                String uiType = TrashBoxUI.getUIType(player);
-                source.sendSuccess(() -> Component.literal(
-                    "§a已打开测试垃圾箱 §7| UI类型: §b" + uiType), false);
-                return 1;
-            } else {
-                source.sendFailure(Component.literal("§c无法打开测试垃圾箱"));
-                return 0;
-            }
-        } catch (Exception e) {
-            source.sendFailure(Component.literal("§c命令执行失败: " + e.getMessage()));
-            return 0;
-        }
+        // require中isPlayer()已经检测过,确保是玩家
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        return ErrorHandler.handleCommandOperation(source, player, "打开测试垃圾箱",
+          () -> TrashBoxUI.openTestTrashBox(player));
     }
     
     /**
@@ -88,81 +72,34 @@ public class BinCommand {
      */
     private static int openSpecificTrashBox(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
         
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal("§c此命令只能由玩家使用"));
-            return 0;
-        }
-        
-        try {
-            String dimensionString = StringArgumentType.getString(context, "dimension");
-            int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
-            
-            // 解析维度ID
-            ResourceLocation dimensionId;
-            try {
-                dimensionId = ResourceLocation.parse(dimensionString);
-            } catch (Exception e) {
-                source.sendFailure(Component.literal("§c无效的维度ID: " + dimensionString));
-                return 0;
-            }
-            
-            // 获取垃圾箱管理器
-            var trashManager = CleanupService.getTrashManager();
-            
-            // 打开垃圾箱
-            boolean success = TrashBoxUI.openTrashBox(player, dimensionId, boxNumber, trashManager);
-            
-            if (success) {
-                String uiType = TrashBoxUI.getUIType(player);
-                source.sendSuccess(() -> Component.literal(
-                    String.format("§a已打开垃圾箱 §f%s #%d §7| UI类型: §b%s", 
-                        dimensionId, boxNumber, uiType)), false);
-                return 1;
-            } else {
-                source.sendFailure(Component.literal("§c无法打开指定的垃圾箱"));
-                return 0;
-            }
-        } catch (Exception e) {
-            source.sendFailure(Component.literal("§c命令执行失败: " + e.getMessage()));
-            return 0;
-        }
+        return ErrorHandler.handleCommandOperation(source, player, "打开指定维度垃圾箱",
+            () -> {
+                String dimensionString = StringArgumentType.getString(context, "dimension");
+                int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
+                // 解析维度ID
+                ResourceLocation dimensionId = ResourceLocation.parse(dimensionString);
+                // 获取垃圾箱管理器
+                var trashManager = CleanupService.getTrashManager();
+                // 打开垃圾箱
+                return TrashBoxUI.openTrashBox(player, dimensionId, boxNumber, trashManager);
+            });
     }
-    
     /**
      * 打开当前维度的垃圾箱
      */
     private static int openCurrentDimensionTrashBox(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
         
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal("§c此命令只能由玩家使用"));
-            return 0;
-        }
-        
-        try {
-            int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
-            
-            // 获取垃圾箱管理器
-            var trashManager = CleanupService.getTrashManager();
-            
-            // 打开当前维度的垃圾箱
-            boolean success = TrashBoxUI.openCurrentDimensionTrashBox(player, boxNumber, trashManager);
-            
-            if (success) {
-                ResourceLocation currentDimension = player.level().dimension().location();
-                String uiType = TrashBoxUI.getUIType(player);
-                source.sendSuccess(() -> Component.literal(
-                    String.format("§a已打开当前维度垃圾箱 §f%s #%d §7| UI类型: §b%s", 
-                        currentDimension, boxNumber, uiType)), false);
-                return 1;
-            } else {
-                source.sendFailure(Component.literal("§c无法打开当前维度的垃圾箱"));
-                return 0;
-            }
-        } catch (Exception e) {
-            source.sendFailure(Component.literal("§c命令执行失败: " + e.getMessage()));
-            return 0;
-        }
+        return ErrorHandler.handleCommandOperation(source, player, "打开当前维度垃圾箱",
+            () -> {
+                int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
+                // 获取垃圾箱管理器
+                var trashManager = CleanupService.getTrashManager();
+                // 打开当前维度的垃圾箱
+                return TrashBoxUI.openCurrentDimensionTrashBox(player, boxNumber, trashManager);
+            });
     }
 }
