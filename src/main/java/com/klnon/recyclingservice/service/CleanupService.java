@@ -14,6 +14,7 @@ import com.klnon.recyclingservice.Config;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * 自动清理服务 - 核心清理功能实现
@@ -85,7 +86,7 @@ public class CleanupService {
                 
                 try {
                     // 处理单个维度的清理
-                    DimensionCleanupStats stats = processDimensionCleanup(dimensionId, scanResult);
+                    DimensionCleanupStats stats = processDimensionCleanup(server, dimensionId, scanResult);
                     dimensionStats.put(dimensionId, stats);
                     totalItemsCleaned += stats.itemsCleaned;
                     totalProjectilesCleaned += stats.projectilesCleaned;
@@ -107,14 +108,16 @@ public class CleanupService {
      * 清理步骤：
      * 1. 过滤出需要清理的掉落物品
      * 2. 将物品内容存储到垃圾箱
-     * 3. 删除原始掉落物实体
-     * 4. 处理弹射物清理
+     * 3. 在主线程中安全删除原始掉落物实体
+     * 4. 在主线程中安全处理弹射物清理
      * 
+     * @param server 服务器实例
      * @param dimensionId 维度ID
      * @param scanResult 该维度的扫描结果
      * @return 该维度的清理统计信息
      */
     private static DimensionCleanupStats processDimensionCleanup(
+            MinecraftServer server,
             ResourceLocation dimensionId, 
             ItemScanner.ScanResult scanResult) {
         
@@ -127,23 +130,41 @@ public class CleanupService {
         // 将物品内容存储到对应维度的垃圾箱
         int itemsAddedToTrash = trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
-        // 第二步：删除已清理的掉落物实体
+        // 第二步：在主线程中安全删除已清理的掉落物实体
         // 获取需要删除的掉落物实体列表
         List<ItemEntity> itemEntitiesToRemove = scanResult.getItems().stream()
             .filter(entity -> ItemFilter.shouldCleanItem(entity.getItem()))
             .toList();
         
-        // 删除这些实体
-        for (ItemEntity entity : itemEntitiesToRemove) {
-            entity.discard();
-        }
-        
-        // 第三步：处理弹射物
-        // 过滤出需要清理的弹射物
+        // 第三步：获取需要清理的弹射物
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.getProjectiles());
-        // 删除这些弹射物实体
-        for (Entity projectile : projectilesToClean) {
-            projectile.discard();
+        
+        // 第四步：在主线程中安全删除所有实体
+        if (!itemEntitiesToRemove.isEmpty() || !projectilesToClean.isEmpty()) {
+            CountDownLatch latch = new CountDownLatch(1);
+            
+            server.execute(() -> {
+                try {
+                    // 删除掉落物实体（现在在主线程中安全执行）
+                    for (ItemEntity entity : itemEntitiesToRemove) {
+                        entity.discard();
+                    }
+                    
+                    // 删除弹射物实体（现在在主线程中安全执行）
+                    for (Entity projectile : projectilesToClean) {
+                        projectile.discard();
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+            
+            // 等待主线程操作完成
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         
         return new DimensionCleanupStats(itemsAddedToTrash, projectilesToClean.size(), 
