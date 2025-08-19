@@ -13,7 +13,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import com.klnon.recyclingservice.event.AutoCleanupHandler;
+import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.command.BinCommand;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
@@ -36,7 +36,7 @@ public class Recyclingservice {
         NeoForge.EVENT_BUS.register(this);
 
         // 注册自动清理事件处理器
-        NeoForge.EVENT_BUS.register(AutoCleanupHandler.class);
+        NeoForge.EVENT_BUS.register(AutoCleanupEvent.class);
 
         // 注册我们模组的 ModConfigSpec，以便 FML 可以为我们创建和加载配置文件
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);

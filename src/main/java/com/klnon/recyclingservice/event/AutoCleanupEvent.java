@@ -13,7 +13,7 @@ import com.klnon.recyclingservice.Config;
  * 优化的自动清理处理器 - 遵循KISS原则
  * 性能友好的实时警告系统
  */
-public class AutoCleanupHandler {
+public class AutoCleanupEvent {
     
     private static final int TICKS_PER_SECOND = 20;
     private static int ticks = 0;
