@@ -26,19 +26,32 @@ public class ItemScanner {
             List<ItemEntity> items = new ArrayList<>();
             List<Entity> projectiles = new ArrayList<>();
             
-            // 异步扫描不需要性能限制，因为不在主线程执行
-            level.getAllEntities().forEach(entity -> {
-                if (entity instanceof ItemEntity itemEntity) {
-                    // 检查物品是否有效
-                    ItemStack itemStack = itemEntity.getItem();
-                    if (!itemStack.isEmpty()) {
-                        items.add(itemEntity);
-                    }
-                } else if (ItemFilter.shouldCleanProjectile(entity)) {
-                    // 检查弹射物是否应该被清理
-                    projectiles.add(entity);
+            try {
+                // 快速复制实体列表，避免阻塞主线程,同时也避免主线程同步修改实体导致崩溃
+                List<Entity> entitySnapshot = new ArrayList<>();
+                synchronized(level.getEntities()) {
+                    level.getAllEntities().forEach(entitySnapshot::add);
                 }
-            });
+                
+                // 在同步块外进行筛选，避免长时间持有锁
+                entitySnapshot.forEach(entity -> {
+                    if (entity instanceof ItemEntity itemEntity) {
+                        // 检查物品是否有效
+                        ItemStack itemStack = itemEntity.getItem();
+                        if (!itemStack.isEmpty()) {
+                            items.add(itemEntity);
+                        }
+                    } else if (ItemFilter.shouldCleanProjectile(entity)) {
+                        // 检查弹射物是否应该被清理
+                        projectiles.add(entity);
+                    }
+                });
+                
+            } catch (Exception e) {
+                // 记录异常但不中断扫描
+                // 可以添加日志记录
+                return new ScanResult(Collections.emptyList(), Collections.emptyList());
+            }
             
             return new ScanResult(items, projectiles);
         }, ForkJoinPool.commonPool());

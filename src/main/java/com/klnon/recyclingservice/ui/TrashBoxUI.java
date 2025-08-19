@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.core.TrashBox;
+import com.klnon.recyclingservice.util.UiChoose;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
 
@@ -76,28 +77,6 @@ public class TrashBoxUI {
     }
     
     /**
-     * 检测玩家客户端是否有mod
-     * 对外暴露的检测接口，可用于命令等场景
-     * 
-     * @param player 玩家
-     * @return 客户端是否有mod
-     */
-    public static boolean hasModInstalled(Player player) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return false;
-        }
-        
-        try {
-            ResourceLocation modChannel = ResourceLocation.fromNamespaceAndPath(
-                Recyclingservice.MODID, "main"
-            );
-            return serverPlayer.connection.hasChannel(modChannel);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-    
-    /**
      * 获取玩家的UI类型描述
      * 用于调试和状态显示
      * 
@@ -105,7 +84,7 @@ public class TrashBoxUI {
      * @return UI类型描述
      */
     public static String getUIType(Player player) {
-        return hasModInstalled(player) ? "Enhanced" : "Vanilla";
+        return UiChoose.hasModInstalled(player) ? "Enhanced" : "Vanilla";
     }
     
     /**

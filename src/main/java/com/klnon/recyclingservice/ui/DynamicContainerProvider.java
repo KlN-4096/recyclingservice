@@ -5,13 +5,11 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.resources.ResourceLocation;
 import com.klnon.recyclingservice.core.TrashBox;
+import com.klnon.recyclingservice.util.UiChoose;
 
 import javax.annotation.Nonnull;
 
-import com.klnon.recyclingservice.Recyclingservice;
 
 /**
  * 动态容器提供者 - 智能UI选择
@@ -61,7 +59,7 @@ public class DynamicContainerProvider implements MenuProvider {
         UniversalTrashContainer container = new UniversalTrashContainer(trashBox);
         
         // 检测客户端是否有mod
-        if (hasModOnClient(player)) {
+        if (UiChoose.hasModInstalled(player)) {
             // TODO: 客户端有mod时，返回定制TrashBoxMenu或特殊UI
             // return new EnhancedTrashBoxMenu(containerId, playerInventory, container);
             
@@ -70,38 +68,6 @@ public class DynamicContainerProvider implements MenuProvider {
         } else {
             // 客户端无mod，使用TrashBoxMenu（保持64个限制）
             return new TrashBoxMenu(containerId, playerInventory, container);
-        }
-    }
-    
-    /**
-     * 检测客户端是否安装了本mod
-     * 
-     * 原理：
-     * - NeoForge会在客户端连接时协商网络通道
-     * - 如果客户端有mod，会注册对应的网络通道
-     * - 通过检查通道是否存在来判断mod安装状态
-     * 
-     * @param player 玩家实例
-     * @return 客户端是否有mod
-     */
-    private static boolean hasModOnClient(Player player) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return false;
-        }
-        
-        try {
-            // 检查客户端是否注册了我们的mod网络通道
-            ResourceLocation modChannel = ResourceLocation.fromNamespaceAndPath(
-                Recyclingservice.MODID, "main"
-            );
-            
-            // NeoForge网络通道检测
-            return serverPlayer.connection.hasChannel(modChannel);
-        } catch (Exception e) {
-            // 如果检测失败，默认认为客户端无mod（安全策略）
-            Recyclingservice.LOGGER.debug("Client mod detection failed for player {}: {}", 
-                player.getName().getString(), e.getMessage());
-            return false;
         }
     }
     
