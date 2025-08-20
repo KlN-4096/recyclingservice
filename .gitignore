@@ -5,7 +5,6 @@ bin
 .metadata
 .classpath
 .project
-.vscode
 
 # idea
 out
@@ -25,4 +24,3 @@ runs
 run-data
 
 repo
-CLAUDE.md
