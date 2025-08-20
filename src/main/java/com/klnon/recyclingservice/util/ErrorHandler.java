@@ -25,7 +25,7 @@ public class ErrorHandler {
             return result;
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
-            sendErrorMessage(player, "operation.error.general");
+            MessageSender.sendErrorMessage(player, "operation.error.general");
             return false;
         }
     }
@@ -46,14 +46,9 @@ public class ErrorHandler {
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
             source.sendFailure(Component.literal("§cOperation " + operationName + " failed: " + e.getMessage()));
-            sendErrorMessage(player, "operation.error.general");
+            MessageSender.sendErrorMessage(player, "operation.error.general");
             return 0;  // 异常返回0
         }
     }
 
-    private static void sendErrorMessage(ServerPlayer player, String translationKey) {
-        Component message = Component.translatable(translationKey).withStyle(style ->
-            style.withColor(0xFF5555));
-        player.sendSystemMessage(message);
-    }
   }

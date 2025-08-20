@@ -4,8 +4,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.ItemTooltip;
-
+import com.klnon.recyclingservice.util.Item.ItemTooltip;
 
 import javax.annotation.Nonnull;
 

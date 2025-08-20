@@ -6,9 +6,9 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
-import com.klnon.recyclingservice.util.ItemFilter;
-import com.klnon.recyclingservice.util.ItemMerge;
-import com.klnon.recyclingservice.util.ItemScanner;
+import com.klnon.recyclingservice.util.Item.ItemFilter;
+import com.klnon.recyclingservice.util.Item.ItemMerge;
+import com.klnon.recyclingservice.util.Item.ItemScanner;
 import com.klnon.recyclingservice.Config;
 
 import java.util.*;

@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util;
+package com.klnon.recyclingservice.util.Item;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -5,9 +5,9 @@ import java.util.List;
 import javax.annotation.Nonnull;
 
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.ItemFilter;
-import com.klnon.recyclingservice.util.ItemMerge;
-import com.klnon.recyclingservice.util.ItemTooltip;
+import com.klnon.recyclingservice.util.Item.ItemFilter;
+import com.klnon.recyclingservice.util.Item.ItemMerge;
+import com.klnon.recyclingservice.util.Item.ItemTooltip;
 
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;

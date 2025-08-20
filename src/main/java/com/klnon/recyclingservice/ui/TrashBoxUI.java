@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.util.MessageSender;
 import com.klnon.recyclingservice.util.UiChoose;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
@@ -35,7 +36,7 @@ public class TrashBoxUI {
             // 获取指定的垃圾箱
             TrashBox trashBox = trashManager.getOrCreateTrashBox(dimensionId, boxNumber);
             if (trashBox == null) {
-                sendErrorMessage(player, "trash_box.error.not_found");
+                MessageSender.sendErrorMessage(player, "trash_box.error.not_found");
                 return false;
             }
 
@@ -77,18 +78,6 @@ public class TrashBoxUI {
      */
     public static String getUIType(Player player) {
         return UiChoose.hasModInstalled(player) ? "Enhanced" : "Vanilla";
-    }
-    
-    /**
-     * 发送错误消息给玩家
-     * 
-     * @param player 玩家
-     * @param translationKey 翻译键
-     */
-    private static void sendErrorMessage(ServerPlayer player, String translationKey) {
-        Component message = Component.translatable(translationKey).withStyle(style -> 
-            style.withColor(0xFF5555)); // 红色错误消息
-        player.sendSystemMessage(message);
     }
     
     /**

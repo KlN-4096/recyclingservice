@@ -1,12 +1,10 @@
 package com.klnon.recyclingservice.event;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.service.CleanupService;
+import com.klnon.recyclingservice.util.MessageSender;
 import com.klnon.recyclingservice.Config;
 
 /**
@@ -48,7 +46,7 @@ public class AutoCleanupEvent {
             
             String message = Config.getWarningMessage(remainingSeconds);
             int color = getWarningColor(remainingSeconds);
-            showActionBar(server, message, color);
+            MessageSender.showActionBar(server, message, color);
         }
     }
     
@@ -61,20 +59,7 @@ public class AutoCleanupEvent {
         return 0xFF3300;                        // 红色
     }
     
-    /**
-     * 显示ActionBar消息
-     */
-    private static void showActionBar(MinecraftServer server, String message, int color) {
-        Component component = Component.literal(message).withStyle(style -> 
-            style.withColor(color).withBold(true));
-        
-        ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(component);
-        
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.connection.send(packet);
-        }
-    }
-    
+
     /**
      * 执行清理
      */
@@ -83,11 +68,11 @@ public class AutoCleanupEvent {
             .thenAccept(result -> {
                 int totalCleaned = result.getTotalItemsCleaned() + result.getTotalProjectilesCleaned();
                 String message = Config.getCleanupCompleteMessage(totalCleaned);
-                showActionBar(server, message, 0x00FF00); // 绿色
+                MessageSender.showActionBar(server, message, 0x00FF00); // 绿色
                 cleaning = false;
             })
             .exceptionally(e -> {
-                showActionBar(server, "§c清理失败", 0xFF0000); // 红色
+                MessageSender.showActionBar(server, "§c清理失败", 0xFF0000); // 红色
                 cleaning = false;
                 return null;
             });
