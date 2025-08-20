@@ -45,18 +45,9 @@ public class AutoCleanupEvent {
            (remainingSeconds <= 10 && remainingSeconds >= 1)) {
             
             String message = Config.getWarningMessage(remainingSeconds);
-            int color = getWarningColor(remainingSeconds);
+            int color = Config.getWarningColor(remainingSeconds);
             MessageSender.showActionBar(server, message, color);
         }
-    }
-    
-    /**
-     * 根据剩余时间获取警告颜色
-     */
-    private static int getWarningColor(int seconds) {
-        if (seconds > 10) return 0xFFCC00;      // 黄色
-        if (seconds > 5) return 0xFF6600;       // 橙色
-        return 0xFF3300;                        // 红色
     }
     
 
@@ -68,11 +59,11 @@ public class AutoCleanupEvent {
             .thenAccept(result -> {
                 int totalCleaned = result.getTotalItemsCleaned() + result.getTotalProjectilesCleaned();
                 String message = Config.getCleanupCompleteMessage(totalCleaned);
-                MessageSender.showActionBar(server, message, 0x00FF00); // 绿色
+                MessageSender.showActionBar(server, message, Config.getSuccessColor());
                 cleaning = false;
             })
             .exceptionally(e -> {
-                MessageSender.showActionBar(server, "§c清理失败", 0xFF0000); // 红色
+                MessageSender.showActionBar(server, Config.getCleanupFailedMessage(), Config.getErrorColor());
                 cleaning = false;
                 return null;
             });

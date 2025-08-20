@@ -7,6 +7,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemLore;
+import com.klnon.recyclingservice.Config;
 
 public class ItemTooltip {
     /**
@@ -29,7 +30,7 @@ public class ItemTooltip {
         
         // 添加真实数量信息
         loreLines.add(Component.empty()); // 空行分隔
-        loreLines.add(Component.literal("§7可取出: §a" + original.getCount())
+        loreLines.add(Component.literal(Config.getItemCountDisplay(original.getCount()))
             .withStyle(style -> style.withItalic(false)));
         
         // 应用新的lore

@@ -7,6 +7,7 @@ import java.util.Map;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
+import com.klnon.recyclingservice.Config;
 
 public class ItemMerge {
     /**
@@ -42,10 +43,11 @@ public class ItemMerge {
                     result.add(single);
                 }
             } else {
-                // 可堆叠物品按6400上限分组
+                // 可堆叠物品按配置上限分组
+                int mergeLimit = Config.getItemStackMergeLimit();
                 while (total > 0) {
                     ItemStack newStack = template.copy();
-                    int count = Math.min(total, 6400);
+                    int count = Math.min(total, mergeLimit);
                     newStack.setCount(count);
                     result.add(newStack);
                     total -= count;
@@ -66,11 +68,12 @@ public class ItemMerge {
         
         // 相同物品，进行合并
         int totalCount = item1.getCount() + item2.getCount();
+        int mergeLimit = Config.getItemStackMergeLimit();
         
-        // 可堆叠物品按6400上限分组
+        // 可堆叠物品按配置上限分组
         while (totalCount > 0) {
             ItemStack newStack = item1.copy();
-            int count = Math.min(totalCount, 6400);
+            int count = Math.min(totalCount, mergeLimit);
             newStack.setCount(count);
             result.add(newStack);
             totalCount -= count;
@@ -106,7 +109,8 @@ public class ItemMerge {
             // 情况2：相同物品，尝试合并
             ItemStack cleanCurrent = ItemTooltip.cleanItemStack(current.copy());
             if (ItemStack.isSameItemSameComponents(cleanCurrent, remaining)&&!ItemFilter.isComplexItem(cleanCurrent)) {
-                int canAdd = 6400 - cleanCurrent.getCount();
+                int mergeLimit = Config.getItemStackMergeLimit();
+                int canAdd = mergeLimit - cleanCurrent.getCount();
                 if (canAdd > 0) {
                     int addAmount = Math.min(canAdd, remaining.getCount());
                     cleanCurrent.setCount(cleanCurrent.getCount() + addAmount);

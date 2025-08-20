@@ -49,6 +49,28 @@ public class Config {
     public static final ModConfigSpec.BooleanValue AUTO_STOP_CHUNK_LOADING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     
+    // === UI界面设置 ===
+    public static final ModConfigSpec.IntValue UI_MAX_QUICK_MOVE;
+    public static final ModConfigSpec.IntValue ITEM_STACK_MERGE_LIMIT;
+    
+    // === 颜色配置 ===
+    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_NORMAL;
+    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_URGENT;
+    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_CRITICAL;
+    public static final ModConfigSpec.ConfigValue<String> SUCCESS_COLOR;
+    public static final ModConfigSpec.ConfigValue<String> ERROR_COLOR;
+    
+    // === 消息模板 ===
+    public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
+    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_HEADER;
+    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_TEST;
+    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_OPEN;
+    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_CURRENT;
+    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_EXAMPLE;
+    public static final ModConfigSpec.ConfigValue<String> TEST_BOX_TITLE;
+    public static final ModConfigSpec.ConfigValue<String> TEST_BOX_OPENED;
+    public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY;
+    
     static {
         // 基础清理设置
         BUILDER.comment("Auto cleanup settings / 自动清理设置").push("auto_cleanup");
@@ -231,6 +253,117 @@ public class Config {
         
         BUILDER.pop();
         
+        // UI界面设置
+        BUILDER.comment("UI interface settings / UI界面设置").push("ui_settings");
+        
+        UI_MAX_QUICK_MOVE = BUILDER
+                .comment("Maximum items to move at once with Shift+Click / Shift+点击一次性移动的最大物品数量",
+                        "Default: 64, Min: 1, Max: 6400")
+                .translation("recycle.config.ui_max_quick_move")
+                .defineInRange("ui_max_quick_move", 64, 1, 6400);
+        
+        ITEM_STACK_MERGE_LIMIT = BUILDER
+                .comment("Maximum stack size when merging items / 合并物品时的最大堆叠数量",
+                        "Default: 6400, Min: 64, Max: 9999")
+                .translation("recycle.config.item_stack_merge_limit")
+                .defineInRange("item_stack_merge_limit", 6400, 64, 9999);
+        
+        BUILDER.pop();
+        
+        // 颜色配置
+        BUILDER.comment("Color configuration for UI messages / UI消息颜色配置").push("colors");
+        
+        WARNING_COLOR_NORMAL = BUILDER
+                .comment("Color for normal warnings (hex format #RRGGBB) / 普通警告颜色（十六进制格式#RRGGBB）",
+                        "Default: #FFCC00")
+                .translation("recycle.config.warning_color_normal")
+                .define("warning_color_normal", "#FFCC00");
+        
+        WARNING_COLOR_URGENT = BUILDER
+                .comment("Color for urgent warnings / 紧急警告颜色",
+                        "Default: #FF6600")
+                .translation("recycle.config.warning_color_urgent")
+                .define("warning_color_urgent", "#FF6600");
+        
+        WARNING_COLOR_CRITICAL = BUILDER
+                .comment("Color for critical warnings / 关键警告颜色",
+                        "Default: #FF3300")
+                .translation("recycle.config.warning_color_critical")
+                .define("warning_color_critical", "#FF3300");
+        
+        SUCCESS_COLOR = BUILDER
+                .comment("Color for success messages / 成功消息颜色",
+                        "Default: #00FF00")
+                .translation("recycle.config.success_color")
+                .define("success_color", "#00FF00");
+        
+        ERROR_COLOR = BUILDER
+                .comment("Color for error messages / 错误消息颜色",
+                        "Default: #FF0000")
+                .translation("recycle.config.error_color")
+                .define("error_color", "#FF0000");
+        
+        BUILDER.pop();
+        
+        // 消息模板
+        BUILDER.comment("Message templates for UI text / UI文本消息模板").push("messages");
+        
+        ERROR_CLEANUP_FAILED = BUILDER
+                .comment("Message shown when cleanup fails / 清理失败时显示的消息",
+                        "Default: §cCleanup failed")
+                .translation("recycle.config.error_cleanup_failed")
+                .define("error_cleanup_failed", "§cCleanup failed");
+        
+        CMD_HELP_HEADER = BUILDER
+                .comment("Command help header / 命令帮助标题",
+                        "Default: §6=== Trash Box Command Help ===")
+                .translation("recycle.config.cmd_help_header")
+                .define("cmd_help_header", "§6=== Trash Box Command Help ===");
+        
+        CMD_HELP_TEST = BUILDER
+                .comment("Command help for test command / 测试命令帮助",
+                        "Default: §e/bin test §7- Open test trash box")
+                .translation("recycle.config.cmd_help_test")
+                .define("cmd_help_test", "§e/bin test §7- Open test trash box");
+        
+        CMD_HELP_OPEN = BUILDER
+                .comment("Command help for open command / 打开命令帮助",
+                        "Default: §e/bin open <dimension> <box> §7- Open specific dimension trash box")
+                .translation("recycle.config.cmd_help_open")
+                .define("cmd_help_open", "§e/bin open <dimension> <box> §7- Open specific dimension trash box");
+        
+        CMD_HELP_CURRENT = BUILDER
+                .comment("Command help for current command / 当前维度命令帮助",
+                        "Default: §e/bin current <box> §7- Open current dimension trash box")
+                .translation("recycle.config.cmd_help_current")
+                .define("cmd_help_current", "§e/bin current <box> §7- Open current dimension trash box");
+        
+        CMD_HELP_EXAMPLE = BUILDER
+                .comment("Command help example / 命令示例",
+                        "Default: §7Example: §f/bin open minecraft:overworld 1")
+                .translation("recycle.config.cmd_help_example")
+                .define("cmd_help_example", "§7Example: §f/bin open minecraft:overworld 1");
+        
+        TEST_BOX_TITLE = BUILDER
+                .comment("Test box title template (use {ui_type} for UI type) / 测试垃圾箱标题模板（使用{ui_type}显示UI类型）",
+                        "Default: §6Test Trash Box §7(UI Type: {ui_type})")
+                .translation("recycle.config.test_box_title")
+                .define("test_box_title", "§6Test Trash Box §7(UI Type: {ui_type})");
+        
+        TEST_BOX_OPENED = BUILDER
+                .comment("Message when test box is opened (use {ui_type} for UI type) / 打开测试垃圾箱时的消息",
+                        "Default: §aTest trash box opened §7| UI Type: §b{ui_type}")
+                .translation("recycle.config.test_box_opened")
+                .define("test_box_opened", "§aTest trash box opened §7| UI Type: §b{ui_type}");
+        
+        ITEM_COUNT_DISPLAY = BUILDER
+                .comment("Item count display template (use {count} for count) / 物品数量显示模板",
+                        "Default: §7Available: §a{count}")
+                .translation("recycle.config.item_count_display")
+                .define("item_count_display", "§7Available: §a{count}");
+        
+        BUILDER.pop();
+        
         // 构建配置规范
         SPEC = BUILDER.build();
     }
@@ -318,5 +451,105 @@ public class Config {
             return false;
         }
         return PROJECTILE_TYPES_TO_CLEAN.get().contains(entityTypeId);
+    }
+    
+    // === UI和颜色相关便捷方法 ===
+    
+    /**
+     * 获取UI快速移动的最大数量
+     */
+    public static int getUIMaxQuickMove() {
+        return UI_MAX_QUICK_MOVE.get();
+    }
+    
+    /**
+     * 获取物品堆叠合并限制
+     */
+    public static int getItemStackMergeLimit() {
+        return ITEM_STACK_MERGE_LIMIT.get();
+    }
+    
+    /**
+     * 解析十六进制颜色字符串为整数
+     */
+    public static int parseColor(String colorStr) {
+        try {
+            if (colorStr.startsWith("#")) {
+                return Integer.parseInt(colorStr.substring(1), 16);
+            }
+            return Integer.parseInt(colorStr, 16);
+        } catch (NumberFormatException e) {
+            return 0xFFFFFF; // 默认白色
+        }
+    }
+    
+    /**
+     * 获取不同类型警告的颜色
+     */
+    public static int getWarningColor(int remainingSeconds) {
+        if (remainingSeconds > 10) {
+            return parseColor(WARNING_COLOR_NORMAL.get());
+        } else if (remainingSeconds > 5) {
+            return parseColor(WARNING_COLOR_URGENT.get());
+        } else {
+            return parseColor(WARNING_COLOR_CRITICAL.get());
+        }
+    }
+    
+    /**
+     * 获取成功消息颜色
+     */
+    public static int getSuccessColor() {
+        return parseColor(SUCCESS_COLOR.get());
+    }
+    
+    /**
+     * 获取错误消息颜色
+     */
+    public static int getErrorColor() {
+        return parseColor(ERROR_COLOR.get());
+    }
+    
+    // === 消息格式化方法 ===
+    
+    /**
+     * 获取清理失败消息
+     */
+    public static String getCleanupFailedMessage() {
+        return ERROR_CLEANUP_FAILED.get();
+    }
+    
+    /**
+     * 获取格式化的测试垃圾箱标题
+     */
+    public static String getTestBoxTitle(String uiType) {
+        return TEST_BOX_TITLE.get().replace("{ui_type}", uiType);
+    }
+    
+    /**
+     * 获取格式化的测试垃圾箱打开消息
+     */
+    public static String getTestBoxOpenedMessage(String uiType) {
+        return TEST_BOX_OPENED.get().replace("{ui_type}", uiType);
+    }
+    
+    /**
+     * 获取格式化的物品数量显示
+     */
+    public static String getItemCountDisplay(int count) {
+        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count));
+    }
+    
+    /**
+     * 获取命令帮助消息组
+     */
+    public static String[] getCommandHelpMessages() {
+        return new String[] {
+            CMD_HELP_HEADER.get(),
+            CMD_HELP_TEST.get(),
+            CMD_HELP_OPEN.get(),
+            CMD_HELP_CURRENT.get(),
+            CMD_HELP_EXAMPLE.get()
+        };
     }
 }

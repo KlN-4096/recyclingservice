@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
 import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.Config;
 
 /**
  * 垃圾箱测试命令 - /bin
@@ -47,11 +48,10 @@ public class BinCommand {
     private static int showHelp(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         
-        source.sendSuccess(() -> Component.literal("§6=== 垃圾箱命令帮助 ==="), false);
-        source.sendSuccess(() -> Component.literal("§e/bin test §7- 打开测试垃圾箱"), false);
-        source.sendSuccess(() -> Component.literal("§e/bin open <维度> <箱号> §7- 打开指定维度的垃圾箱"), false);
-        source.sendSuccess(() -> Component.literal("§e/bin current <箱号> §7- 打开当前维度的垃圾箱"), false);
-        source.sendSuccess(() -> Component.literal("§7示例: §f/bin open minecraft:overworld 1"), false);
+        String[] helpMessages = Config.getCommandHelpMessages();
+        for (String message : helpMessages) {
+            source.sendSuccess(() -> Component.literal(message), false);
+        }
         
         return 1;
     }

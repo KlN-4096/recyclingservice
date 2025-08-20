@@ -8,6 +8,7 @@ import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.Item.ItemFilter;
 import com.klnon.recyclingservice.util.Item.ItemMerge;
 import com.klnon.recyclingservice.util.Item.ItemTooltip;
+import com.klnon.recyclingservice.Config;
 
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -23,7 +24,6 @@ import net.minecraft.world.item.ItemStack;
  */
 public class TrashBoxMenu extends ChestMenu {
     
-    private static final int MAX_QUICK_MOVE = 64;
     private final UniversalTrashContainer container;
     
     public TrashBoxMenu(int containerId, Inventory playerInventory, UniversalTrashContainer container) {
@@ -51,7 +51,7 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
     private ItemStack moveFromTrashToPlayer(Slot slot, ItemStack slotItem, int trashSlots) {
-        int moveCount = Math.min(slotItem.getCount(), MAX_QUICK_MOVE);
+        int moveCount = Math.min(slotItem.getCount(), Config.getUIMaxQuickMove());
         ItemStack moveItem = slotItem.copyWithCount(moveCount);
         ItemStack cleanItem = ItemTooltip.cleanItemStack(moveItem);
         

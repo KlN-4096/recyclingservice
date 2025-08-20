@@ -11,6 +11,7 @@ import com.klnon.recyclingservice.util.MessageSender;
 import com.klnon.recyclingservice.util.UiChoose;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
+import com.klnon.recyclingservice.Config;
 
 /**
  * UI工具类 - 提供垃圾箱UI访问的便捷方法
@@ -91,10 +92,11 @@ public class TrashBoxUI {
             TrashBox testBox = new TrashBox(54, 999);
             
             // 添加一些测试物品
+            int testItemCount = Config.getItemStackMergeLimit();
             // 方块类 (Blocks)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, testItemCount));
             // 原材料类 (Raw Materials)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, testItemCount));
             // 工具类 (Tools)
             testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 1));
             // 武器类 (Weapons)
@@ -102,30 +104,30 @@ public class TrashBoxUI {
             // 防具类 (Armor)
             testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET, 1));
             // 食物类 (Food)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, testItemCount));
             // 药水类 (Potions)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION, testItemCount));
             // 红石类 (Redstone)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE, testItemCount));
             // 装饰类 (Decorative)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FLOWER_POT, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FLOWER_POT, testItemCount));
             // 运输类 (Transportation)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MINECART, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MINECART, testItemCount));
             // 音乐类 (Music)
             testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MUSIC_DISC_CAT, 1));
             // 生物蛋类 (Spawn Eggs)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COW_SPAWN_EGG, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COW_SPAWN_EGG, testItemCount));
             // 杂项类 (Miscellaneous)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOOK, 6400));
+            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOOK, testItemCount));
             
             // 为垃圾箱起标题
-            Component title = Component.literal("§6测试垃圾箱 §7(UI类型: " + getUIType(player) + ")");
+            Component title = Component.literal(Config.getTestBoxTitle(getUIType(player)));
             MenuProvider provider = DynamicContainerProvider.create(testBox, title);
             
             player.openMenu(provider);
 
             // 发送测试信息
-            MessageSender.sendMessage(player, "§a已打开测试垃圾箱 §7| UI类型: §b" + getUIType(player));
+            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)));
 
             
             return true;
