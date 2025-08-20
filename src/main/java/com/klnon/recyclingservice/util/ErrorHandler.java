@@ -51,4 +51,45 @@ public class ErrorHandler {
         }
     }
 
+    /**
+     * 处理void操作（不需要返回值）
+     */
+    public static void handleVoidOperation(String operationName, Runnable operation) {
+        try {
+            operation.run();
+            LOGGER.debug("Void operation {} completed successfully", operationName);
+        } catch (Exception e) {
+            LOGGER.error("Void operation {} failed: {}", operationName, e.getMessage());
+        }
+    }
+
+    /**
+     * 处理静态操作（无玩家上下文，支持泛型返回值）
+     */
+    public static <T> T handleStaticOperation(String operationName, Supplier<T> operation, T defaultValue) {
+        try {
+            T result = operation.get();
+            LOGGER.debug("Static operation {} succeeded", operationName);
+            return result;
+        } catch (Exception e) {
+            LOGGER.error("Static operation {} failed: {}", operationName, e.getMessage());
+            return defaultValue;
+        }
+    }
+
+    /**
+     * 处理带默认值的泛型操作（有玩家上下文）
+     */
+    public static <T> T handleOperation(ServerPlayer player, String operationName, Supplier<T> operation, T defaultValue) {
+        try {
+            T result = operation.get();
+            LOGGER.debug("Operation {} succeeded for player {}", operationName, player.getName().getString());
+            return result;
+        } catch (Exception e) {
+            LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
+            MessageSender.sendErrorMessage(player, "operation.error.general");
+            return defaultValue;
+        }
+    }
+
   }

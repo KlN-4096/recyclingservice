@@ -12,7 +12,7 @@ public class UiChoose {
             return false;
         }
         
-        try {
+        return ErrorHandler.handleStaticOperation("modDetection", () -> {
             // 检查客户端是否注册了我们的mod网络通道
             ResourceLocation modChannel = ResourceLocation.fromNamespaceAndPath(
                 Recyclingservice.MODID, "main"
@@ -20,11 +20,6 @@ public class UiChoose {
             
             // NeoForge网络通道检测
             return serverPlayer.connection.hasChannel(modChannel);
-        } catch (Exception e) {
-            // 如果检测失败，默认认为客户端无mod（安全策略）
-            Recyclingservice.LOGGER.debug("Client mod detection failed for player {}: {}", 
-                player.getName().getString(), e.getMessage());
-            return false;
-        }
+        }, false); // 如果检测失败，默认认为客户端无mod（安全策略）
     }
 }

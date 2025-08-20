@@ -2,6 +2,7 @@ package com.klnon.recyclingservice;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.minecraft.resources.ResourceLocation;
+import com.klnon.recyclingservice.util.ErrorHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -242,12 +243,10 @@ public class Config {
             return false;
         }
         String Id = (String) obj;
-        try {
+        return ErrorHandler.handleStaticOperation("validateResourceLocation", () -> {
             ResourceLocation.parse(Id);
             return true;
-        } catch (Exception e) {
-            return false;
-        }
+        }, false);
     }
     // === 便捷访问方法 ===
     

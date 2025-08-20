@@ -9,6 +9,7 @@ import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.util.Item.ItemFilter;
 import com.klnon.recyclingservice.util.Item.ItemMerge;
 import com.klnon.recyclingservice.util.Item.ItemScanner;
+import com.klnon.recyclingservice.util.ErrorHandler;
 import com.klnon.recyclingservice.Config;
 
 import java.util.*;
@@ -84,17 +85,16 @@ public class CleanupService {
                 ResourceLocation dimensionId = entry.getKey();
                 ItemScanner.ScanResult scanResult = entry.getValue();
                 
-                try {
-                    // 处理单个维度的清理
-                    DimensionCleanupStats stats = processDimensionCleanup(server, dimensionId, scanResult);
-                    dimensionStats.put(dimensionId, stats);
-                    totalItemsCleaned += stats.itemsCleaned;
-                    totalProjectilesCleaned += stats.projectilesCleaned;
-                } catch (Exception e) {
-                    // 单个维度清理失败不影响其他维度，记录错误信息
-                    dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, 
-                        "Failed: " + e.getMessage()));
-                }
+                // 使用ErrorHandler处理单个维度的清理异常
+                DimensionCleanupStats stats = ErrorHandler.handleStaticOperation(
+                    "processDimensionCleanup_" + dimensionId,
+                    () -> processDimensionCleanup(server, dimensionId, scanResult),
+                    new DimensionCleanupStats(0, 0, "Processing failed")
+                );
+                
+                dimensionStats.put(dimensionId, stats);
+                totalItemsCleaned += stats.itemsCleaned;
+                totalProjectilesCleaned += stats.projectilesCleaned;
             }
             
             return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
