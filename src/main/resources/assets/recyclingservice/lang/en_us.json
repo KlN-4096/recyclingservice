@@ -1,70 +1,126 @@
 {
   "_comment": "RecyclingService Mod - English Language File",
   
+  "_comment_config": "=== Configuration Translations ===",
   "recycle.config.auto_clean_time": "Auto Clean Time (seconds)",
-  "recycle.config.auto_clean_time.tooltip": "How often the mod automatically cleans up dropped items. Default: 300 seconds (5 minutes)",
+  "recycle.config.auto_clean_time.tooltip": "How often the mod automatically cleans up dropped items. Default: 600 seconds (10 minutes)",
   
-  "recycle.config.show_cleanup_warnings": "Show Cleanup Warnings",
+  "recycle.config.show_cleanup_warnings": "Show Cleanup Warnings", 
   "recycle.config.show_cleanup_warnings.tooltip": "Whether to show warning messages before cleaning up items (60s, 30s, 10s countdown)",
   
-  "recycle.config.warning_60s_message": "60 Second Warning Message",
-  "recycle.config.warning_60s_message.tooltip": "Message displayed 60 seconds before cleanup. Use color codes like §e for yellow",
-  
-  "recycle.config.warning_30s_message": "30 Second Warning Message", 
-  "recycle.config.warning_30s_message.tooltip": "Message displayed 30 seconds before cleanup. Use color codes like §6 for gold",
-  
-  "recycle.config.warning_10s_message": "10 Second Warning Message",
-  "recycle.config.warning_10s_message.tooltip": "Message displayed 10 seconds before cleanup. Use color codes like §c for red",
-  
-  "recycle.config.warning_countdown_message": "Countdown Message",
-  "recycle.config.warning_countdown_message.tooltip": "Message for final 10-second countdown. Use {time} to show remaining seconds",
+  "recycle.config.warning_message": "Warning Message Template",
+  "recycle.config.warning_message.tooltip": "Message template for cleanup warnings. Use {time} for remaining seconds",
   
   "recycle.config.cleanup_complete_message": "Cleanup Complete Message",
   "recycle.config.cleanup_complete_message.tooltip": "Message shown after cleanup finishes. Use {count} to show number of items cleaned",
   
   "recycle.config.trash_box_size": "Trash Box Size",
-  "recycle.config.trash_box_size.tooltip": "Number of slots in each trash box. Larger sizes allow more items to be stored",
+  "recycle.config.trash_box_size.tooltip": "Number of slots in each trash box. Must be multiple of 9 (9-108)",
   
-  "recycle.config.global_trash_allow_put_in": "Global Trash: Allow Put In",
-  "recycle.config.global_trash_allow_put_in.tooltip": "Allow players to put their own items into the global trash box",
+  "recycle.config.dimension_trash_allow_put_in": "Allow Players to Put Items",
+  "recycle.config.dimension_trash_allow_put_in.tooltip": "Allow players to manually put their own items into dimension trash boxes",
   
-  "recycle.config.local_trash_allow_put_in": "Local Trash: Allow Put In",
-  "recycle.config.local_trash_allow_put_in.tooltip": "Allow players to put their own items into the local trash box",
+  "recycle.config.supported_dimensions": "Supported Dimensions",
+  "recycle.config.supported_dimensions.tooltip": "List of dimensions that will have trash boxes created",
   
-  "recycle.config.local_trash_range": "Local Trash Range (chunks)",
-  "recycle.config.local_trash_range.tooltip": "How many chunks around the player to include in the local trash box",
+  "recycle.config.max_boxes_per_dimension": "Max Boxes Per Dimension",
+  "recycle.config.max_boxes_per_dimension.tooltip": "Maximum number of trash boxes per dimension (1-5)",
   
-  "recycle.config.payment_item_type": "Payment Item",
-  "recycle.config.payment_item_type.tooltip": "What item players need to pay to take items from global trash box",
+  "recycle.config.auto_create_dimension_trash": "Auto Create Dimension Trash",
+  "recycle.config.auto_create_dimension_trash.tooltip": "Automatically create trash boxes for new dimensions",
   
-  "recycle.config.payment_cost_amount": "Payment Cost",
-  "recycle.config.payment_cost_amount.tooltip": "How many payment items needed to take out up to 64 items at once",
+  "recycle.config.payment_item_type": "Payment Item Type",
+  "recycle.config.payment_item_type.tooltip": "What item to use as payment for cross-dimension access",
+  
+  "recycle.config.cross_dimension_access_cost": "Cross-Dimension Access Cost", 
+  "recycle.config.cross_dimension_access_cost.tooltip": "Payment required to access other dimension trash boxes",
   
   "recycle.config.only_clean_listed_items": "Only Clean Listed Items",
-  "recycle.config.only_clean_listed_items.tooltip": "If enabled, only items in the 'Always Clean' list will be cleaned. If disabled, everything except 'Never Clean' items will be cleaned",
+  "recycle.config.only_clean_listed_items.tooltip": "If enabled, only items in the 'Always Clean' list will be cleaned",
   
   "recycle.config.always_clean_items": "Always Clean Items",
-  "recycle.config.always_clean_items.tooltip": "List of items that will always be cleaned up (when 'Only Clean Listed Items' is enabled)",
+  "recycle.config.always_clean_items.tooltip": "List of items that will always be cleaned up (blacklist mode)",
   
   "recycle.config.never_clean_items": "Never Clean Items",
-  "recycle.config.never_clean_items.tooltip": "List of items that will never be cleaned up, regardless of other settings",
+  "recycle.config.never_clean_items.tooltip": "List of items that will never be cleaned up (whitelist)",
   
-  "recycle.config.max_items_per_second": "Max Items Per Second",
-  "recycle.config.max_items_per_second.tooltip": "Maximum number of items to process each second to prevent server lag",
+  "recycle.config.clean_projectiles": "Clean Projectiles",
+  "recycle.config.clean_projectiles.tooltip": "Enable cleaning up projectiles that can cause lag",
   
-  "recycle.config.area_scan_size": "Area Scan Size",
-  "recycle.config.area_scan_size.tooltip": "How many chunks to scan at once during cleanup",
+  "recycle.config.projectile_types_to_clean": "Projectile Types to Clean", 
+  "recycle.config.projectile_types_to_clean.tooltip": "Types of projectiles to clean up (arrows, fireballs, etc.)",
   
-  "recycle.config.too_many_items_warning_limit": "Too Many Items Warning",
-  "recycle.config.too_many_items_warning_limit.tooltip": "Show warning when an area has more than this many dropped items",
+  "recycle.config.too_many_items_warning": "Too Many Items Warning",
+  "recycle.config.too_many_items_warning.tooltip": "Warn when a chunk has more than this many items",
   
   "recycle.config.auto_stop_chunk_loading": "Auto Stop Chunk Loading",
-  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically disable chunk loading in areas with too many items",
+  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically stop chunk loading when chunk has too many items",
   
+  "recycle.config.too_many_items_warning_message": "Too Many Items Warning Message",
+  "recycle.config.too_many_items_warning_message.tooltip": "Warning message template for too many items",
+  
+  "_comment_ui": "=== UI Configuration ===",
+  "recycle.config.ui_max_quick_move": "UI Max Quick Move",
+  "recycle.config.ui_max_quick_move.tooltip": "Maximum items to move at once with Shift+Click",
+  
+  "recycle.config.item_stack_merge_limit": "Item Stack Merge Limit",
+  "recycle.config.item_stack_merge_limit.tooltip": "Maximum stack size when merging items in trash boxes",
+  
+  "_comment_colors": "=== Color Configuration ===",
+  "recycle.config.warning_color_normal": "Normal Warning Color",
+  "recycle.config.warning_color_normal.tooltip": "Color for normal warnings (hex format #RRGGBB)",
+  
+  "recycle.config.warning_color_urgent": "Urgent Warning Color",
+  "recycle.config.warning_color_urgent.tooltip": "Color for urgent warnings (hex format #RRGGBB)",
+  
+  "recycle.config.warning_color_critical": "Critical Warning Color", 
+  "recycle.config.warning_color_critical.tooltip": "Color for critical warnings (hex format #RRGGBB)",
+  
+  "recycle.config.success_color": "Success Color",
+  "recycle.config.success_color.tooltip": "Color for success messages (hex format #RRGGBB)",
+  
+  "recycle.config.error_color": "Error Color",
+  "recycle.config.error_color.tooltip": "Color for error messages (hex format #RRGGBB)",
+  
+  "_comment_messages": "=== Message Templates ===",
+  "recycle.config.error_cleanup_failed": "Cleanup Failed Message",
+  "recycle.config.error_cleanup_failed.tooltip": "Message shown when cleanup fails",
+  
+  "recycle.config.cmd_help_header": "Command Help Header",
+  "recycle.config.cmd_help_header.tooltip": "Header text for command help display",
+  
+  "recycle.config.cmd_help_test": "Test Command Help",
+  "recycle.config.cmd_help_test.tooltip": "Help text for the test command",
+  
+  "recycle.config.cmd_help_open": "Open Command Help",
+  "recycle.config.cmd_help_open.tooltip": "Help text for the open command",
+  
+  "recycle.config.cmd_help_current": "Current Command Help",
+  "recycle.config.cmd_help_current.tooltip": "Help text for the current dimension command",
+  
+  "recycle.config.cmd_help_example": "Command Example", 
+  "recycle.config.cmd_help_example.tooltip": "Example usage of the command",
+  
+  "recycle.config.test_box_title": "Test Box Title",
+  "recycle.config.test_box_title.tooltip": "Title template for test trash boxes. Use {ui_type} for UI type",
+  
+  "recycle.config.test_box_opened": "Test Box Opened Message",
+  "recycle.config.test_box_opened.tooltip": "Message when test box is opened. Use {ui_type} for UI type",
+  
+  "recycle.config.item_count_display": "Item Count Display",
+  "recycle.config.item_count_display.tooltip": "Template for item count display. Use {count} for item count",
+  
+  "_comment_containers": "=== Container Translations ===",
   "container.recyclingservice.trash_box": "Trash Box #{0}",
   "container.recyclingservice.trash_box_with_dimension": "Trash Box {0} #{1}",
-  "trash_box.error.not_found": "§cCannot find the specified trash box",
-  "trash_box.error.general": "§cError occurred while opening trash box",
+  
+  "_comment_errors": "=== Error Messages ===",
+  "operation.error.general": "§cAn error occurred during the operation",
+  
+  "_comment_warnings": "=== Warning Messages ===", 
+  "recycle.warning.too_many_items": "§6Warning: Too many items detected ({count}/{threshold})",
+  
+  "_comment_ui_types": "=== UI Types ===",
   "trash_box.ui.type.enhanced": "Enhanced",
   "trash_box.ui.type.vanilla": "Vanilla"
 }
