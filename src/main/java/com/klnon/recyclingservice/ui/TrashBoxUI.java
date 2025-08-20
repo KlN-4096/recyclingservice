@@ -35,10 +35,8 @@ public class TrashBoxUI {
         return ErrorHandler.handleOperation(player, "openTrashBox", () -> {
             // 获取指定的垃圾箱
             TrashBox trashBox = trashManager.getOrCreateTrashBox(dimensionId, boxNumber);
-            if (trashBox == null) {
-                MessageSender.sendErrorMessage(player, "trash_box.error.not_found");
+            if (trashBox == null)
                 return false;
-            }
 
             // 创建动态容器提供者
             Component title = Component.translatable("container.recyclingservice.trash_box_with_dimension",
@@ -120,15 +118,15 @@ public class TrashBoxUI {
             // 杂项类 (Miscellaneous)
             testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOOK, 6400));
             
-            // 创建提供者并打开
+            // 为垃圾箱起标题
             Component title = Component.literal("§6测试垃圾箱 §7(UI类型: " + getUIType(player) + ")");
             MenuProvider provider = DynamicContainerProvider.create(testBox, title);
             
             player.openMenu(provider);
-            
+
             // 发送测试信息
-            Component info = Component.literal("§a已打开测试垃圾箱 §7| UI类型: §b" + getUIType(player));
-            player.sendSystemMessage(info);
+            MessageSender.sendMessage(player, "§a已打开测试垃圾箱 §7| UI类型: §b" + getUIType(player));
+
             
             return true;
         });

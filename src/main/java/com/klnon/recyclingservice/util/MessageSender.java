@@ -28,4 +28,12 @@ public class MessageSender {
             style.withColor(0xFF5555));
         player.sendSystemMessage(message);
     }
+
+    /**
+     * 发送普通消息
+     */
+    public static void sendMessage(ServerPlayer player, String Message) {
+        Component message = Component.literal(Message);
+        player.sendSystemMessage(message);
+    }
 }
