@@ -73,7 +73,13 @@ public class TrashBoxMenu extends ChestMenu {
         
         return ItemStack.EMPTY;
     }
-    
+
+    /**
+     * 在物品交换完毕后更新垃圾箱内物品数量
+     * @param slot
+     * @param slotItem
+     * @param moveCount
+    */
     private void updateSlotAfterMove(Slot slot, ItemStack slotItem, int moveCount) {
         if (moveCount == 0 || slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
@@ -126,6 +132,10 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
 
+    /**
+     * 鼠标左键点击物品检测.不会出现物品交换的情况
+     * @param slotId
+     */
     private void handlePostMerge(int slotId) {
         ItemStack carried = getCarried();
         Slot slot = slots.get(slotId);
