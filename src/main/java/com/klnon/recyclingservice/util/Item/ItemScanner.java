@@ -3,13 +3,17 @@ package com.klnon.recyclingservice.util.Item;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.EntityType;
+import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.ErrorHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 
 /**
  * 物品扫描器 - 异步扫描维度中的掉落物和弹射物
@@ -23,37 +27,34 @@ public class ItemScanner {
      */
     public static CompletableFuture<ScanResult> scanDimensionAsync(ServerLevel level) {
         return CompletableFuture.supplyAsync(() -> {
-            List<ItemEntity> items = new ArrayList<>();
-            List<Entity> projectiles = new ArrayList<>();
-            
-            try {
-                // 快速复制实体列表，避免阻塞主线程,同时也避免主线程同步修改实体导致崩溃
-                List<Entity> entitySnapshot = new ArrayList<>();
-                synchronized(level.getEntities()) {
-                    level.getAllEntities().forEach(entitySnapshot::add);
-                }
-                
-                // 在同步块外进行筛选，避免长时间持有锁
-                entitySnapshot.forEach(entity -> {
-                    if (entity instanceof ItemEntity itemEntity) {
-                        // 检查物品是否有效
-                        ItemStack itemStack = itemEntity.getItem();
-                        if (!itemStack.isEmpty()) {
-                            items.add(itemEntity);
+            return ErrorHandler.handleStaticOperation(
+                "scanDimension_" + level.dimension().location(),
+                () -> {
+                    List<ItemEntity> items = new ArrayList<>();
+                    List<Entity> projectiles = new ArrayList<>();
+                    int batchSize = Config.getStreamBatchSize();
+                    int scanRadius = Config.getPlayerScanRadius();
+                    
+                    if("chunk".equals(Config.getScanMode())){
+                        // 1. 流式扫描强制加载的区块的物品和弹射物
+                        ChunkScanner.findInForcedChunksStream(level, EntityType.ITEM, items::addAll, batchSize);
+                        Config.getProjectileTypes().forEach(entityType -> {
+                            ChunkScanner.findInForcedChunksStream(level, entityType, projectiles::addAll, batchSize);
+                        });
+                    }else{
+                        // 2. 流式扫描所有在线玩家周围的区块的物品和弹射物
+                        for (ServerPlayer player : level.players()) {
+                            ChunkScanner.findAroundPlayerStream(level, player, scanRadius, EntityType.ITEM, 
+                                items::addAll, batchSize);
+                            Config.getProjectileTypes().forEach(entityType -> {
+                                ChunkScanner.findAroundPlayerStream(level, player, scanRadius, entityType, projectiles::addAll, batchSize);
+                            });
                         }
-                    } else if (ItemFilter.shouldCleanProjectile(entity)) {
-                        // 检查弹射物是否应该被清理
-                        projectiles.add(entity);
                     }
-                });
-                
-            } catch (Exception e) {
-                // 记录异常但不中断扫描
-                // 可以添加日志记录
-                return new ScanResult(Collections.emptyList(), Collections.emptyList());
-            }
-            
-            return new ScanResult(items, projectiles);
+                    return new ScanResult(items, projectiles);
+                },
+                ScanResult.EMPTY
+            );
         }, ForkJoinPool.commonPool());
     }
 
@@ -67,37 +68,27 @@ public class ItemScanner {
         
         // 并行扫描所有维度
         for (ServerLevel level : server.getAllLevels()) {
-            ResourceLocation dimensionId = level.dimension().location();
-            
-            CompletableFuture<Map.Entry<ResourceLocation, ScanResult>> future = 
-                scanDimensionAsync(level).thenApply(result -> 
-                    result.isEmpty() ? null : Map.entry(dimensionId, result)
-                );
-            futures.add(future);
+            futures.add(
+                scanDimensionAsync(level)
+                    .thenApply(result -> result.isEmpty() ? null : 
+                        Map.entry(level.dimension().location(), result))
+            );
         }
         
-        // 等待所有扫描完成并收集结果
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .thenApply(v -> {
-                    Map<ResourceLocation, ScanResult> dimensionResults = new HashMap<>();
-                    for (CompletableFuture<Map.Entry<ResourceLocation, ScanResult>> future : futures) {
-                        try {
-                            Map.Entry<ResourceLocation, ScanResult> entry = future.get();
-                            if (entry != null) {
-                                dimensionResults.put(entry.getKey(), entry.getValue());
-                            }
-                        } catch (Exception e) {
-                            // 忽略单个维度的扫描失败，继续处理其他维度
-                        }
-                    }
-                    return dimensionResults;
-                });
+        // CompletableFuture.allOf等待所有扫描完成并根据futures收集结果
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+            .thenApply(v -> futures.stream()
+                .map(CompletableFuture::join)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
+
     
     /**
      * 扫描结果类 - 包含物品和弹射物
      */
     public static class ScanResult {
+        public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
         private final List<ItemEntity> items;
         private final List<Entity> projectiles;
         

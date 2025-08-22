@@ -1,11 +1,17 @@
 package com.klnon.recyclingservice;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+
 import com.klnon.recyclingservice.util.ErrorHandler;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 public class Config {
     // 配置构建器
@@ -36,9 +42,9 @@ public class Config {
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST;
     
     // === 物品过滤 ===
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ALWAYS_CLEAN_ITEMS;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> NEVER_CLEAN_ITEMS;
-    public static final ModConfigSpec.BooleanValue ONLY_CLEAN_LISTED_ITEMS;
+    public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> WHITELIST;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLIST;
     
     // === 弹射物过滤 ===
     public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES;
@@ -48,6 +54,11 @@ public class Config {
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.BooleanValue AUTO_STOP_CHUNK_LOADING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
+    
+    // === 扫描优化设置 ===
+    public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
+    public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
+    public static final ModConfigSpec.IntValue STREAM_BATCH_SIZE;
     
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue UI_MAX_QUICK_MOVE;
@@ -70,6 +81,12 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> TEST_BOX_TITLE;
     public static final ModConfigSpec.ConfigValue<String> TEST_BOX_OPENED;
     public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY;
+
+    // === 性能优化缓存 ===
+    // HashSet缓存，将O(n)查找优化为O(1)
+    private static volatile Set<String> whitelistCache = new HashSet<>();
+    private static volatile Set<String> blacklistCache = new HashSet<>();
+    private static volatile Set<String> projectileTypesCache = new HashSet<>();
     
     static {
         // 基础清理设置
@@ -166,69 +183,71 @@ public class Config {
         
         BUILDER.pop();
         
-        // 过滤系统
+        // 物品过滤系统
         BUILDER.comment("Item filtering settings / 物品过滤设置").push("item_filter");
         
-        ONLY_CLEAN_LISTED_ITEMS = BUILDER
-                .comment("If true, only clean items in the 'always clean' list. If false, clean everything except 'never clean' list / 如果为true，只清理'总是清理'列表中的物品。如果为false，清理除'永不清理'外的所有物品",
-                        "Default: false")
-                .translation("recycle.config.only_clean_listed_items")
-                .define("only_clean_listed_items", false);
+        CLEAN_MODE = BUILDER
+                .comment("Item cleaning mode / 物品清理模式:",
+                        "  - 'whitelist': Keep only items in whitelist, clean everything else / 白名单模式：仅保留白名单中的物品，清理其它所有物品",
+                        "  - 'blacklist': Clean only items in blacklist, keep everything else / 黑名单模式：仅清理黑名单中的物品，保留其它所有物品",
+                        "Default: whitelist")
+                .translation("recycle.config.clean_mode")
+                .defineInList("clean_mode", "whitelist", Arrays.asList("whitelist", "blacklist"));
         
-        ALWAYS_CLEAN_ITEMS = BUILDER
-                .comment("Items that will always be cleaned up (when 'only clean listed items' is true) / 黑名单（当'仅清理指定物品'启用时）",
-                        "Default: [minecraft:cobblestone, minecraft:dirt, minecraft:gravel]")
-                .translation("recycle.config.always_clean_items")
-                .defineListAllowEmpty("always_clean_items", 
-                    List.of("minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel"),
-                    () -> "",
-                    Config::validateResourceLocation);
-        
-        NEVER_CLEAN_ITEMS = BUILDER
-                .comment("Items that will never be cleaned up / 白名单",
+        WHITELIST = BUILDER
+                .comment("Items that will be kept (protected from cleaning) / 白名单：永远保留的物品",
                         "Default: [minecraft:diamond, minecraft:netherite_ingot, minecraft:elytra]")
-                .translation("recycle.config.never_clean_items")
-                .defineListAllowEmpty("never_clean_items",
+                .translation("recycle.config.whitelist")
+                .defineListAllowEmpty("whitelist",
                     List.of("minecraft:diamond", "minecraft:netherite_ingot", "minecraft:elytra"),
                     () -> "",
                     Config::validateResourceLocation);
         
+        BLACKLIST = BUILDER
+                .comment("Items that will be cleaned up / 黑名单：永远清理的物品",
+                        "Default: [minecraft:cobblestone, minecraft:dirt, minecraft:gravel]")
+                .translation("recycle.config.blacklist")
+                .defineListAllowEmpty("blacklist", 
+                    List.of("minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel"),
+                    () -> "",
+                    Config::validateResourceLocation);
+        
         BUILDER.pop();
 
-        // === 弹射物清理设置 === (添加到合适的位置)
+        // 弹射物清理设置
         BUILDER.comment("Projectile cleanup settings / 弹射物清理设置").push("projectile_cleanup");
+        
         CLEAN_PROJECTILES = BUILDER
-            .comment("Enable cleaning up projectiles that can cause lag / 是否清理可能造成卡顿的弹射物",
-                    "Default: true")
-            .translation("recycle.config.clean_projectiles")
-            .define("clean_projectiles", true);
+                .comment("Enable cleaning up projectiles that can cause lag / 是否清理可能造成卡顿的弹射物",
+                        "Default: true")
+                .translation("recycle.config.clean_projectiles")
+                .define("clean_projectiles", true);
 
         PROJECTILE_TYPES_TO_CLEAN = BUILDER
-            .comment("Types of projectiles to clean up (all projectiles that can cause lag) / 要清理的弹射物类型（所有可能造成卡顿的弹射物）",
-                    "Default: arrows, fireballs, potions, etc. that can accumulate and cause performance issues",
-                    "默认：箭矢、火球等可能大量堆积造成性能问题的弹射物")
-            .translation("recycle.config.projectile_types_to_clean")
-            .defineListAllowEmpty("projectile_types_to_clean",
-                List.of(
-                    // 箭矢类
-                    "minecraft:arrow", 
-                    "minecraft:spectral_arrow",
-                    // 火球类  
-                    "minecraft:dragon_fireball", 
-                    "minecraft:wither_skull", 
-                    "minecraft:fireball", 
-                    "minecraft:small_fireball",
-                    // 投掷物类
-                    "minecraft:snowball",
-                    // 其他弹射物
-                    "minecraft:shulker_bullet",
-                    "minecraft:llama_spit"
-                ),
-                () -> "",
-                Config::validateResourceLocation);
+                .comment("Types of projectiles to clean up (all projectiles that can cause lag) / 要清理的弹射物类型（所有可能造成卡顿的弹射物）",
+                        "Default: arrows, fireballs, potions, etc. that can accumulate and cause performance issues",
+                        "默认：箭矢、火球等可能大量堆积造成性能问题的弹射物")
+                .translation("recycle.config.projectile_types_to_clean")
+                .defineListAllowEmpty("projectile_types_to_clean",
+                    List.of(
+                        // 箭矢类
+                        "minecraft:arrow", 
+                        "minecraft:spectral_arrow",
+                        // 火球类  
+                        "minecraft:dragon_fireball", 
+                        "minecraft:wither_skull", 
+                        "minecraft:fireball", 
+                        "minecraft:small_fireball",
+                        // 投掷物类
+                        "minecraft:snowball",
+                        // 其他弹射物
+                        "minecraft:shulker_bullet",
+                        "minecraft:llama_spit"
+                    ),
+                    () -> "",
+                    Config::validateResourceLocation);
 
         BUILDER.pop();
-        
         
         // 区块管理
         BUILDER.comment("Chunk management settings / 区块管理设置").push("chunk_management");
@@ -250,6 +269,31 @@ public class Config {
                         "Default: recycle.warning.too_many_items")
                 .translation("recycle.config.too_many_items_warning_message")
                 .define("too_many_items_warning_message", "recycle.warning.too_many_items");
+        
+        BUILDER.pop();
+        
+        // 扫描优化设置
+        BUILDER.comment("Scanning optimization settings / 扫描优化设置").push("scanning_optimization");
+        
+        SCAN_MODE = BUILDER
+                .comment("Scan Mode / 扫描模式:",
+                        "  - 'chunk': Force-loaded Chunk Scan / 强加载区块扫描",
+                        "  - 'player': Player Surrounding Scan / 玩家周围扫描",
+                        "Default: chunk")
+                .translation("recycle.config.scan_mode")
+                .defineInList("scan_mode", "chunk", Arrays.asList("chunk", "player"));
+        
+        PLAYER_SCAN_RADIUS = BUILDER
+                .comment("Chunk radius around players for optimized scanning / 玩家周围的区块扫描半径",
+                        "Default: 8, Min: 2, Max: 32")
+                .translation("recycle.config.player_scan_radius")
+                .defineInRange("player_scan_radius", 8, 2, 32);
+        
+        STREAM_BATCH_SIZE = BUILDER
+                .comment("Batch size for streaming processing / 流式处理的物品批次大小",
+                        "Default: 100, Min: 50, Max: 500")
+                .translation("recycle.config.stream_batch_size")
+                .defineInRange("stream_batch_size", 100, 50, 500);
         
         BUILDER.pop();
         
@@ -375,12 +419,13 @@ public class Config {
         if (!(obj instanceof String)) {
             return false;
         }
-        String Id = (String) obj;
+        String id = (String) obj;
         return ErrorHandler.handleStaticOperation("validateResourceLocation", () -> {
-            ResourceLocation.parse(Id);
+            ResourceLocation.parse(id);
             return true;
         }, false);
     }
+    
     // === 便捷访问方法 ===
     
     /**
@@ -398,7 +443,7 @@ public class Config {
     }
     
     /**
-     * 获取跨维度访问邮费数量
+     * 获取跨维度访问付费数量
      */
     public static int getCrossDimensionCost() {
         return CROSS_DIMENSION_ACCESS_COST.get();
@@ -408,10 +453,7 @@ public class Config {
      * 检查维度是否在支持列表中
      */
     public static boolean isDimensionSupported(String dimensionId) {
-        if (Config.AUTO_CREATE_DIMENSION_TRASH.get()) {
-            return true;
-        }
-        return SUPPORTED_DIMENSIONS.get().contains(dimensionId);
+        return AUTO_CREATE_DIMENSION_TRASH.get() || SUPPORTED_DIMENSIONS.get().contains(dimensionId);
     }
     
     /**
@@ -435,22 +477,94 @@ public class Config {
         return CLEANUP_COMPLETE_MESSAGE.get().replace("{count}", String.valueOf(itemCount));
     }
 
-    // === 添加便捷访问方法 ===
+    // === 物品过滤便捷方法 ===
+    
+    /**
+     * 获取清理模式
+     */
+    public static String getCleanMode() {
+        return CLEAN_MODE.get();
+    }
+    
+    /**
+     * 检查是否为白名单模式
+     */
+    public static boolean isWhitelistMode() {
+        return "whitelist".equals(getCleanMode());
+    }
+    
+    /**
+     * 检查是否为黑名单模式
+     */
+    public static boolean isBlacklistMode() {
+        return "blacklist".equals(getCleanMode());
+    }
+    
+    /**
+     * 检查物品是否在白名单中（用于保留）
+     */
+    public static boolean isInWhitelist(String itemId) {
+        return whitelistCache.contains(itemId);
+    }
+    
+    /**
+     * 检查物品是否在黑名单中（用于清理）
+     */
+    public static boolean isInBlacklist(String itemId) {
+        return blacklistCache.contains(itemId);
+    }
+
+    // === 弹射物清理便捷方法 ===
+    
     /**
      * 检查是否应该清理弹射物
      */
     public static boolean shouldCleanProjectiles() {
         return CLEAN_PROJECTILES.get();
     }
-
+    
     /**
-     * 检查特定实体类型是否应该被清理
+     * 检查弹射物类型是否应该清理
      */
-    public static boolean shouldCleanEntityType(String entityTypeId) {
-        if (!shouldCleanProjectiles()) {
-            return false;
-        }
-        return PROJECTILE_TYPES_TO_CLEAN.get().contains(entityTypeId);
+    public static boolean isProjectileTypeToClean(String entityTypeId) {
+        return projectileTypesCache.contains(entityTypeId);
+    }
+
+    // === 扫描优化便捷方法 ===
+    
+    /**
+     * 获取扫描模式
+     */
+    public static String getScanMode() {
+        return SCAN_MODE.get();
+    }
+    
+    /**
+     * 检查是否为区块扫描模式
+     */
+    public static boolean isChunkScanMode() {
+        return "chunk".equals(getScanMode());
+    }
+    
+    /**
+     * 检查是否为玩家周围扫描模式
+     */
+    public static boolean isPlayerScanMode() {
+        return "player".equals(getScanMode());
+    }
+    
+    /**
+     * 获取玩家扫描半径
+     */
+    public static int getPlayerScanRadius() {
+        return PLAYER_SCAN_RADIUS.get();
+    }
+    
+    /**
+     * 获取流式处理物品批次大小
+     */
+    public static int getStreamBatchSize() {
+        return STREAM_BATCH_SIZE.get();
     }
     
     // === UI和颜色相关便捷方法 ===
@@ -473,14 +587,16 @@ public class Config {
      * 解析十六进制颜色字符串为整数
      */
     public static int parseColor(String colorStr) {
-        try {
-            if (colorStr.startsWith("#")) {
-                return Integer.parseInt(colorStr.substring(1), 16);
-            }
-            return Integer.parseInt(colorStr, 16);
-        } catch (NumberFormatException e) {
-            return 0xFFFFFF; // 默认白色
-        }
+        return ErrorHandler.handleStaticOperation(
+            "parseColor_" + colorStr,
+            () -> {
+                if (colorStr.startsWith("#")) {
+                    return Integer.parseInt(colorStr.substring(1), 16);
+                }
+                return Integer.parseInt(colorStr, 16);
+            },
+            0xFFFFFF // 默认白色
+        );
     }
     
     /**
@@ -551,5 +667,37 @@ public class Config {
             CMD_HELP_CURRENT.get(),
             CMD_HELP_EXAMPLE.get()
         };
+    }
+    
+    /**
+     * 获取弹射物实体类型集合（用于优化扫描）
+     */
+    public static Set<EntityType<?>> getProjectileTypes() {
+        Set<EntityType<?>> entityTypes = new HashSet<>();
+        
+        for (String entityTypeId : projectileTypesCache) {
+            ErrorHandler.handleVoidOperation(
+                "parseProjectileType_" + entityTypeId,
+                () -> {
+                    ResourceLocation resourceLocation = ResourceLocation.parse(entityTypeId);
+                    EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(resourceLocation);
+                    entityTypes.add(entityType);
+                }
+            );
+        }
+        
+        return entityTypes;
+    }
+    
+    // === 性能优化方法 ===
+    
+    /**
+     * 更新HashSet缓存（配置重载时调用）
+     */
+    public static void updateCaches() {
+        // 更新过滤物品缓存
+        whitelistCache = new HashSet<>(WHITELIST.get());
+        blacklistCache = new HashSet<>(BLACKLIST.get());
+        projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
     }
 }

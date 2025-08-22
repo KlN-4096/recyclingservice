@@ -17,27 +17,7 @@ import java.util.stream.Collectors;
 public class ItemFilter {
     
     /**
-     * 检查物品ID是否应该被清理（核心方法）
-     * @param itemId 物品资源ID
-     * @return 是否应该清理
-     */
-    public static boolean shouldCleanItem(String itemId) {
-        // 检查白名单
-        if (Config.NEVER_CLEAN_ITEMS.get().contains(itemId)) {
-            return false;
-        }
-        
-        // 如果启用了"仅清理指定物品"模式
-        if (Config.ONLY_CLEAN_LISTED_ITEMS.get()) {
-            return Config.ALWAYS_CLEAN_ITEMS.get().contains(itemId);
-        }
-        
-        // 默认：清理所有不在白名单中的物品
-        return true;
-    }
-    
-    /**
-     * 检查物品堆是否应该被清理
+     * 检查物品是否应该被清理（核心方法）
      * @param itemStack 物品堆
      * @return 是否应该清理
      */
@@ -47,23 +27,24 @@ public class ItemFilter {
         }
         
         String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
-        return shouldCleanItem(itemId);
+        return Config.isWhitelistMode() 
+            ? !Config.isInWhitelist(itemId)  // 白名单模式：不在保留列表中的都清理
+            : Config.isInBlacklist(itemId);  // 黑名单模式：只清理黑名单中的
     }
 
-        /**
-     * 过滤掉落物实体，返回应该被清理的物品内容
+    /**
+     * 过滤掉落物实体，返回应该被清理的物品引用（零拷贝优化）
      * @param itemEntities 掉落物实体列表
-     * @return 应该被清理的物品堆列表（用于放入垃圾箱）
+     * @return 应该被清理的物品堆引用列表
      */
     public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
         return itemEntities.stream()
                 .filter(entity -> shouldCleanItem(entity.getItem()))
-                .map(ItemEntity::getItem)
-                .map(ItemStack::copy)
+                .map(ItemEntity::getItem) // 直接引用，不拷贝
                 .collect(Collectors.toList());
     }
     
-        /**
+    /**
      * 过滤弹射物实体，返回应该被清理的
      * @param projectiles 弹射物实体列表
      * @return 应该被清理的弹射物实体列表（用于直接删除）
@@ -80,12 +61,8 @@ public class ItemFilter {
      * @return 是否应该清理
      */
     public static boolean shouldCleanProjectile(Entity entity) {
-        if (!Config.shouldCleanProjectiles()) {
-            return false;
-        }
-        
-        String entityTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
-        return Config.shouldCleanEntityType(entityTypeId);
+        return Config.shouldCleanProjectiles() && 
+               Config.isProjectileTypeToClean(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
     
     /**
@@ -94,49 +71,40 @@ public class ItemFilter {
      * @return 是否为复杂物品
      */
     public static boolean isComplexItem(ItemStack itemStack) {
-        // 检查最大堆叠数是否为1
-        if (itemStack.getMaxStackSize() == 1) {
-            return true;
-        }
-
-        // 检查是否有附魔
-        if (itemStack.isEnchanted()) {
-            return true;
-        }
-        
-        // 检查是否有自定义名称（在1.21中使用DataComponents）
-        if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
-            return true;
-        }
-
-        // 检查是否有损坏（耐久度不满）
-        if (itemStack.isDamaged()) {
-            return true;
-        }
-        
-        // 检查是否有特殊组件
-        if (itemStack.has(DataComponents.CUSTOM_NAME) ||
-            itemStack.has(DataComponents.CUSTOM_DATA) ||
-            itemStack.has(DataComponents.WRITTEN_BOOK_CONTENT) ||
-            itemStack.has(DataComponents.WRITABLE_BOOK_CONTENT) ||  // 书与笔
-            itemStack.has(DataComponents.POTION_CONTENTS) ||
-            itemStack.has(DataComponents.FIREWORK_EXPLOSION) ||
-            itemStack.has(DataComponents.FIREWORKS) ||             // 烟花火箭
-            itemStack.has(DataComponents.CONTAINER) ||
-            itemStack.has(DataComponents.STORED_ENCHANTMENTS) ||   // 附魔书
-            itemStack.has(DataComponents.SUSPICIOUS_STEW_EFFECTS) || // 迷之炖菜
-            itemStack.has(DataComponents.TRIM) ||                  // 盔甲纹饰
-            itemStack.has(DataComponents.DYED_COLOR) ||            // 染色物品
-            itemStack.has(DataComponents.BANNER_PATTERNS) ||       // 旗帜图案
-            itemStack.has(DataComponents.MAP_ID)) {                // 地图
-            return true;
-        }
-        
         if (itemStack.isEmpty()) {
             return false;
         }
+
+        // 检查基本属性
+        if (itemStack.getMaxStackSize() == 1 || 
+            itemStack.isEnchanted() || 
+            itemStack.isDamaged()) {
+            return true;
+        }
         
-        return false;
+        // 检查是否有特殊组件 - 合并重复检查
+        return hasAnySpecialComponent(itemStack);
     }
 
+    /**
+     * 检查物品是否包含任何特殊组件
+     * @param itemStack 物品堆
+     * @return 是否有特殊组件
+     */
+    private static boolean hasAnySpecialComponent(ItemStack itemStack) {
+        return itemStack.has(DataComponents.CUSTOM_NAME) ||
+               itemStack.has(DataComponents.CUSTOM_DATA) ||
+               itemStack.has(DataComponents.WRITTEN_BOOK_CONTENT) ||
+               itemStack.has(DataComponents.WRITABLE_BOOK_CONTENT) ||
+               itemStack.has(DataComponents.POTION_CONTENTS) ||
+               itemStack.has(DataComponents.FIREWORK_EXPLOSION) ||
+               itemStack.has(DataComponents.FIREWORKS) ||
+               itemStack.has(DataComponents.CONTAINER) ||
+               itemStack.has(DataComponents.STORED_ENCHANTMENTS) ||
+               itemStack.has(DataComponents.SUSPICIOUS_STEW_EFFECTS) ||
+               itemStack.has(DataComponents.TRIM) ||
+               itemStack.has(DataComponents.DYED_COLOR) ||
+               itemStack.has(DataComponents.BANNER_PATTERNS) ||
+               itemStack.has(DataComponents.MAP_ID);
+    }
 }

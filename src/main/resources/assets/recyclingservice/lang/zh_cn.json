@@ -36,7 +36,7 @@
   "recycle.config.cross_dimension_access_cost.tooltip": "访问其他维度垃圾箱所需的付费数量",
   
   "recycle.config.only_clean_listed_items": "仅清理指定物品",
-  "recycle.config.only_clean_listed_items.tooltip": "如果启用，只清理"总是清理"列表中的物品",
+  "recycle.config.only_clean_listed_items.tooltip": "如果启用，只清理'总是清理'列表中的物品",
   
   "recycle.config.always_clean_items": "总是清理的物品",
   "recycle.config.always_clean_items.tooltip": "总是会被清理的物品列表（黑名单模式）",
