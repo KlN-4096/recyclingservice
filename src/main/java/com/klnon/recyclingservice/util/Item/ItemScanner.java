@@ -32,7 +32,7 @@ public class ItemScanner {
                 () -> {
                     List<ItemEntity> items = new ArrayList<>();
                     List<Entity> projectiles = new ArrayList<>();
-                    int batchSize = Config.getStreamBatchSize();
+                    int batchSize = Config.getBatchSize();
                     int scanRadius = Config.getPlayerScanRadius();
                     
                     if("chunk".equals(Config.getScanMode())){

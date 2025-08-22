@@ -58,7 +58,10 @@ public class Config {
     // === 扫描优化设置 ===
     public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
     public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
-    public static final ModConfigSpec.IntValue STREAM_BATCH_SIZE;
+    public static final ModConfigSpec.IntValue BATCH_SIZE;
+    
+    // === 主线程调度优化设置 ===
+    public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS;
     
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue UI_MAX_QUICK_MOVE;
@@ -289,11 +292,22 @@ public class Config {
                 .translation("recycle.config.player_scan_radius")
                 .defineInRange("player_scan_radius", 8, 2, 32);
         
-        STREAM_BATCH_SIZE = BUILDER
-                .comment("Batch size for streaming processing / 流式处理的物品批次大小",
+        BATCH_SIZE = BUILDER
+                .comment("Batch size for processing (scanning, entity deletion, etc.) / 批处理大小（扫描、实体删除等通用）",
                         "Default: 100, Min: 50, Max: 500")
-                .translation("recycle.config.stream_batch_size")
-                .defineInRange("stream_batch_size", 100, 50, 500);
+                .translation("recycle.config.batch_size")
+                .defineInRange("batch_size", 100, 50, 500);
+        
+        BUILDER.pop();
+        
+        // 主线程调度优化设置
+        BUILDER.comment("Main thread scheduling optimization / 主线程调度优化设置").push("main_thread_scheduling");
+        
+        MAX_PROCESSING_TIME_MS = BUILDER
+                .comment("Maximum processing time per tick in milliseconds / 每tick最大主线程删除物品处理时间（毫秒）",
+                        "Default: 2, Min: 1, Max: 10")
+                .translation("recycle.config.max_processing_time_ms")
+                .defineInRange("max_processing_time_ms", 2, 1, 10);
         
         BUILDER.pop();
         
@@ -561,10 +575,17 @@ public class Config {
     }
     
     /**
-     * 获取流式处理物品批次大小
+     * 获取批处理大小（适用于扫描、实体删除等所有批处理操作）
      */
-    public static int getStreamBatchSize() {
-        return STREAM_BATCH_SIZE.get();
+    public static int getBatchSize() {
+        return BATCH_SIZE.get();
+    }
+    
+    /**
+     * 获取主线程最大处理时间（纳秒）
+     */
+    public static long getMaxProcessingTimeNs() {
+        return MAX_PROCESSING_TIME_MS.get() * 1_000_000L;
     }
     
     // === UI和颜色相关便捷方法 ===

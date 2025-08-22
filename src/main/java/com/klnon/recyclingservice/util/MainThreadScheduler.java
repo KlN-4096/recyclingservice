@@ -3,6 +3,7 @@ package com.klnon.recyclingservice.util;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import com.klnon.recyclingservice.Config;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -13,8 +14,8 @@ import java.util.List;
  * 主线程任务调度器 - 分片处理避免TPS下降
  * 
  * 设计原则：
- * - 每tick处理固定数量实体 (50个)
- * - 时间限制：2ms内完成
+ * - 每tick处理数量通过Config.getStreamBatchSize()动态配置
+ * - 时间限制：通过Config.getMaxProcessingTimeNs()动态配置
  * - 非阻塞：异步完成通知
  * - 保证TPS稳定性
  */
@@ -25,10 +26,6 @@ public class MainThreadScheduler {
     
     // 待删除实体队列
     private final Queue<EntityDeletionTask> deletionQueue = new ConcurrentLinkedQueue<>();
-    
-    // 配置常量
-    private static final int MAX_ENTITIES_PER_TICK = 50;
-    private static final long MAX_PROCESSING_TIME_NS = 2_000_000L; // 2ms
     
     private MainThreadScheduler() {}
     
@@ -63,9 +60,13 @@ public class MainThreadScheduler {
         long startTime = System.nanoTime();
         int processedCount = 0;
         
+        // 从配置获取动态值
+        int maxEntitiesPerTick = Config.getBatchSize();
+        long maxProcessingTimeNs = Config.getMaxProcessingTimeNs();
+        
         while (!deletionQueue.isEmpty() && 
-               processedCount < MAX_ENTITIES_PER_TICK && 
-               (System.nanoTime() - startTime) <= MAX_PROCESSING_TIME_NS) {
+               processedCount < maxEntitiesPerTick && 
+               (System.nanoTime() - startTime) <= maxProcessingTimeNs) {
             
             EntityDeletionTask task = deletionQueue.peek();
             if (task == null) break;
