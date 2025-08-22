@@ -8,7 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.ErrorHandler;
 import com.klnon.recyclingservice.util.MessageSender;
-import com.klnon.recyclingservice.util.UiChoose;
+import com.klnon.recyclingservice.util.UiUtils;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.Config;
@@ -76,7 +76,7 @@ public class TrashBoxUI {
      * @return UI类型描述
      */
     public static String getUIType(Player player) {
-        return UiChoose.hasModInstalled(player) ? "Enhanced" : "Vanilla";
+        return UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla";
     }
     
     /**

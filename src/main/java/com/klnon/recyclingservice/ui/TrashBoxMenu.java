@@ -5,6 +5,7 @@ import java.util.List;
 import javax.annotation.Nonnull;
 
 import com.klnon.recyclingservice.core.TrashBox;
+import com.klnon.recyclingservice.util.UiUtils;
 import com.klnon.recyclingservice.util.Item.ItemFilter;
 import com.klnon.recyclingservice.util.Item.ItemMerge;
 import com.klnon.recyclingservice.util.Item.ItemTooltip;
@@ -59,7 +60,7 @@ public class TrashBoxMenu extends ChestMenu {
             return ItemStack.EMPTY;
         }
         
-        updateSlotAfterMove(slot, slotItem, moveCount);
+        UiUtils.updateSlotAfterMove(slot, slotItem, moveCount);
         return ItemStack.EMPTY; // 阻止连续提取
     }
     
@@ -67,56 +68,38 @@ public class TrashBoxMenu extends ChestMenu {
         ItemStack original = slotItem.copy();
         
         if (moveItemStackTo(slotItem, 0, trashSlots, false)) {
-            updateSlotAfterMove(slot, slotItem, 0);
+            UiUtils.updateSlotAfterMove(slot, slotItem, 0);
             return original;
         }
         
         return ItemStack.EMPTY;
     }
 
-    /**
-     * 在物品交换完毕后更新垃圾箱内物品数量
-     * @param slot
-     * @param slotItem
-     * @param moveCount
-    */
-    private void updateSlotAfterMove(Slot slot, ItemStack slotItem, int moveCount) {
-        if (moveCount == 0 || slotItem.getCount() <= moveCount) {
-            slot.set(ItemStack.EMPTY);
-        } else {
-            slotItem.shrink(moveCount);
-            slot.set(ItemTooltip.enhanceTooltip(slotItem));
-        }
-    }
 
     @Override
     protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
         // 移动到垃圾箱使用智能合并
         if (startIndex == 0 && endIndex <= getRowCount() * 9) {
-            return moveToTrashBox(stack);
+            TrashBox trashBox = container.getTrashBox();
+            int originalCount = stack.getCount();
+            
+            if (ItemMerge.addItemSmart(trashBox.items, stack)) {
+                container.setChanged();
+                return true;
+            }
+            
+            // 检查是否部分成功
+            int movedCount = originalCount - stack.getCount();
+            if (movedCount > 0) {
+                container.setChanged();
+                return true;
+            }
+            
+            return false;
         }
         
         // 其他情况使用原版逻辑
         return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
-    }
-    
-    private boolean moveToTrashBox(ItemStack stack) {
-        TrashBox trashBox = container.getTrashBox();
-        int originalCount = stack.getCount();
-        
-        if (ItemMerge.addItemSmart(trashBox.items, stack)) {
-            container.setChanged();
-            return true;
-        }
-        
-        // 检查是否部分成功
-        int movedCount = originalCount - stack.getCount();
-        if (movedCount > 0) {
-            container.setChanged();
-            return true;
-        }
-        
-        return false;
     }
 
     @Override

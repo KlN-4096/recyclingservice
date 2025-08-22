@@ -6,7 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.network.chat.Component;
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.UiChoose;
+import com.klnon.recyclingservice.util.UiUtils;
 
 import javax.annotation.Nonnull;
 
@@ -59,7 +59,7 @@ public class DynamicContainerProvider implements MenuProvider {
         UniversalTrashContainer container = new UniversalTrashContainer(trashBox);
         
         // 检测客户端是否有mod
-        if (UiChoose.hasModInstalled(player)) {
+        if (UiUtils.hasModInstalled(player)) {
             // TODO: 客户端有mod时，返回定制TrashBoxMenu或特殊UI
             // return new EnhancedTrashBoxMenu(containerId, playerInventory, container);
             
