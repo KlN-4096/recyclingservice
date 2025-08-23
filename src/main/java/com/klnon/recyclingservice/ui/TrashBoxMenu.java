@@ -25,11 +25,11 @@ import net.minecraft.world.item.ItemStack;
  */
 public class TrashBoxMenu extends ChestMenu {
     
-    private final UniversalTrashContainer container;
+    private final TrashBox trashBox;
     
-    public TrashBoxMenu(int containerId, Inventory playerInventory, UniversalTrashContainer container) {
-        super(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6);
-        this.container = container;
+    public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
+        super(MenuType.GENERIC_9x6, containerId, playerInventory, trashBox, 6);
+        this.trashBox = trashBox;
     }
     
     @Override
@@ -80,18 +80,17 @@ public class TrashBoxMenu extends ChestMenu {
     protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
         // 移动到垃圾箱使用智能合并
         if (startIndex == 0 && endIndex <= getRowCount() * 9) {
-            TrashBox trashBox = container.getTrashBox();
             int originalCount = stack.getCount();
             
             if (ItemMerge.addItemSmart(trashBox.items, stack)) {
-                container.setChanged();
+                trashBox.setChanged();
                 return true;
             }
             
             // 检查是否部分成功
             int movedCount = originalCount - stack.getCount();
             if (movedCount > 0) {
-                container.setChanged();
+                trashBox.setChanged();
                 return true;
             }
             
@@ -141,7 +140,7 @@ public class TrashBoxMenu extends ChestMenu {
         // 更新槽位和手持物品
         slot.set(ItemTooltip.enhanceTooltip(merged.get(0)));
         setCarried(merged.size() > 1 ? merged.get(1) : ItemStack.EMPTY);
-        container.setChanged();
+        trashBox.setChanged();
     }
     
 }

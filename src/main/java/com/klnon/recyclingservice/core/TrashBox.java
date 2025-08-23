@@ -1,14 +1,16 @@
 package com.klnon.recyclingservice.core;
 
 import net.minecraft.core.NonNullList;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import java.util.List;
 
 /**
- * 垃圾箱实体类 - 简化版，无持久化
+ * 垃圾箱实体类 - 实现Container接口，直接作为容器使用
  * 专注于临时存储清理的掉落物
  */
-public class TrashBox {
+public class TrashBox implements Container {
     public final NonNullList<ItemStack> items;
     private final int capacity;
     private final int boxNumber;
@@ -37,32 +39,111 @@ public class TrashBox {
     }
     
     /**
-     * 取出指定位置的物品
+     * 获取指定位置的物品（不移除）- Container接口方法
      */
-    public ItemStack getItem(int index) {
-        if (index < 0 || index >= capacity) {
+    @Override
+    public ItemStack getItem(int slot) {
+        if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
-        
-        ItemStack item = items.get(index);
-        items.set(index, ItemStack.EMPTY);
-        return item;
+        return items.get(slot);
     }
 
     /**
-     * 设置指定位置的物品
+     * 移除指定数量的物品 - Container接口方法
      */
-    public void setItem(int index, ItemStack item) {
-        if (index >= 0 && index < capacity) {
-            items.set(index, item.isEmpty() ? ItemStack.EMPTY : item.copy());
+    @Override
+    public ItemStack removeItem(int slot, int amount) {
+        if (slot < 0 || slot >= capacity) {
+            return ItemStack.EMPTY;
+        }
+        
+        ItemStack stackInSlot = items.get(slot);
+        if (stackInSlot.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        
+        ItemStack result = stackInSlot.split(amount);
+        if (stackInSlot.isEmpty()) {
+            items.set(slot, ItemStack.EMPTY);
+        }
+        
+        setChanged();
+        return result;
+    }
+
+    /**
+     * 移除整个物品堆（不触发setChanged） - Container接口方法
+     */
+    @Override
+    public ItemStack removeItemNoUpdate(int slot) {
+        if (slot < 0 || slot >= capacity) {
+            return ItemStack.EMPTY;
+        }
+        
+        ItemStack result = items.get(slot);
+        items.set(slot, ItemStack.EMPTY);
+        return result;
+    }
+
+    /**
+     * 设置指定位置的物品 - Container接口方法
+     */
+    @Override
+    public void setItem(int slot, ItemStack stack) {
+        if (slot >= 0 && slot < capacity) {
+            items.set(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
+            setChanged();
         }
     }
     
     /**
-     * 清空垃圾箱
+     * 清空垃圾箱 - Container接口方法
+     */
+    @Override
+    public void clearContent() {
+        items.clear();
+        setChanged();
+    }
+    
+    /**
+     * 保持向后兼容的清空方法
      */
     public void clear() {
-        items.clear();
+        clearContent();
+    }
+
+    /**
+     * 获取容器大小 - Container接口方法
+     */
+    @Override
+    public int getContainerSize() {
+        return capacity;
+    }
+
+    /**
+     * 检查容器是否为空 - Container接口方法
+     */
+    @Override
+    public boolean isEmpty() {
+        return items.stream().allMatch(ItemStack::isEmpty);
+    }
+
+    /**
+     * 标记容器已变更 - Container接口方法
+     */
+    @Override
+    public void setChanged() {
+        // 垃圾箱是临时容器，不需要持久化，这里留空即可
+    }
+
+    /**
+     * 检查玩家是否可以访问容器 - Container接口方法
+     */
+    @Override
+    public boolean stillValid(Player player) {
+        // 垃圾箱对所有玩家开放
+        return true;
     }
 
     /**
@@ -78,13 +159,6 @@ public class TrashBox {
     public boolean isFull() {
         return !items.contains(ItemStack.EMPTY);
     }
-    
-    /**
-     * 检查垃圾箱是否为空
-     */
-    public boolean isEmpty() {
-        return items.stream().allMatch(ItemStack::isEmpty);
-    }
 
     
     /**
@@ -98,10 +172,10 @@ public class TrashBox {
     }
     
     /**
-     * 获取容器大小（固定槽位数）
+     * 获取容器大小（固定槽位数）- 兼容方法
      */
     public int size() {
-        return items.size(); // 直接使用NonNullList的size()
+        return getContainerSize();
     }
     
     /**

@@ -55,19 +55,18 @@ public class DynamicContainerProvider implements MenuProvider {
     
     @Override
     public AbstractContainerMenu createMenu(int containerId,@Nonnull Inventory playerInventory,@Nonnull Player player) {
-        // 创建通用容器适配器
-        UniversalTrashContainer container = new UniversalTrashContainer(trashBox);
+        // 直接使用TrashBox作为Container
         
         // 检测客户端是否有mod
         if (UiUtils.hasModInstalled(player)) {
             // TODO: 客户端有mod时，返回定制TrashBoxMenu或特殊UI
-            // return new EnhancedTrashBoxMenu(containerId, playerInventory, container);
+            // return new EnhancedTrashBoxMenu(containerId, playerInventory, trashBox);
             
             // 暂时使用TrashBoxMenu，等特殊UI实现后再切换
-            return new TrashBoxMenu(containerId, playerInventory, container);
+            return new TrashBoxMenu(containerId, playerInventory, trashBox);
         } else {
             // 客户端无mod，使用TrashBoxMenu（保持64个限制）
-            return new TrashBoxMenu(containerId, playerInventory, container);
+            return new TrashBoxMenu(containerId, playerInventory, trashBox);
         }
     }
     
