@@ -8,7 +8,6 @@ import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.UiUtils;
 import com.klnon.recyclingservice.util.Item.ItemFilter;
 import com.klnon.recyclingservice.util.Item.ItemMerge;
-import com.klnon.recyclingservice.util.Item.ItemTooltip;
 import com.klnon.recyclingservice.Config;
 
 import net.minecraft.world.entity.player.Inventory;
@@ -54,7 +53,7 @@ public class TrashBoxMenu extends ChestMenu {
     private ItemStack moveFromTrashToPlayer(Slot slot, ItemStack slotItem, int trashSlots) {
         int moveCount = Math.min(slotItem.getCount(), Config.getUIMaxQuickMove());
         ItemStack moveItem = slotItem.copyWithCount(moveCount);
-        ItemStack cleanItem = ItemTooltip.cleanItemStack(moveItem);
+        ItemStack cleanItem = UiUtils.cleanItemStack(moveItem);
         
         if (!moveItemStackTo(cleanItem, trashSlots, slots.size(), true)) {
             return ItemStack.EMPTY;
@@ -130,7 +129,7 @@ public class TrashBoxMenu extends ChestMenu {
         
         // 执行合并
         ItemStack cleanCarried = carried.copy();
-        ItemStack cleanSlotItem = ItemTooltip.cleanItemStack(slotItem.copy());
+        ItemStack cleanSlotItem = UiUtils.cleanItemStack(slotItem.copy());
         
         List<ItemStack> merged = ItemMerge.combine(cleanCarried, cleanSlotItem);
         if (merged.isEmpty()) {
@@ -138,7 +137,7 @@ public class TrashBoxMenu extends ChestMenu {
         }
         
         // 更新槽位和手持物品
-        slot.set(ItemTooltip.enhanceTooltip(merged.get(0)));
+        slot.set(UiUtils.enhanceTooltip(merged.get(0)));
         setCarried(merged.size() > 1 ? merged.get(1) : ItemStack.EMPTY);
         trashBox.setChanged();
     }

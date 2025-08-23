@@ -8,6 +8,7 @@ import java.util.Map;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.UiUtils;
 
 public class ItemMerge {
     /**
@@ -102,7 +103,7 @@ public class ItemMerge {
     public static boolean addItemSmart(NonNullList<ItemStack> container, ItemStack itemToAdd) {
         if (itemToAdd.isEmpty()) return false;
         
-        ItemStack remaining = ItemTooltip.cleanItemStack(itemToAdd.copy());
+        ItemStack remaining = UiUtils.cleanItemStack(itemToAdd.copy());
         
         // 从前往后搜寻
         for (int i = 0; i < container.size() && !remaining.isEmpty(); i++) {
@@ -110,18 +111,18 @@ public class ItemMerge {
             
             if (current.isEmpty()) {
                 // 空格子，直接放入
-                container.set(i, ItemTooltip.enhanceTooltip(remaining.copy()));
+                container.set(i, UiUtils.enhanceTooltip(remaining.copy()));
                 remaining = ItemStack.EMPTY;
             } else {
                 // 尝试合并
-                ItemStack cleanCurrent = ItemTooltip.cleanItemStack(current.copy());
+                ItemStack cleanCurrent = UiUtils.cleanItemStack(current.copy());
                 if (ItemStack.isSameItemSameComponents(cleanCurrent, remaining) && 
                     !ItemFilter.isComplexItem(cleanCurrent)) {
                     int canAdd = Config.getItemStackMergeLimit() - cleanCurrent.getCount();
                     if (canAdd > 0) {
                         int addAmount = Math.min(canAdd, remaining.getCount());
                         cleanCurrent.setCount(cleanCurrent.getCount() + addAmount);
-                        container.set(i, ItemTooltip.enhanceTooltip(cleanCurrent));
+                        container.set(i, UiUtils.enhanceTooltip(cleanCurrent));
                         remaining.shrink(addAmount);
                     }
                 }
