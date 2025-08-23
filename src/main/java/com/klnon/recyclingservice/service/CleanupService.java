@@ -7,8 +7,8 @@ import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.util.Item.ItemFilter;
 import com.klnon.recyclingservice.util.Item.ItemMerge;
-import com.klnon.recyclingservice.util.Item.ItemScanner;
-import com.klnon.recyclingservice.util.MainThreadScheduler;
+import com.klnon.recyclingservice.util.delete.MainThreadScheduler;
+import com.klnon.recyclingservice.util.scan.ItemScanner;
 import com.klnon.recyclingservice.Config;
 
 import java.util.*;

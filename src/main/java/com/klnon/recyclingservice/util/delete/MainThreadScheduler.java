@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util;
+package com.klnon.recyclingservice.util.delete;
 
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;

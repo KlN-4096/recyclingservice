@@ -4,7 +4,7 @@ import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.service.CleanupService;
-import com.klnon.recyclingservice.util.MessageSender;
+import com.klnon.recyclingservice.util.other.MessageSender;
 import com.klnon.recyclingservice.Config;
 
 /**

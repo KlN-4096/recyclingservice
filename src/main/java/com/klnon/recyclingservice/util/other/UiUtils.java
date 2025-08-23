@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util;
+package com.klnon.recyclingservice.util.other;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +38,13 @@ public class UiUtils {
      * @param slotItem
      * @param moveCount
     */
-    public static void updateSlotAfterMove(Slot slot, ItemStack slotItem, int moveCount) {
+    public static void updateSlotAfterMove(Slot slot, int moveCount) {
+        ItemStack slotItem = slot.getItem();
         if (moveCount == 0 || slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
         } else {
             slotItem.shrink(moveCount);
-            slot.set(enhanceTooltip(slotItem));
+            slot.set(updateTooltip(slotItem));
         }
     }
 
@@ -54,7 +55,7 @@ public class UiUtils {
      * @param original 原始物品堆
      * @return 增强后的物品堆
      */
-    public static ItemStack enhanceTooltip(ItemStack original) {
+    public static ItemStack updateTooltip(ItemStack original) {
         // cleanItemStack(original);
         if (original.getCount() <= 64) {
             return original.copy();

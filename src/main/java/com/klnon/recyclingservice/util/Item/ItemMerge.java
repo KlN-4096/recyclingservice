@@ -5,10 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.util.UiUtils;
 
 public class ItemMerge {
     /**
@@ -68,67 +66,5 @@ public class ItemMerge {
         }
         
         return result;
-    }
-    
-
-    /**
-     * 合并2个ItemStack，相同物品堆叠至上限
-     * @param item1 第一个ItemStack
-     * @param item2 第二个ItemStack
-     * @return 合并后的ItemStack列表
-     */
-    public static List<ItemStack> combine(ItemStack item1, ItemStack item2) {
-        List<ItemStack> result = new ArrayList<>();
-        int totalCount = item1.getCount() + item2.getCount();
-        int mergeLimit = Config.getItemStackMergeLimit();
-        
-        // 按配置上限分组
-        while (totalCount > 0) {
-            ItemStack newStack = item1.copy();
-            int count = Math.min(totalCount, mergeLimit);
-            newStack.setCount(count);
-            result.add(newStack);
-            totalCount -= count;
-        }
-        
-        return result;
-    }
-
-    /**
-     * 智能添加物品到容器，从前往后搜寻合并
-     * @param container 目标容器
-     * @param itemToAdd 要添加的物品
-     * @return 是否完全添加成功
-     */
-    public static boolean addItemSmart(NonNullList<ItemStack> container, ItemStack itemToAdd) {
-        if (itemToAdd.isEmpty()) return false;
-        
-        ItemStack remaining = UiUtils.cleanItemStack(itemToAdd.copy());
-        
-        // 从前往后搜寻
-        for (int i = 0; i < container.size() && !remaining.isEmpty(); i++) {
-            ItemStack current = container.get(i);
-            
-            if (current.isEmpty()) {
-                // 空格子，直接放入
-                container.set(i, UiUtils.enhanceTooltip(remaining.copy()));
-                remaining = ItemStack.EMPTY;
-            } else {
-                // 尝试合并
-                ItemStack cleanCurrent = UiUtils.cleanItemStack(current.copy());
-                if (ItemStack.isSameItemSameComponents(cleanCurrent, remaining) && 
-                    !ItemFilter.isComplexItem(cleanCurrent)) {
-                    int canAdd = Config.getItemStackMergeLimit() - cleanCurrent.getCount();
-                    if (canAdd > 0) {
-                        int addAmount = Math.min(canAdd, remaining.getCount());
-                        cleanCurrent.setCount(cleanCurrent.getCount() + addAmount);
-                        container.set(i, UiUtils.enhanceTooltip(cleanCurrent));
-                        remaining.shrink(addAmount);
-                    }
-                }
-            }
-        }
-        
-        return remaining.isEmpty();
     }
 }

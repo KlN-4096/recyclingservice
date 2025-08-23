@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util;
+package com.klnon.recyclingservice.util.other;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;

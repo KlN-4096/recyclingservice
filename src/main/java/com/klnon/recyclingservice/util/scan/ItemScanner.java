@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util.Item;
+package com.klnon.recyclingservice.util.scan;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -8,7 +8,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.util.other.ErrorHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

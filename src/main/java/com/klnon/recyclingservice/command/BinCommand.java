@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
-import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.util.other.ErrorHandler;
 import com.klnon.recyclingservice.Config;
 
 /**

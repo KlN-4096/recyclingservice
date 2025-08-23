@@ -5,12 +5,13 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 
-import com.klnon.recyclingservice.util.ErrorHandler;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
+import com.klnon.recyclingservice.util.other.ErrorHandler;
+
 import java.util.HashSet;
 
 public class Config {

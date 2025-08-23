@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util;
+package com.klnon.recyclingservice.util.other;
 
 import java.util.function.Supplier;
 
