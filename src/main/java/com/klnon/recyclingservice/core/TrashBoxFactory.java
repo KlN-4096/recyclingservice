@@ -17,20 +17,11 @@ public class TrashBoxFactory {
      */
     public static TrashBox createTrashBox(int boxNumber, int capacity) {
         // 如果capacity为-1，使用配置文件的值
-        int actualCapacity = capacity == -1 ? Config.TRASH_BOX_SIZE.get() : capacity;
+        int actualCapacity = capacity == -1 ? Config.getTrashBoxRows()*9 : capacity;
         
         // 确保容量在合理范围内
         int safeCapacity = Math.max(9, Math.min(actualCapacity, 108));
         return new TrashBox(safeCapacity, boxNumber);
-    }
-    
-    /**
-     * 使用配置文件默认容量创建垃圾箱
-     * @param boxNumber 垃圾箱编号
-     * @return 垃圾箱实例
-     */
-    public static TrashBox createTrashBox(int boxNumber) {
-        return createTrashBox(boxNumber, -1);
     }
     
     /**
@@ -51,7 +42,7 @@ public class TrashBoxFactory {
             return null;
         }
         
-        return createTrashBox(boxNumber);
+        return createTrashBox(boxNumber,-1);
     }
     
     /**

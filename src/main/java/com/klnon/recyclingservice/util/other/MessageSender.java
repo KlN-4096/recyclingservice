@@ -22,6 +22,17 @@ public class MessageSender {
     }
     
     /**
+     * 发送聊天消息到所有在线玩家（支持完整的Component功能，包括tooltip）
+     * @param server 服务器实例
+     * @param component 完整的Component消息（可包含悬停事件等）
+     */
+    public static void sendChatMessage(MinecraftServer server, Component component) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.sendSystemMessage(component);
+        }
+    }
+    
+    /**
      * 使用配置颜色显示ActionBar消息
      */
     public static void showActionBarWithConfigColor(MinecraftServer server, String message, String colorType) {

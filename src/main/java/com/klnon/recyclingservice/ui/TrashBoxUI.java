@@ -12,6 +12,8 @@ import com.klnon.recyclingservice.util.other.UiUtils;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.Config;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * UI工具类 - 提供垃圾箱UI访问的便捷方法
@@ -90,46 +92,69 @@ public class TrashBoxUI {
         return ErrorHandler.handleOperation(player, "openTestTrashBox", () -> {
             // 创建测试垃圾箱
             TrashBox testBox = new TrashBox(54, 999);
-            
-            // 添加一些测试物品
-            int testItemCount = Config.getItemStackMergeLimit();
+
+            // 添加一些测试物品，使用自定义堆叠倍数
             // 方块类 (Blocks)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, testItemCount));
+            ItemStack cobblestone = new ItemStack(Items.COBBLESTONE);
+            testBox.addItem(new ItemStack(Items.COBBLESTONE, Config.getItemStackMultiplier(cobblestone)));
+
             // 原材料类 (Raw Materials)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, testItemCount));
+            ItemStack coal = new ItemStack(Items.COAL);
+            testBox.addItem(new ItemStack(Items.COAL, Config.getItemStackMultiplier(coal)));
+
             // 工具类 (Tools)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 1));
+            ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
+            testBox.addItem(new ItemStack(Items.DIAMOND_PICKAXE, Config.getItemStackMultiplier(pickaxe)));
+
             // 武器类 (Weapons)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD, 1));
+            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+            testBox.addItem(new ItemStack(Items.DIAMOND_SWORD, Config.getItemStackMultiplier(sword)));
+
             // 防具类 (Armor)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET, 1));
+            ItemStack helmet = new ItemStack(Items.DIAMOND_HELMET);
+            testBox.addItem(new ItemStack(Items.DIAMOND_HELMET, Config.getItemStackMultiplier(helmet)));
+
             // 食物类 (Food)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, testItemCount));
+            ItemStack bread = new ItemStack(Items.BREAD);
+            testBox.addItem(new ItemStack(Items.BREAD, Config.getItemStackMultiplier(bread)));
+
             // 药水类 (Potions)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION, testItemCount));
+            ItemStack potion = new ItemStack(Items.POTION);
+            testBox.addItem(new ItemStack(Items.POTION, Config.getItemStackMultiplier(potion)));
+
             // 红石类 (Redstone)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE, testItemCount));
+            ItemStack redstone = new ItemStack(Items.REDSTONE);
+            testBox.addItem(new ItemStack(Items.REDSTONE, Config.getItemStackMultiplier(redstone)));
+
             // 装饰类 (Decorative)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FLOWER_POT, testItemCount));
+            ItemStack flowerPot = new ItemStack(Items.FLOWER_POT);
+            testBox.addItem(new ItemStack(Items.FLOWER_POT, Config.getItemStackMultiplier(flowerPot)));
+
             // 运输类 (Transportation)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MINECART, testItemCount));
+            ItemStack minecart = new ItemStack(Items.MINECART);
+            testBox.addItem(new ItemStack(Items.MINECART, Config.getItemStackMultiplier(minecart)));
+
             // 音乐类 (Music)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MUSIC_DISC_CAT, 1));
+            ItemStack musicDisc = new ItemStack(Items.MUSIC_DISC_CAT);
+            testBox.addItem(new ItemStack(Items.MUSIC_DISC_CAT, Config.getItemStackMultiplier(musicDisc)));
+
             // 生物蛋类 (Spawn Eggs)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COW_SPAWN_EGG, testItemCount));
+            ItemStack spawnEgg = new ItemStack(Items.COW_SPAWN_EGG);
+            testBox.addItem(new ItemStack(Items.COW_SPAWN_EGG, Config.getItemStackMultiplier(spawnEgg)));
+
             // 杂项类 (Miscellaneous)
-            testBox.addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOOK, testItemCount));
-            
+            ItemStack book = new ItemStack(Items.BOOK);
+            testBox.addItem(new ItemStack(Items.BOOK, Config.getItemStackMultiplier(book)));
+
             // 为垃圾箱起标题
             Component title = Component.literal(Config.getTestBoxTitle(getUIType(player)));
             MenuProvider provider = DynamicContainerProvider.create(testBox, title);
-            
+
             player.openMenu(provider);
 
             // 发送测试信息
             MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)));
 
-            
             return true;
         });
     }

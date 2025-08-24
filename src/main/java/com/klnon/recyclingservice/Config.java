@@ -1,14 +1,22 @@
 package com.klnon.recyclingservice;
 
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.HoverEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
 import com.klnon.recyclingservice.util.other.ErrorHandler;
 
@@ -29,14 +37,20 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE;
     public static final ModConfigSpec.ConfigValue<String> CLEANUP_COMPLETE_MESSAGE;
     
+    // === 详细清理消息模板 ===
+    public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER;
+    public static final ModConfigSpec.ConfigValue<String> DIMENSION_ENTRY_FORMAT;
+    public static final ModConfigSpec.ConfigValue<String> OTHER_DIMENSIONS_TOOLTIP_HEADER;
+    
     // === 垃圾箱设置 ===
-    public static final ModConfigSpec.IntValue TRASH_BOX_SIZE;
+    public static final ModConfigSpec.IntValue TRASH_BOX_ROWS;
     public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_ALLOW_PUT_IN;
     
     // === 维度管理 ===
     public static final ModConfigSpec.ConfigValue<List<? extends String>> SUPPORTED_DIMENSIONS;
     public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION;
     public static final ModConfigSpec.BooleanValue AUTO_CREATE_DIMENSION_TRASH;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> MOD_DIMENSION_NAMES;
     
     // === 付费系统 ===
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE;
@@ -66,7 +80,7 @@ public class Config {
     public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS;
     
     // === UI界面设置 ===
-    public static final ModConfigSpec.IntValue ITEM_STACK_MERGE_LIMIT;
+    public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
     
     // === 颜色配置 ===
     public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_NORMAL;
@@ -125,16 +139,37 @@ public class Config {
                 .translation("recycle.config.cleanup_complete_message")
                 .define("cleanup_complete_message", "§a[Auto Clean] Cleaned up {items} items and {entities} entities!");
         
+        // 详细清理消息模板配置
+        CLEANUP_RESULT_HEADER = BUILDER
+                .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
+                        "Default: §a§lCleanup Results:")
+                .translation("recycle.config.cleanup_result_header")
+                .define("cleanup_result_header", "§a§lCleanup Results:");
+        
+        DIMENSION_ENTRY_FORMAT = BUILDER
+                .comment("Format for each dimension entry in cleanup message / 清理消息中每个维度条目的格式",
+                        "Available placeholders: {name} {items} {entities}",
+                        "可用占位符: {name} {items} {entities}",
+                        "Default: §f{name}: §b{items} §fitems, §d{entities} §fentities")
+                .translation("recycle.config.dimension_entry_format")
+                .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
+        
+        OTHER_DIMENSIONS_TOOLTIP_HEADER = BUILDER
+                .comment("Header text for other dimensions in tooltip / 工具提示中其他维度的标题文本",
+                        "Default: §e§lOther Dimensions Cleanup Details:")
+                .translation("recycle.config.other_dimensions_tooltip_header")
+                .define("other_dimensions_tooltip_header", "§e§lOther Dimensions Cleanup Details:");
+        
         BUILDER.pop();
         
         // 垃圾箱设置
         BUILDER.comment("Trash box settings / 垃圾箱系统设置").push("trash_box");
-        
-        TRASH_BOX_SIZE = BUILDER
-                .comment("How many slots each trash box can hold / 每个垃圾箱的格子数量",
-                        "Default: 54, Min: 9, Max: 108")
-                .translation("recycle.config.trash_box_size")
-                .defineInRange("trash_box_size", 54, 9, 108);
+
+        TRASH_BOX_ROWS = BUILDER
+                .comment("Number of rows in each trash box / 每个垃圾箱的行数",
+                        "Default: 6, Min: 1, Max: 6")
+                .translation("recycle.config.trash_box_rows")
+                .defineInRange("trash_box_rows", 6, 1, 6);
         
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
                 .comment("Allow players to put items into dimension trash box / 是否允许玩家主动将物品放入维度垃圾箱",
@@ -167,6 +202,23 @@ public class Config {
                         "Default: true")
                 .translation("recycle.config.auto_create_dimension_trash")
                 .define("auto_create_dimension_trash", true);
+        
+        MOD_DIMENSION_NAMES = BUILDER
+                .comment("Dimension name mapping and display configuration / 维度名称映射和显示配置",
+                        "Format: 'dimension_id=display_name=type' where type is 'main' or 'other'",
+                        "Main dimensions show in chat, other dimensions show in tooltip",
+                        "格式：'维度ID=显示名称=类型'，类型为'main'或'other'",
+                        "主要维度显示在聊天栏，其他维度显示在工具提示中",
+                        "Default: Main 3 dimensions")
+                .translation("recycle.config.mod_dimension_names")
+                .defineListAllowEmpty("mod_dimension_names",
+                    List.of(
+                        "minecraft:overworld=Overworld=main",
+                        "minecraft:the_nether=nether=main",
+                        "minecraft:the_end=end=main"
+                    ),
+                    () -> "",
+                    Config::validateDimensionNameEntry);
         
         BUILDER.pop();
         
@@ -323,12 +375,12 @@ public class Config {
         
         // UI界面设置
         BUILDER.comment("UI interface settings / UI界面设置").push("ui_settings");
-        
-        ITEM_STACK_MERGE_LIMIT = BUILDER
-                .comment("Maximum stack size when merging items / 合并物品时的最大堆叠数量",
-                        "Default: 6400, Min: 64, Max: 9999")
-                .translation("recycle.config.item_stack_merge_limit")
-                .defineInRange("item_stack_merge_limit", 6400, 64, 9999);
+
+        ITEM_STACK_MULTIPLIER = BUILDER
+                .comment("Stack size multiplier for items / 物品堆叠倍数",
+                        "Default: 100 (means 64*100=6400), Min: 1, Max: 1000")
+                .translation("recycle.config.item_stack_multiplier")
+                .defineInRange("item_stack_multiplier", 100, 1, 1000);
         
         BUILDER.pop();
         
@@ -443,8 +495,31 @@ public class Config {
             return true;
         }, false);
     }
-    
+
+    /**
+     * 验证维度名称条目格式（宽松验证，无效条目自动忽略）
+     */
+    private static boolean validateDimensionNameEntry(Object obj) {
+        return obj instanceof String; // 简单验证，无效条目解析时会被忽略
+    }
+
     // === 便捷访问方法 ===
+
+    public static MenuType<ChestMenu> getMenuTypeForRows() {
+        return switch(getTrashBoxRows()) {
+            case 1 -> MenuType.GENERIC_9x1;
+            case 2 -> MenuType.GENERIC_9x2;
+            case 3 -> MenuType.GENERIC_9x3;
+            case 4 -> MenuType.GENERIC_9x4;
+            case 5 -> MenuType.GENERIC_9x5;
+            default -> MenuType.GENERIC_9x6;
+        };
+    }
+
+
+    public static int getTrashBoxRows(){
+        return TRASH_BOX_ROWS.get();
+    }
     
     /**
      * 获取清理间隔（tick）
@@ -605,8 +680,8 @@ public class Config {
     /**
      * 获取物品堆叠合并限制
      */
-    public static int getItemStackMergeLimit() {
-        return ITEM_STACK_MERGE_LIMIT.get();
+    public static int getItemStackMultiplier(ItemStack itemStack) {
+        return ITEM_STACK_MULTIPLIER.get()*itemStack.getMaxStackSize();
     }
     
     /**
@@ -678,8 +753,8 @@ public class Config {
     /**
      * 获取格式化的物品数量显示
      */
-    public static String getItemCountDisplay(int count) {
-        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count)).replace("{stack_limit}", String.valueOf(getItemStackMergeLimit()));
+    public static String getItemCountDisplay(int count,ItemStack itemStack) {
+        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count)).replace("{stack_limit}", String.valueOf(getItemStackMultiplier(itemStack)));
     }
     
     /**
@@ -693,6 +768,154 @@ public class Config {
             CMD_HELP_CURRENT.get(),
             CMD_HELP_EXAMPLE.get()
         };
+    }
+    
+    // === 维度相关便捷方法 ===
+    
+    /**
+     * 解析维度名称配置，返回维度ID -> 显示名称的映射
+     * @return 维度显示名称映射
+     */
+    private static Map<String, String> parseDimensionDisplayNames() {
+        Map<String, String> nameMap = new HashMap<>();
+        for (String entry : MOD_DIMENSION_NAMES.get()) {
+            try {
+                String[] parts = entry.split("=", 3);
+                if (parts.length >= 2) {
+                    nameMap.put(parts[0], parts[1]); // 维度ID -> 显示名称
+                }
+            } catch (Exception e) {
+                // 忽略无效条目，如用户所要求
+            }
+        }
+        return nameMap;
+    }
+    
+    /**
+     * 解析维度名称配置，返回主要维度ID集合
+     * @return 主要维度ID集合
+     */
+    private static Set<String> parseMainDimensions() {
+        Set<String> mainDims = new HashSet<>();
+        for (String entry : MOD_DIMENSION_NAMES.get()) {
+            try {
+                String[] parts = entry.split("=", 3);
+                if (parts.length >= 3 && "main".equalsIgnoreCase(parts[2])) {
+                    mainDims.add(parts[0]); // 添加维度ID
+                }
+            } catch (Exception e) {
+                // 忽略无效条目
+            }
+        }
+        return mainDims;
+    }
+    
+    /**
+     * 获取维度的显示名称
+     * @param dimensionId 维度ID
+     * @return 本地化显示名称，如果没有映射则返回简化的ID
+     */
+    public static String getDimensionDisplayName(ResourceLocation dimensionId) {
+        String dimString = dimensionId.toString();
+        Map<String, String> nameMap = parseDimensionDisplayNames();
+        
+        // 优先返回配置的本地化名称
+        if (nameMap.containsKey(dimString)) {
+            return nameMap.get(dimString);
+        }
+        // 对于未配置的维度，返回简化的命名空间:路径格式
+        return dimString.contains(":") ? 
+            dimString.substring(dimString.indexOf(':') + 1) : dimString;
+    }
+    
+    /**
+     * 检查是否为主要维度（需要显示在主消息中）
+     * @param dimensionId 维度ID
+     * @return 是否为主要维度
+     */
+    public static boolean isMainDimension(ResourceLocation dimensionId) {
+        Set<String> mainDims = parseMainDimensions();
+        return mainDims.contains(dimensionId.toString());
+    }
+    
+    /**
+     * 构建详细清理完成消息（带tooltip的Component格式）
+     * @param dimensionStats 各维度清理统计信息
+     * @return 带悬停详情的聊天组件
+     */
+    public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
+        StringBuilder mainMessage = new StringBuilder(CLEANUP_RESULT_HEADER.get());
+        List<String> tooltipLines = new ArrayList<>();
+        
+        Set<String> mainDims = parseMainDimensions();
+        
+        // 构建主消息（仅显示主要维度）
+        for (String mainDim : mainDims) {
+            ResourceLocation dimRes = ResourceLocation.parse(mainDim);
+            if (dimensionStats.containsKey(dimRes)) {
+                Object stats = dimensionStats.get(dimRes);
+                // 使用反射获取统计数据（保持类型安全）
+                try {
+                    int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
+                    int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
+                    
+                    // 使用配置的维度条目格式模板
+                    String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
+                            .replace("{name}", getDimensionDisplayName(dimRes))
+                            .replace("{items}", String.valueOf(itemCount))
+                            .replace("{entities}", String.valueOf(entityCount));
+                    
+                    mainMessage.append("\n").append(dimensionEntry);
+                } catch (Exception e) {
+                    // 静默处理反射异常，跳过该维度
+                }
+            }
+        }
+        
+        // 构建tooltip内容（显示所有非主要维度）
+        boolean hasOtherDimensions = false;
+        for (Map.Entry<ResourceLocation, ?> entry : dimensionStats.entrySet()) {
+            if (!isMainDimension(entry.getKey())) {
+                if (!hasOtherDimensions) {
+                    tooltipLines.add(OTHER_DIMENSIONS_TOOLTIP_HEADER.get());
+                    hasOtherDimensions = true;
+                }
+                
+                Object stats = entry.getValue();
+                try {
+                    int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
+                    int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
+                    
+                    // 同样使用配置的维度条目格式模板
+                    String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
+                            .replace("{name}", getDimensionDisplayName(entry.getKey()))
+                            .replace("{items}", String.valueOf(itemCount))
+                            .replace("{entities}", String.valueOf(entityCount));
+                    
+                    tooltipLines.add(dimensionEntry);
+                } catch (Exception e) {
+                    // 静默处理反射异常，跳过该维度
+                }
+            }
+        }
+        
+        MutableComponent mainComponent = Component.literal(mainMessage.toString());
+        
+        // 如果有其他维度数据，添加悬停事件
+        if (!tooltipLines.isEmpty()) {
+            MutableComponent tooltipContent = Component.empty();
+            for (int i = 0; i < tooltipLines.size(); i++) {
+                if (i > 0) tooltipContent = tooltipContent.append(Component.literal("\n"));
+                tooltipContent = tooltipContent.append(Component.literal(tooltipLines.get(i)));
+            }
+            
+            final MutableComponent finalTooltipContent = tooltipContent;
+            mainComponent = mainComponent.withStyle(style -> 
+                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, finalTooltipContent))
+            );
+        }
+        
+        return mainComponent;
     }
     
     /**

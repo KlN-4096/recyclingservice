@@ -4,6 +4,8 @@ import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.other.UiUtils;
 import com.klnon.recyclingservice.Config;
 
+import com.klnon.recyclingservice.util.scan.ItemFilter;
+import com.klnon.recyclingservice.util.scan.ItemMerge;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
@@ -22,9 +24,9 @@ public class TrashBoxMenu extends ChestMenu {
     private final int trashSlots;
     
     public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
-        super(MenuType.GENERIC_9x6, containerId, playerInventory, trashBox, 6);
+        super(Config.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.getTrashBoxRows());
         this.trashBox = trashBox;
-        this.trashSlots = getRowCount() * 9;
+        this.trashSlots = Config.getTrashBoxRows() * 9;
     }
 
     @Override
@@ -57,9 +59,9 @@ public class TrashBoxMenu extends ChestMenu {
     private ItemStack handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried, boolean isLeftClick) {
         if (carried.isEmpty() && !slotItem.isEmpty()) {
             // 从垃圾箱取物品 -> 返回手上物品
-            int maxMove = Math.min(64, slotItem.getCount());
+            int maxMove = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             int moveCount = isLeftClick ? maxMove : (slotItem.getCount() == 1 ? 1 : 
-                (slotItem.getCount() >= 64 ? 32 : (slotItem.getCount() + 1) / 2));
+                (slotItem.getCount() >= slotItem.getMaxStackSize() ? slotItem.getMaxStackSize()/2 : (slotItem.getCount() + 1) / 2));
             
             setCarried(slotItem.copyWithCount(moveCount));
             //这里垃圾箱内的物品数量信息会更新,所以只需要return手上物品的数量信息
@@ -82,9 +84,9 @@ public class TrashBoxMenu extends ChestMenu {
                     carried.shrink(1);
                     if (carried.isEmpty()) setCarried(ItemStack.EMPTY);
                 }
-            } else if (ItemStack.isSameItem(carried, slotItem)) {
+            } else if (ItemMerge.isSameItem(carried, slotItem)) {
                 // 相同物品合并
-                int configLimit = Config.getItemStackMergeLimit();
+                int configLimit = Config.getItemStackMultiplier(slotItem);
                 if (slotItem.getCount() < configLimit) {
                     if (isLeftClick) {
                         // 左键：尽可能合并至上限
@@ -101,7 +103,7 @@ public class TrashBoxMenu extends ChestMenu {
                 }
             } else {
                 // 不同物品交换（仅当槽位物品不超过配置上限）
-                if (slotItem.getCount() <= Config.getItemStackMergeLimit()) {
+                if (slotItem.getCount() <= Config.getItemStackMultiplier(slotItem)) {
                     setCarried(slotItem.copy());
                     slot.set(carried.copy());
                 }
@@ -121,9 +123,9 @@ public class TrashBoxMenu extends ChestMenu {
             // 空槽位直接移动
             slot.set(swapItem.copy());
             player.getInventory().setItem(button, ItemStack.EMPTY);
-        } else if (slotItem.getCount() <= Config.getItemStackMergeLimit()) {
+        } else if (slotItem.getCount() <= Config.getItemStackMultiplier(slotItem)) {
             // 交换（仅当槽位物品不超过配置上限）
-            int moveCount = Math.min(64, slotItem.getCount());
+            int moveCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             swapItem = slotItem.copyWithCount(moveCount);
             player.getInventory().setItem(button, swapItem);
             UiUtils.updateSlotAfterMove(slot, moveCount);
@@ -141,15 +143,15 @@ public class TrashBoxMenu extends ChestMenu {
             setCarried(carried);
         }
         
-        if (!ItemStack.isSameItem(carried, clickedItem) && !clickedItem.isEmpty()) return getCarried();
+        if (!ItemMerge.isSameItem(carried, clickedItem) && !clickedItem.isEmpty()) return getCarried();
         
         // 收集垃圾箱内所有相同物品到手持物品堆
         int maxStackSize = carried.getMaxStackSize();
         for (int i = 0; i < trashSlots && carried.getCount() < maxStackSize; i++) {
             ItemStack slotItem = trashBox.getItem(i);
-            if (ItemStack.isSameItem(carried, slotItem)) {
+            if (ItemMerge.isSameItem(carried, slotItem)) {
                 // 计算能取出多少（按正常规则：最多64个）
-                int maxTake = Math.min(64, slotItem.getCount());
+                int maxTake = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
                 int canAdd = maxStackSize - carried.getCount();
                 int takeAmount = Math.min(maxTake, canAdd);
                 
@@ -173,7 +175,7 @@ public class TrashBoxMenu extends ChestMenu {
         if (index < trashSlots) {
             // 从垃圾箱到玩家背包：最多64个
             ItemStack slotItem = slot.getItem();
-            int moveCount = Math.min(slotItem.getCount(), 64);
+            int moveCount = Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
             ItemStack moveItem = slotItem.copyWithCount(moveCount);
             // 成功清除LORA并成功移动
             if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
@@ -204,7 +206,7 @@ public class TrashBoxMenu extends ChestMenu {
         if (stack.isEmpty()) return false;
         
         boolean moved = false;
-        int configLimit = Config.getItemStackMergeLimit();
+        int configLimit = Config.getItemStackMultiplier(stack);
         
         // 按顺序搜索：空位和相同物品谁先找到就用谁
         for (int i = 0; i < trashSlots && !stack.isEmpty(); i++) {
@@ -216,7 +218,7 @@ public class TrashBoxMenu extends ChestMenu {
                 stack.setCount(0);
                 moved = true;
                 break;
-            } else if (ItemStack.isSameItem(stack, slotItem)) {
+            } else if (ItemMerge.isSameItem(stack, slotItem)) {
                 // 找到相同物品，尝试合并
                 int canAdd = configLimit - slotItem.getCount();
                 if (canAdd > 0) {

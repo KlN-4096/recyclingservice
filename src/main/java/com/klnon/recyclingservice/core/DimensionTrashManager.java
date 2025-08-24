@@ -47,7 +47,7 @@ public class DimensionTrashManager {
             return 0;
         
         final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get();
-        final int capacity = Config.TRASH_BOX_SIZE.get();
+        final int capacity = Config.getTrashBoxRows()*9;
         
         // 保持原有的排序逻辑
         items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));

@@ -56,7 +56,7 @@ public class UiUtils {
      */
     public static void updateTooltip(ItemStack stack) {
         // 先清除成功LORA并确保数量大于64
-        if (stack.getCount() <= 64) {
+        if (stack.getCount() <= stack.getMaxStackSize()) {
             cleanItemStack(stack);
             return;
         }
@@ -66,12 +66,11 @@ public class UiUtils {
         
         // 添加真实数量信息
         loreLines.add(Component.empty()); // 空行分隔
-        loreLines.add(Component.literal(Config.getItemCountDisplay(stack.getCount()))
+        loreLines.add(Component.literal(Config.getItemCountDisplay(stack.getCount(),stack))
             .withStyle(style -> style.withItalic(false)));
         
         // 应用新的lore
         stack.set(DataComponents.LORE, new ItemLore(loreLines));
-
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.event;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.service.CleanupService;
@@ -57,8 +58,10 @@ public class AutoCleanupEvent {
     private static void doCleanup(MinecraftServer server) {
         CleanupService.performAutoCleanup(server)
             .thenAccept(result -> {
-                String message = Config.getCleanupCompleteMessage(result.getTotalItemsCleaned(),result.getTotalProjectilesCleaned());
-                MessageSender.showActionBar(server, message, Config.getSuccessColor());
+                // 使用新的详细消息构建方法，支持tooltip显示其他维度信息
+                Component message = Config.getDetailedCleanupMessage(result.getDimensionStats());
+                // 配置文本中已包含§颜色代码，无需额外设置颜色
+                MessageSender.sendChatMessage(server, message);
                 cleaning = false;
             })
             .exceptionally(e -> {
