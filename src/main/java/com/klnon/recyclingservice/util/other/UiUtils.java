@@ -39,8 +39,9 @@ public class UiUtils {
         ItemStack slotItem = slot.getItem();
         if (moveCount == 0 || slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
-        } else if (updateTooltip(slotItem)){
+        } else{
             slotItem.shrink(moveCount);
+            updateTooltip(slotItem);
             slot.set(slotItem);
         }
     }
@@ -54,7 +55,8 @@ public class UiUtils {
      */
     public static Boolean updateTooltip(ItemStack stack) {
         // 先清除成功LORA并确保数量大于64
-        if (!cleanItemStack(stack) || stack.getCount() <= 64) {
+        if (stack.getCount() <= 64) {
+            cleanItemStack(stack);
             return false;
         }
         
@@ -79,7 +81,7 @@ public class UiUtils {
      * @param item 可能包含自定义Lore的物品
      * @return 清理后的原始物品
      */
-    public static Boolean cleanItemStack(ItemStack item) {
+    private static Boolean cleanItemStack(ItemStack item) {
         if (item.isEmpty()) {
             return false;
         }
