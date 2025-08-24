@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.klnon.recyclingservice.util.other.UiUtils;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.Config;
 
@@ -59,6 +60,7 @@ public class ItemMerge {
                     ItemStack newStack = info.template.copy();
                     int count = Math.min(remaining, mergeLimit);
                     newStack.setCount(count);
+                    UiUtils.updateTooltip(newStack);
                     result.add(newStack);
                     remaining -= count;
                 }

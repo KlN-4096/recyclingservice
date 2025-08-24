@@ -46,29 +46,33 @@ public class DimensionTrashManager {
         if (items.isEmpty())
             return 0;
         
-        int totalAdded = 0;
-        int currentBoxNumber = 1;
-        final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get(); // 只调用一次配置
+        final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get();
+        final int capacity = Config.TRASH_BOX_SIZE.get();
+        
+        // 保持原有的排序逻辑
         items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
-        for (ItemStack item : items) {
-            boolean added = false;
-            int attempts = 0;
+        
+        // 计算需要的垃圾箱数量，不超过最大限制
+        int requiredBoxes = (int) Math.ceil((double) items.size() / capacity);
+        int actualBoxes = Math.min(requiredBoxes, maxBoxes);
+        int totalAdded = 0;
+        
+        // 分段批量分配到各个垃圾箱
+        for (int boxIndex = 0; boxIndex < actualBoxes; boxIndex++) {
+            TrashBox box = getOrCreateTrashBox(dimensionId, boxIndex + 1);
+            if (box == null) break;
             
-            // 限制搜索次数，避免无限循环
-            while (attempts < maxBoxes && !added) {
-                TrashBox box = getOrCreateTrashBox(dimensionId, currentBoxNumber);
-                if (box != null && box.addItem(item)) {
-                    totalAdded++;
-                    added = true;
-                } else {
-                    currentBoxNumber = (currentBoxNumber % maxBoxes) + 1; // 循环搜索
-                    attempts++;
-                }
+            // 计算当前垃圾箱应处理的物品范围
+            int startIndex = boxIndex * capacity;
+            int endIndex = Math.min(startIndex + capacity, items.size());
+            
+            // 直接批量放入物品到垃圾箱
+            for (int i = startIndex; i < endIndex; i++) {
+                box.items.set(i - startIndex, items.get(i).copy());
+                totalAdded++;
             }
             
-            if (!added) {
-                break; // 所有垃圾箱都满了
-            }
+            box.setChanged();
         }
         
         return totalAdded;

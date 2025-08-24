@@ -75,15 +75,13 @@ public class UiUtils {
     /**
      * 清理ItemStack的Lore，返回原始物品
      * KISS原则：最简单的解决方案
-     * 
+     *
      * @param item 可能包含自定义Lore的物品
-     * @return 清理后的原始物品
      */
-    private static Boolean cleanItemStack(ItemStack item) {
+    private static void cleanItemStack(ItemStack item) {
         if (item.isEmpty()) {
-            return false;
+            return;
         }
         item.remove(DataComponents.LORE);
-        return true;
     }
 }

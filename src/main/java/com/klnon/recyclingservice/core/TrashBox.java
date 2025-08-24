@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.core;
 
+import com.klnon.recyclingservice.util.other.UiUtils;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
@@ -26,18 +27,17 @@ public class TrashBox implements Container {
     /**
      * 添加物品到垃圾箱
      */
-    public boolean addItem(ItemStack item) {
+    public void addItem(ItemStack item) {
         if (item.isEmpty()) {
-            return false;
+            return;
         }
         
         // 利用NonNullList的indexOf找空槽位
         int emptySlot = items.indexOf(ItemStack.EMPTY);
         if (emptySlot != -1) {
+            UiUtils.updateTooltip(item);
             items.set(emptySlot, item.copy());
-            return true;
         }
-        return false; // 没有空槽位
     }
     
     /**
