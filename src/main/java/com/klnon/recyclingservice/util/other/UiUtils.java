@@ -37,6 +37,8 @@ public class UiUtils {
     */
     public static void updateSlotAfterMove(Slot slot, int moveCount) {
         ItemStack slotItem = slot.getItem();
+        //这里检查一下是否是原版的最大数量上限,比如药水,护甲等
+        moveCount = Math.min(moveCount, slotItem.getMaxStackSize());
         if (slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
         } else{

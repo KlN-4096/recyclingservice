@@ -5,6 +5,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
 import java.util.List;
 
 import javax.annotation.Nonnull;
@@ -44,7 +45,7 @@ public class TrashBox implements Container {
      * 获取指定位置的物品（不移除）- Container接口方法
      */
     @Override
-    public ItemStack getItem(int slot) {
+    public @Nonnull ItemStack getItem(int slot) {
         if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
@@ -55,7 +56,7 @@ public class TrashBox implements Container {
      * 移除指定数量的物品 - Container接口方法
      */
     @Override
-    public ItemStack removeItem(int slot, int amount) {
+    public @Nonnull ItemStack removeItem(int slot, int amount) {
         if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
@@ -78,7 +79,7 @@ public class TrashBox implements Container {
      * 移除整个物品堆（不触发setChanged） - Container接口方法
      */
     @Override
-    public ItemStack removeItemNoUpdate(int slot) {
+    public @Nonnull ItemStack removeItemNoUpdate(int slot) {
         if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
