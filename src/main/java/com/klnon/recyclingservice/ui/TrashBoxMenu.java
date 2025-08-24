@@ -112,21 +112,20 @@ public class TrashBoxMenu extends ChestMenu {
         
         
         if (index < trashSlots) {
-            // 先清除tooltip再移到玩家背包
-            ItemStack slotItem = UiUtils.cleanItemStack(slot.getItem());
             // 从垃圾箱到玩家背包：最多64个
+            ItemStack slotItem = slot.getItem();
             int moveCount = Math.min(slotItem.getCount(), 64);
             ItemStack moveItem = slotItem.copyWithCount(moveCount);
-            
-            if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
+            // 成功清除LORA并成功移动
+            if (UiUtils.cleanItemStack(moveItem) && moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
                 UiUtils.updateSlotAfterMove(slot, moveCount);
                 return ItemStack.EMPTY;
             }
         } else {
-            // 从玩家背包到垃圾箱：智能放置
-            return super.quickMoveStack(player, index);
+            // 从玩家背包到垃圾箱：原版会调用重写过的moveItemStackTo
+            super.quickMoveStack(player, index);
         }
-        
+
         return ItemStack.EMPTY;
     }
     
@@ -163,6 +162,7 @@ public class TrashBoxMenu extends ChestMenu {
                 if (canAdd > 0) {
                     int addAmount = Math.min(canAdd, stack.getCount());
                     slotItem.grow(addAmount);
+                    UiUtils.updateTooltip(slots.get(i).getItem());
                     stack.shrink(addAmount);
                     moved = true;
                     // 注意：这里不break，因为可能还有剩余物品需要继续寻找下一个槽位

@@ -44,37 +44,36 @@ public class UiUtils {
             slot.set(ItemStack.EMPTY);
         } else {
             slotItem.shrink(moveCount);
-            slot.set(updateTooltip(slotItem));
+            updateTooltip(slotItem);
+            slot.set(slotItem);
         }
     }
 
-        /**
+    /**
      * 增强物品Tooltip显示真实数量
      * 使用1.21.1的DataComponent系统添加Lore信息,先清除再添加
      * 
-     * @param original 原始物品堆
-     * @return 增强后的物品堆
+     * @param stack 原始物品堆
+     * @return 是否更新数量
      */
-    public static ItemStack updateTooltip(ItemStack original) {
-        // cleanItemStack(original);
-        if (original.getCount() <= 64) {
-            return original.copy();
+    public static Boolean updateTooltip(ItemStack stack) {
+        // 先清除成功LORA并确保数量大于64
+        if (!cleanItemStack(stack) || stack.getCount() <= 64) {
+            return false;
         }
-        
-        ItemStack enhanced = original.copy();
         
         // 使用DataComponent系统添加Lore
         List<Component> loreLines = new ArrayList<>();
         
         // 添加真实数量信息
         loreLines.add(Component.empty()); // 空行分隔
-        loreLines.add(Component.literal(Config.getItemCountDisplay(original.getCount()))
+        loreLines.add(Component.literal(Config.getItemCountDisplay(stack.getCount()))
             .withStyle(style -> style.withItalic(false)));
         
         // 应用新的lore
-        enhanced.set(DataComponents.LORE, new ItemLore(loreLines));
+        stack.set(DataComponents.LORE, new ItemLore(loreLines));
         
-        return enhanced;
+        return true;
     }
 
     /**
@@ -84,12 +83,11 @@ public class UiUtils {
      * @param item 可能包含自定义Lore的物品
      * @return 清理后的原始物品
      */
-    public static ItemStack cleanItemStack(ItemStack item) {
+    public static Boolean cleanItemStack(ItemStack item) {
         if (item.isEmpty()) {
-            return item;
+            return false;
         }
-        ItemStack cleaned = item.copy();
-        cleaned.remove(DataComponents.LORE);
-        return cleaned;
+        item.remove(DataComponents.LORE);
+        return true;
     }
 }
