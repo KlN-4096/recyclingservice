@@ -11,6 +11,7 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 public class TrashBoxMenu extends ChestMenu {
     
@@ -24,7 +25,7 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
     @Override
-    public void clicked(int slotId, int button, ClickType clickType, Player player) {
+    public void clicked(int slotId, int button, @NotNull ClickType clickType, @NotNull Player player) {
         // 拦截垃圾箱槽位的特殊操作
         if (slotId >= 0 && slotId < trashSlots && needsCustomHandling(clickType, button)) {
             handleTrashBoxClick(slotId, button, clickType, player);
@@ -106,7 +107,7 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
     @Override
-    public ItemStack quickMoveStack(Player player, int index) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player player, int index) {
         Slot slot = this.slots.get(index);
         if (!slot.hasItem()) return ItemStack.EMPTY;
         
@@ -130,7 +131,7 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
     @Override
-    protected boolean moveItemStackTo(ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
+    protected boolean moveItemStackTo(@NotNull ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
         // 移动到垃圾箱的特殊处理
         if (startIndex == 0 && endIndex <= trashSlots) {
             return moveToTrashBox(stack);

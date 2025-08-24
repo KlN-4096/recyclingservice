@@ -34,17 +34,13 @@ public class UiUtils {
 
     /**
      * 在物品交换完毕后更新垃圾箱内物品数量
-     * @param slot
-     * @param slotItem
-     * @param moveCount
     */
     public static void updateSlotAfterMove(Slot slot, int moveCount) {
         ItemStack slotItem = slot.getItem();
         if (moveCount == 0 || slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
-        } else {
+        } else if (updateTooltip(slotItem)){
             slotItem.shrink(moveCount);
-            updateTooltip(slotItem);
             slot.set(slotItem);
         }
     }
@@ -52,7 +48,7 @@ public class UiUtils {
     /**
      * 增强物品Tooltip显示真实数量
      * 使用1.21.1的DataComponent系统添加Lore信息,先清除再添加
-     * 
+     *
      * @param stack 原始物品堆
      * @return 是否更新数量
      */
@@ -72,7 +68,7 @@ public class UiUtils {
         
         // 应用新的lore
         stack.set(DataComponents.LORE, new ItemLore(loreLines));
-        
+
         return true;
     }
 
