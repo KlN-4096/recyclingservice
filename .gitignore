@@ -5,6 +5,7 @@ bin
 .metadata
 .classpath
 .project
+.claude
 src/区块级清理参考
 
 # idea

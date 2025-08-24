@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.other.ErrorHandler;
+import com.klnon.recyclingservice.util.scan.ChunkScanner.EntityBatch;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -26,36 +27,37 @@ public class ItemScanner {
      * @return CompletableFuture包装的扫描结果
      */
     public static CompletableFuture<ScanResult> scanDimensionAsync(ServerLevel level) {
-        return CompletableFuture.supplyAsync(() -> {
-            return ErrorHandler.handleStaticOperation(
-                "scanDimension_" + level.dimension().location(),
-                () -> {
-                    List<ItemEntity> items = new ArrayList<>();
-                    List<Entity> projectiles = new ArrayList<>();
-                    int batchSize = Config.getBatchSize();
-                    int scanRadius = Config.getPlayerScanRadius();
-                    
-                    if("chunk".equals(Config.getScanMode())){
-                        // 1. 流式扫描强制加载的区块的物品和弹射物
-                        ChunkScanner.findInForcedChunksStream(level, EntityType.ITEM, items::addAll, batchSize);
-                        Config.getProjectileTypes().forEach(entityType -> {
-                            ChunkScanner.findInForcedChunksStream(level, entityType, projectiles::addAll, batchSize);
-                        });
-                    }else{
-                        // 2. 流式扫描所有在线玩家周围的区块的物品和弹射物
-                        for (ServerPlayer player : level.players()) {
-                            ChunkScanner.findAroundPlayerStream(level, player, scanRadius, EntityType.ITEM, 
-                                items::addAll, batchSize);
-                            Config.getProjectileTypes().forEach(entityType -> {
-                                ChunkScanner.findAroundPlayerStream(level, player, scanRadius, entityType, projectiles::addAll, batchSize);
-                            });
-                        }
+        return CompletableFuture.supplyAsync(() -> ErrorHandler.handleStaticOperation(
+            "scanDimension_" + level.dimension().location(),
+            () -> {
+                List<ItemEntity> items = new ArrayList<>();
+                List<Entity> projectiles = new ArrayList<>();
+                int batchSize = Config.getBatchSize();
+                int scanRadius = Config.getPlayerScanRadius();
+
+                // 构建所有需要扫描的实体类型集合
+                Set<EntityType<?>> allEntityTypes = new HashSet<>(Config.getProjectileTypes());
+                allEntityTypes.add(EntityType.ITEM);
+
+                if("chunk".equals(Config.getScanMode())){
+                    // 1. 流式扫描强制加载的区块的物品和弹射物
+                    ChunkScanner.findInForcedChunksStream(level, allEntityTypes, batch -> {
+                        items.addAll(batch.getItems());
+                        projectiles.addAll(batch.getProjectiles());
+                    }, batchSize);
+                }else{
+                    // 2. 流式扫描所有在线玩家周围的区块的物品和弹射物
+                    for (ServerPlayer player : level.players()) {
+                        ChunkScanner.findAroundPlayerStream(level, player, scanRadius, allEntityTypes, batch -> {
+                            items.addAll(batch.getItems());
+                            projectiles.addAll(batch.getProjectiles());
+                        }, batchSize);
                     }
-                    return new ScanResult(items, projectiles);
-                },
-                ScanResult.EMPTY
-            );
-        }, ForkJoinPool.commonPool());
+                }
+                return new ScanResult(items, projectiles);
+            },
+            ScanResult.EMPTY
+        ), ForkJoinPool.commonPool());
     }
 
     /**
