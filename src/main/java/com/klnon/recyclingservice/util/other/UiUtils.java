@@ -37,7 +37,7 @@ public class UiUtils {
     */
     public static void updateSlotAfterMove(Slot slot, int moveCount) {
         ItemStack slotItem = slot.getItem();
-        if (moveCount == 0 || slotItem.getCount() <= moveCount) {
+        if (slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
         } else{
             slotItem.shrink(moveCount);
@@ -51,13 +51,12 @@ public class UiUtils {
      * 使用1.21.1的DataComponent系统添加Lore信息,先清除再添加
      *
      * @param stack 原始物品堆
-     * @return 是否更新数量
      */
-    public static Boolean updateTooltip(ItemStack stack) {
+    public static void updateTooltip(ItemStack stack) {
         // 先清除成功LORA并确保数量大于64
         if (stack.getCount() <= 64) {
             cleanItemStack(stack);
-            return false;
+            return;
         }
         
         // 使用DataComponent系统添加Lore
@@ -71,7 +70,6 @@ public class UiUtils {
         // 应用新的lore
         stack.set(DataComponents.LORE, new ItemLore(loreLines));
 
-        return true;
     }
 
     /**

@@ -33,34 +33,42 @@ public class TrashBoxMenu extends ChestMenu {
             Slot slot = slots.get(slotId);
             ItemStack slotItem = slot.getItem();
             ItemStack carried = getCarried();
+            ItemStack result = ItemStack.EMPTY;
 
             if (clickType == ClickType.PICKUP) {
-                handlePickupClick(slot, slotItem, carried, button == 0);
+                result = handlePickupClick(slot, slotItem, carried, button == 0);
             } else if (clickType == ClickType.SWAP) {
-                handleSwapClick(slot, slotItem, player.getInventory().getItem(button), button, player);
-            } else if (clickType == ClickType.CLONE) {
-                handleDoubleClick(slotItem, player);
+                result = handleSwapClick(slot, slotItem, player.getInventory().getItem(button), button, player);
+            } else if (clickType == ClickType.PICKUP_ALL) {
+                result = handleDoubleClick(slotItem, player);
             } else {
                 super.clicked(slotId, button, clickType, player);
             }
+            // 统一更新受影响的物品
+            UiUtils.updateTooltip(result);
+            // 统一更新点击的slot中的物品
+//            UiUtils.updateTooltip(slotItem);
             return;
         }
 
         super.clicked(slotId, button, clickType, player);
     }
     
-    private void handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried, boolean isLeftClick) {
+    private ItemStack handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried, boolean isLeftClick) {
         if (carried.isEmpty() && !slotItem.isEmpty()) {
-            // 从垃圾箱取物品
+            // 从垃圾箱取物品 -> 返回手上物品
             int maxMove = Math.min(64, slotItem.getCount());
             int moveCount = isLeftClick ? maxMove : (slotItem.getCount() == 1 ? 1 : 
                 (slotItem.getCount() >= 64 ? 32 : (slotItem.getCount() + 1) / 2));
             
             setCarried(slotItem.copyWithCount(moveCount));
+            //这里垃圾箱内的物品数量信息会更新,所以只需要return手上物品的数量信息
             UiUtils.updateSlotAfterMove(slot, moveCount);
+            trashBox.setChanged();
+            return getCarried();
             
         } else if (!carried.isEmpty()) {
-            // 放物品到垃圾箱
+            // 放物品到垃圾箱 -> 返回槽位物品
             if (slotItem.isEmpty()) {
                 // 空槽位放入
                 if (isLeftClick) {
@@ -98,13 +106,34 @@ public class TrashBoxMenu extends ChestMenu {
                     slot.set(carried.copy());
                 }
             }
+            trashBox.setChanged();
+            //这里由于是从物品栏/快捷栏到垃圾箱,物品栏/快捷栏不用更新数量,原版自动更新,所以只需要返回垃圾箱格子中的物品
+            return slot.getItem();
+        }
+        
+        // 无操作情况
+        return getCarried();
+    }
+
+    private ItemStack handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem, int button, Player player) {
+        // 数字键交换 -> 往垃圾箱放物品，返回玩家物品栏中的物品
+        if (slotItem.isEmpty()) {
+            // 空槽位直接移动
+            slot.set(swapItem.copy());
+            player.getInventory().setItem(button, ItemStack.EMPTY);
+        } else if (slotItem.getCount() <= Config.getItemStackMergeLimit()) {
+            // 交换（仅当槽位物品不超过配置上限）
+            int moveCount = Math.min(64, slotItem.getCount());
+            swapItem = slotItem.copyWithCount(moveCount);
+            player.getInventory().setItem(button, swapItem);
+            UiUtils.updateSlotAfterMove(slot, moveCount);
         }
         trashBox.setChanged();
+        return swapItem;
     }
-    
-    private void handleDoubleClick(ItemStack clickedItem, Player player) {
-        if (clickedItem.isEmpty()) return;
-        
+
+    private ItemStack handleDoubleClick(ItemStack clickedItem, Player player) {
+        //这个因为是双击,所以始终返回手上物品
         ItemStack carried = getCarried();
         if (carried.isEmpty()) {
             // 空手双击，创建新的物品堆
@@ -112,7 +141,7 @@ public class TrashBoxMenu extends ChestMenu {
             setCarried(carried);
         }
         
-        if (!ItemStack.isSameItem(carried, clickedItem)) return;
+        if (!ItemStack.isSameItem(carried, clickedItem) && !clickedItem.isEmpty()) return getCarried();
         
         // 收集垃圾箱内所有相同物品到手持物品堆
         int maxStackSize = carried.getMaxStackSize();
@@ -132,25 +161,9 @@ public class TrashBoxMenu extends ChestMenu {
         }
         
         trashBox.setChanged();
+        return getCarried();
     }
-    
-    private void handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem, int button, Player player) {
-        if (slotItem.isEmpty()) {
-            // 空槽位直接移动
-            slot.set(swapItem.copy());
-            player.getInventory().setItem(button, ItemStack.EMPTY);
-        } else if (slotItem.getCount() <= Config.getItemStackMergeLimit()) {
-            // 交换（仅当槽位物品不超过配置上限）
-            int moveCount = Math.min(64, slotItem.getCount());
-            player.getInventory().setItem(button, slotItem.copyWithCount(moveCount));
-            UiUtils.updateSlotAfterMove(slot, moveCount);
-            if (!swapItem.isEmpty()) {
-                slot.set(swapItem.copy());
-            }
-        }
-        trashBox.setChanged();
-    }
-    
+
     @Override
     public @NotNull ItemStack quickMoveStack(@Nonnull Player player, int index) {
         Slot slot = this.slots.get(index);

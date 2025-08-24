@@ -6,6 +6,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 /**
  * 垃圾箱实体类 - 实现Container接口，直接作为容器使用
  * 专注于临时存储清理的掉落物
@@ -90,7 +92,7 @@ public class TrashBox implements Container {
      * 设置指定位置的物品 - Container接口方法
      */
     @Override
-    public void setItem(int slot, ItemStack stack) {
+    public void setItem(int slot,@Nonnull ItemStack stack) {
         if (slot >= 0 && slot < capacity) {
             items.set(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
             setChanged();
@@ -141,7 +143,7 @@ public class TrashBox implements Container {
      * 检查玩家是否可以访问容器 - Container接口方法
      */
     @Override
-    public boolean stillValid(Player player) {
+    public boolean stillValid(@Nonnull Player player) {
         // 垃圾箱对所有玩家开放
         return true;
     }

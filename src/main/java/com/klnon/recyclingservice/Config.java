@@ -65,7 +65,6 @@ public class Config {
     public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS;
     
     // === UI界面设置 ===
-    public static final ModConfigSpec.IntValue UI_MAX_QUICK_MOVE;
     public static final ModConfigSpec.IntValue ITEM_STACK_MERGE_LIMIT;
     
     // === 颜色配置 ===
@@ -283,9 +282,9 @@ public class Config {
                 .comment("Scan Mode / 扫描模式:",
                         "  - 'chunk': Force-loaded Chunk Scan / 强加载区块扫描",
                         "  - 'player': Player Surrounding Scan / 玩家周围扫描",
-                        "Default: chunk")
+                        "Default: player")
                 .translation("recycle.config.scan_mode")
-                .defineInList("scan_mode", "chunk", Arrays.asList("chunk", "player"));
+                .defineInList("scan_mode", "player", Arrays.asList("chunk", "player"));
         
         PLAYER_SCAN_RADIUS = BUILDER
                 .comment("Chunk radius around players for optimized scanning / 玩家周围的区块扫描半径",
@@ -314,12 +313,6 @@ public class Config {
         
         // UI界面设置
         BUILDER.comment("UI interface settings / UI界面设置").push("ui_settings");
-        
-        UI_MAX_QUICK_MOVE = BUILDER
-                .comment("Maximum items to move at once with Shift+Click / Shift+点击一次性移动的最大物品数量",
-                        "Default: 64, Min: 1, Max: 6400")
-                .translation("recycle.config.ui_max_quick_move")
-                .defineInRange("ui_max_quick_move", 64, 1, 6400);
         
         ITEM_STACK_MERGE_LIMIT = BUILDER
                 .comment("Maximum stack size when merging items / 合并物品时的最大堆叠数量",
@@ -417,9 +410,9 @@ public class Config {
         
         ITEM_COUNT_DISPLAY = BUILDER
                 .comment("Item count display template (use {count} for count) / 物品数量显示模板",
-                        "Default: §7Available: §a{count}")
+                        "Default: §7Available: §a{count} / §b{stack_limit}")
                 .translation("recycle.config.item_count_display")
-                .define("item_count_display", "§7Available: §a{count}");
+                .define("item_count_display", "§7Available: §a{count} / §b{stack_limit}");
         
         BUILDER.pop();
         
@@ -590,14 +583,7 @@ public class Config {
     }
     
     // === UI和颜色相关便捷方法 ===
-    
-    /**
-     * 获取UI快速移动的最大数量
-     */
-    public static int getUIMaxQuickMove() {
-        return UI_MAX_QUICK_MOVE.get();
-    }
-    
+
     /**
      * 获取物品堆叠合并限制
      */
@@ -675,7 +661,7 @@ public class Config {
      * 获取格式化的物品数量显示
      */
     public static String getItemCountDisplay(int count) {
-        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count));
+        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count)).replace("{stack_limit}", String.valueOf(getItemStackMergeLimit()));
     }
     
     /**
