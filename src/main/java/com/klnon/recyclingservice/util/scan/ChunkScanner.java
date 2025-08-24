@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.other.ErrorHandler;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
@@ -70,9 +71,8 @@ public class ChunkScanner {
                 int ticketLevel = chunkHolder.getTicketLevel();
                 
                 // 根据票据级别判断是否为加载状态(包含强弱)
-                // ChunkLevel.MAX_LEVEL = 33，小于等于31的通常是加载状态
-                //TODO 31之后可以作为配置项配置
-                if (ticketLevel <= 32) {
+                // 使用配置的票据级别阈值：force模式=31，lazy模式=32
+                if (ticketLevel <= Config.getTicketLevelThreshold()) {
                     ChunkPos pos = chunkHolder.getPos();
                     AABB bounds = new AABB(
                         pos.getMinBlockX(), level.getMinBuildHeight(), pos.getMinBlockZ(),

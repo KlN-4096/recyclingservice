@@ -60,6 +60,7 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
     public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
     public static final ModConfigSpec.IntValue BATCH_SIZE;
+    public static final ModConfigSpec.ConfigValue<String> CHUNK_LOADING_MODE;
     
     // === 主线程调度优化设置 ===
     public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS;
@@ -297,6 +298,15 @@ public class Config {
                         "Default: 100, Min: 50, Max: 500")
                 .translation("recycle.config.batch_size")
                 .defineInRange("batch_size", 100, 50, 500);
+        
+        // 区块加载级别模式
+        CHUNK_LOADING_MODE = BUILDER
+                .comment("Chunk loading mode for scanning / 区块加载模式用于扫描:",
+                        "  - 'force': Only force-loaded chunks (ticket level <= 31) / 仅强加载区块（票据级别 <= 31）",
+                        "  - 'lazy': Include force-loaded and player chunks (ticket level <= 32) / 包含强加载和弱加载区块（票据级别 <= 32）",
+                        "Default: lazy")
+                .translation("recycle.config.chunk_loading_mode")
+                .defineInList("chunk_loading_mode", "lazy", Arrays.asList("force", "lazy"));
         
         BUILDER.pop();
         
@@ -573,6 +583,14 @@ public class Config {
      */
     public static int getBatchSize() {
         return BATCH_SIZE.get();
+    }
+    
+    /**
+     * 根据配置获取票据级别阈值
+     * @return 31 (仅强制加载) 或 32 (包含弱加载)
+     */
+    public static int getTicketLevelThreshold() {
+        return "force".equals(CHUNK_LOADING_MODE.get()) ? 31 : 32;
     }
     
     /**
