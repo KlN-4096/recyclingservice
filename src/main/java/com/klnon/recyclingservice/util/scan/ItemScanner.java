@@ -9,7 +9,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.other.ErrorHandler;
-import com.klnon.recyclingservice.util.scan.ChunkScanner.EntityBatch;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
