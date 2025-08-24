@@ -121,9 +121,9 @@ public class Config {
         
         CLEANUP_COMPLETE_MESSAGE = BUILDER
                 .comment("Message shown when cleanup is complete (use {count} for number of items cleaned) / 清理完成后显示的消息（使用{count}显示清理的物品数量）",
-                        "Default: §a[Auto Clean] Cleaned up {count} items!")
+                        "Default: §a[Auto Clean] Cleaned up {items} items and {entities} entities!")
                 .translation("recycle.config.cleanup_complete_message")
-                .define("cleanup_complete_message", "§a[Auto Clean] Cleaned up {count} items!");
+                .define("cleanup_complete_message", "§a[Auto Clean] Cleaned up {items} items and {entities} entities!");
         
         BUILDER.pop();
         
@@ -491,8 +491,8 @@ public class Config {
     /**
      * 获取格式化的清理完成消息
      */
-    public static String getCleanupCompleteMessage(int itemCount) {
-        return CLEANUP_COMPLETE_MESSAGE.get().replace("{count}", String.valueOf(itemCount));
+    public static String getCleanupCompleteMessage(int itemCount,int entityCount) {
+        return CLEANUP_COMPLETE_MESSAGE.get().replace("{items}", String.valueOf(itemCount)).replace("{entities}", String.valueOf(entityCount));
     }
 
     // === 物品过滤便捷方法 ===

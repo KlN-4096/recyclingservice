@@ -57,8 +57,7 @@ public class AutoCleanupEvent {
     private static void doCleanup(MinecraftServer server) {
         CleanupService.performAutoCleanup(server)
             .thenAccept(result -> {
-                int totalCleaned = result.getTotalItemsCleaned() + result.getTotalProjectilesCleaned();
-                String message = Config.getCleanupCompleteMessage(totalCleaned);
+                String message = Config.getCleanupCompleteMessage(result.getTotalItemsCleaned(),result.getTotalProjectilesCleaned());
                 MessageSender.showActionBar(server, message, Config.getSuccessColor());
                 cleaning = false;
             })

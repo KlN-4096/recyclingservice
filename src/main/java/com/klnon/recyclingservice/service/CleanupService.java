@@ -9,7 +9,6 @@ import com.klnon.recyclingservice.util.delete.MainThreadScheduler;
 import com.klnon.recyclingservice.util.scan.ItemFilter;
 import com.klnon.recyclingservice.util.scan.ItemMerge;
 import com.klnon.recyclingservice.util.scan.ItemScanner;
-import com.klnon.recyclingservice.Config;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -83,31 +82,7 @@ public class CleanupService {
             .thenApply(v -> collectCleanupResults(cleanupFutures));
     }
     
-    /**
-     * 收集所有维度的清理结果
-     */
-    private static CleanupResult collectCleanupResults(
-            List<CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>>> cleanupFutures) {
-        
-        Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
-        int totalItemsCleaned = 0;
-        int totalProjectilesCleaned = 0;
-        
-        for (CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>> future : cleanupFutures) {
-            try {
-                Map.Entry<ResourceLocation, DimensionCleanupStats> entry = future.get();
-                dimensionStats.put(entry.getKey(), entry.getValue());
-                totalItemsCleaned += entry.getValue().getItemsCleaned();
-                totalProjectilesCleaned += entry.getValue().getProjectilesCleaned();
-            } catch (Exception e) {
-                // 单个维度失败不影响整体结果
-            }
-        }
-        
-        return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
-            dimensionStats, "Cleanup completed successfully");
-    }
-    
+
     /**
      * 处理单个维度的清理任务
      * 清理步骤：
@@ -131,7 +106,7 @@ public class CleanupService {
             ItemFilter.filterItems(scanResult.getItems()));
         
         // 将物品存储到对应维度的垃圾箱
-        int itemsAddedToTrash = trashManager.addItemsToDimension(dimensionId, itemsToClean);
+        trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
         // 准备待删除实体列表
         List<Entity> entitiesToDelete = new ArrayList<>();
@@ -151,10 +126,38 @@ public class CleanupService {
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                itemsAddedToTrash, 
+                //返回的是合并前的item数量
+                itemsToClean.size(), 
                 projectilesToClean.size(), 
                 "Cleaned successfully"));
     }
+
+
+    /**
+     * 收集所有维度的清理结果
+     */
+    private static CleanupResult collectCleanupResults(
+        List<CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>>> cleanupFutures) {
+        
+        Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
+        int totalItemsCleaned = 0;
+        int totalProjectilesCleaned = 0;
+        
+        for (CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>> future : cleanupFutures) {
+            try {
+                Map.Entry<ResourceLocation, DimensionCleanupStats> entry = future.get();
+                dimensionStats.put(entry.getKey(), entry.getValue());
+                totalItemsCleaned += entry.getValue().getItemsCleaned();
+                totalProjectilesCleaned += entry.getValue().getProjectilesCleaned();
+            } catch (Exception e) {
+                // 单个维度失败不影响整体结果
+            }
+        }
+        
+        return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
+            dimensionStats, "Cleanup completed successfully");
+    }
+    
     
     /**
      * 获取垃圾箱管理器实例
@@ -194,22 +197,6 @@ public class CleanupService {
         public int getTotalProjectilesCleaned() { return totalProjectilesCleaned; }
         public Map<ResourceLocation, DimensionCleanupStats> getDimensionStats() { return dimensionStats; }
         public String getMessage() { return message; }
-        
-        /**
-         * 获取格式化的清理完成消息
-         * 使用配置文件中的消息模板
-         * 
-         * @return 格式化后的消息
-         */
-        public String getFormattedMessage() {
-            return Config.getCleanupCompleteMessage(totalItemsCleaned + totalProjectilesCleaned);
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("CleanupResult{items=%d, projectiles=%d, dimensions=%d, message='%s'}", 
-                totalItemsCleaned, totalProjectilesCleaned, dimensionStats.size(), message);
-        }
     }
     
     /**
