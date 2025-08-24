@@ -193,9 +193,9 @@ public class Config {
         
         MAX_BOXES_PER_DIMENSION = BUILDER
                 .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
-                        "Default: 5, Min: 1, Max: 5")
+                        "Default: 3, Min: 1, Max: 5")
                 .translation("recycle.config.max_boxes_per_dimension")
-                .defineInRange("max_boxes_per_dimension", 5, 1, 5);
+                .defineInRange("max_boxes_per_dimension", 3, 1, 5);
         
         AUTO_CREATE_DIMENSION_TRASH = BUILDER
                 .comment("Automatically create trash boxes for new dimensions / 自动为新维度创建垃圾箱",
@@ -504,6 +504,10 @@ public class Config {
     }
 
     // === 便捷访问方法 ===
+
+    public static int getMaxBoxes(){
+        return getMaxBoxes();
+    }
 
     public static MenuType<ChestMenu> getMenuTypeForRows() {
         return switch(getTrashBoxRows()) {

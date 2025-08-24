@@ -4,13 +4,11 @@ import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.other.UiUtils;
 import com.klnon.recyclingservice.Config;
 
-import com.klnon.recyclingservice.util.scan.ItemFilter;
 import com.klnon.recyclingservice.util.scan.ItemMerge;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 

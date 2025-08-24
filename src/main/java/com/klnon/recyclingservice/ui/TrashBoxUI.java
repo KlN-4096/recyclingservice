@@ -58,19 +58,6 @@ public class TrashBoxUI {
     }
     
     /**
-     * 为玩家打开当前维度的垃圾箱UI
-     * 
-     * @param player 玩家
-     * @param boxNumber 垃圾箱编号
-     * @param trashManager 垃圾箱管理器
-     * @return 是否成功打开
-     */
-    public static boolean openCurrentDimensionTrashBox(ServerPlayer player, int boxNumber, DimensionTrashManager trashManager) {
-        ResourceLocation dimensionId = player.level().dimension().location();
-        return openTrashBox(player, dimensionId, boxNumber, trashManager);
-    }
-    
-    /**
      * 获取玩家的UI类型描述
      * 用于调试和状态显示
      * 

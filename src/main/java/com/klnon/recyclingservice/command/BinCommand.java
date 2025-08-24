@@ -92,6 +92,8 @@ public class BinCommand {
     private static int openCurrentDimensionTrashBox(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = (ServerPlayer) source.getEntity();
+        if (player==null)
+            return 0;
         
         return ErrorHandler.handleCommandOperation(source, player, "打开当前维度垃圾箱",
             () -> {
@@ -99,7 +101,8 @@ public class BinCommand {
                 // 获取垃圾箱管理器
                 var trashManager = CleanupService.getTrashManager();
                 // 打开当前维度的垃圾箱
-                return TrashBoxUI.openCurrentDimensionTrashBox(player, boxNumber, trashManager);
+                ResourceLocation dimensionId = player.level().dimension().location();
+                return TrashBoxUI.openTrashBox(player, dimensionId, boxNumber, trashManager);
             });
     }
 }

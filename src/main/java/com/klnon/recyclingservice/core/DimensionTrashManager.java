@@ -29,7 +29,7 @@ public class DimensionTrashManager {
         
         List<TrashBox> boxes = dimensionBoxes.computeIfAbsent(dimensionId, k -> new ArrayList<>());
         
-        // 确保列表足够大，使用工厂创建
+        // 当目标打开的垃圾箱编号大于当前垃圾箱总数才新建
         while (boxes.size() < boxNumber) {
             int newBoxNumber = boxes.size() + 1;
             TrashBox newBox = TrashBoxFactory.createForDimension(dimensionId, newBoxNumber);
@@ -42,11 +42,11 @@ public class DimensionTrashManager {
     /**
      * 为指定维度添加物品到垃圾箱
      */
-    public int addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
+    public void addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
         if (items.isEmpty())
-            return 0;
+            return;
         
-        final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get();
+        final int maxBoxes = Config.getMaxBoxes();
         final int capacity = Config.getTrashBoxRows()*9;
         
         // 保持原有的排序逻辑
@@ -55,7 +55,6 @@ public class DimensionTrashManager {
         // 计算需要的垃圾箱数量，不超过最大限制
         int requiredBoxes = (int) Math.ceil((double) items.size() / capacity);
         int actualBoxes = Math.min(requiredBoxes, maxBoxes);
-        int totalAdded = 0;
         
         // 分段批量分配到各个垃圾箱
         for (int boxIndex = 0; boxIndex < actualBoxes; boxIndex++) {
@@ -69,13 +68,12 @@ public class DimensionTrashManager {
             // 直接批量放入物品到垃圾箱
             for (int i = startIndex; i < endIndex; i++) {
                 box.items.set(i - startIndex, items.get(i).copy());
-                totalAdded++;
             }
             
             box.setChanged();
         }
         
-        return totalAdded;
+        return;
     }
     
     /**
@@ -83,7 +81,7 @@ public class DimensionTrashManager {
      */
     public List<TrashBox> getDimensionTrashBoxes(ResourceLocation dimensionId) {
         List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
-        return boxes != null ? new ArrayList<>(boxes) : new ArrayList<>();
+        return boxes != null ? boxes : new ArrayList<>();
     }
     
     /**

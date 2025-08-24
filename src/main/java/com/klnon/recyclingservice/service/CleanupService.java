@@ -125,7 +125,7 @@ public class CleanupService {
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                //返回的是合并前的item数量
+                //返回的是合并前的item真实数量
                 itemsToClean.size(), 
                 projectilesToClean.size(), 
                 "Cleaned successfully"));
