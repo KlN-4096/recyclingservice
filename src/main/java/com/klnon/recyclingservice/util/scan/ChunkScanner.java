@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
+import com.klnon.recyclingservice.util.other.MessageSender;
+import net.minecraft.network.chat.Component;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
@@ -111,7 +113,14 @@ public class ChunkScanner {
     private static void processEntitiesInBounds(ServerLevel level, AABB bounds,
                                                 Set<EntityType<?>> entityTypes, EntityBatch currentBatch,
                                                 Consumer<EntityBatch> processor, int batchSize) {
+        int[] itemCount = {0};
+        
         level.getEntities((Entity) null, bounds, entity -> {
+            // 统计物品数量用于警告
+            if (entity.getType() == EntityType.ITEM) {
+                itemCount[0]++;
+            }
+            
             if (entityTypes.contains(entity.getType())) {
                 currentBatch.addEntity(entity);
 
@@ -122,6 +131,14 @@ public class ChunkScanner {
             }
             return false;
         });
+        
+        // 检查并发出警告
+        if (Config.isChunkWarningEnabled() && itemCount[0] >= Config.TOO_MANY_ITEMS_WARNING.get()) {
+            String message = Config.getChunkWarningMessage(itemCount[0], Config.TOO_MANY_ITEMS_WARNING.get());
+            MessageSender.sendChatMessage(level.getServer(), 
+                Component.literal(message).withStyle(style -> 
+                    style.withColor(MessageSender.MessageType.WARNING_NORMAL.getColor())));
+        }
     }
 
     /**

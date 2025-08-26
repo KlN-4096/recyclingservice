@@ -42,7 +42,7 @@ public class CleanupService {
      */
     public static CompletableFuture<CleanupResult> performAutoCleanup(MinecraftServer server) {
         return ItemScanner.scanAllDimensionsAsync(server)
-                .thenCompose(scanResults -> processCleanupAsync(scanResults))
+                .thenCompose(CleanupService::processCleanupAsync)
                 .exceptionally(throwable -> {
                     String errorMessage = "Cleanup failed: " + throwable.getMessage();
                     return new CleanupResult(0, 0, Collections.emptyMap(), errorMessage);
@@ -116,16 +116,16 @@ public class CleanupService {
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
         entitiesToDelete.addAll(projectilesToClean);
         
+        // 计算实际清理的物品总数
+        int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
+        
         // 分片删除实体
-        return entitiesToDelete.isEmpty() 
+        return entitiesToDelete.isEmpty() && itemsToClean.isEmpty()
             ? CompletableFuture.completedFuture(null)
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                //返回的是合并前的item真实数量
-                itemsToClean.size(), 
-                projectilesToClean.size(), 
-                "Cleaned successfully"));
+                totalItemCount, projectilesToClean.size(), "Cleaned successfully"));
     }
 
 
@@ -166,15 +166,15 @@ public class CleanupService {
     }
 
     /**
-         * 清理结果总类 - 包含完整的清理统计信息
-         * 包含信息：
-         * - 总清理物品数量
-         * - 总清理弹射物数量
-         * - 分维度详细统计
-         * - 清理状态消息
-         */
-        public record CleanupResult(int totalItemsCleaned, int totalProjectilesCleaned,
-                                    Map<ResourceLocation, DimensionCleanupStats> dimensionStats, String message) {
+     * 清理结果总类 - 包含完整的清理统计信息
+     * 包含信息：
+     * - 总清理物品数量
+     * - 总清理弹射物数量
+     * - 分维度详细统计
+     * - 清理状态消息
+     */
+    public record CleanupResult(int totalItemsCleaned, int totalProjectilesCleaned,
+                                Map<ResourceLocation, DimensionCleanupStats> dimensionStats, String message) {
     }
 
     /**

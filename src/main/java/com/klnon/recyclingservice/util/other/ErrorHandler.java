@@ -64,12 +64,14 @@ public class ErrorHandler {
     /**
      * 处理void操作（不需要返回值）
      */
-    public static void handleVoidOperation(String operationName, Runnable operation) {
+    public static void handleVoidOperation(String operationName, Runnable operation,Boolean silence) {
         try {
             operation.run();
-            LOGGER.debug("Void operation {} completed successfully", operationName);
+            if(!silence)
+                LOGGER.debug("Void operation {} completed successfully", operationName);
         } catch (Exception e) {
-            LOGGER.error("Void operation {} failed: {}", operationName, e.getMessage());
+            if(!silence)
+                LOGGER.error("Void operation {} failed: {}", operationName, e.getMessage());
         }
     }
 

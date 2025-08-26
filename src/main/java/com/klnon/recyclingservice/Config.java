@@ -42,6 +42,7 @@ public class Config {
     // === 垃圾箱设置 ===
     public static final ModConfigSpec.IntValue TRASH_BOX_ROWS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_TRASH_ALLOW_PUT_IN;
+    public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_CROSS_ACCESS;
     
     // === 维度管理 ===
     public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION;
@@ -60,6 +61,7 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN;
     
     // === 区域管理 ===
+    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING;
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     
@@ -151,6 +153,14 @@ public class Config {
                     List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
                     () -> "",
                     Config::validateResourceLocation);
+
+        //是否允许玩家访问所处维度垃圾箱
+        DIMENSION_TRASH_CROSS_ACCESS = BUILDER
+                .comment("Allow players to access trash boxes from other dimensions / 允许玩家跨维度访问垃圾箱",
+                        "When false, players can only access trash boxes in their current dimension, ignoring DIMENSION_TRASH_ALLOW_PUT_IN / 为false时，玩家只能访问当前维度的垃圾箱，忽略DIMENSION_TRASH_ALLOW_PUT_IN配置",
+                        "Default: true / 默认：true")
+                .translation("recycle.config.dimension_trash_cross_access")
+                .define("dimension_trash_cross_access", true);
         
         BUILDER.pop();
         
@@ -252,17 +262,23 @@ public class Config {
         // 区块管理
         BUILDER.comment("Chunk management settings / 区块管理设置").push("chunk_management");
         
+        ENABLE_CHUNK_ITEM_WARNING = BUILDER
+                .comment("Enable warnings when chunks have too many items / 启用区块物品过多警告功能",
+                        "Default: true")
+                .translation("recycle.config.enable_chunk_item_warning")
+                .define("enable_chunk_item_warning", true);
+        
         TOO_MANY_ITEMS_WARNING = BUILDER
                 .comment("Warn when a chunk has more than this many items / 当区块中物品超过此数量时发出警告",
-                        "Default: 200, Min: 50, Max: 1000")
+                        "Default: 50, Min: 5, Max: 10000")
                 .translation("recycle.config.too_many_items_warning")
-                .defineInRange("too_many_items_warning_limit", 200, 50, 1000);
+                .defineInRange("too_many_items_warning_limit", 50, 5, 10000);
         
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
                 .comment("Warning message for too many items (use {count} for item count, {threshold} for threshold) / 物品过多警告消息（使用{count}显示物品数量，{threshold}显示阈值）",
-                        "Default: recycle.warning.too_many_items")
+                        "Default: §e[Chunk Warning] Found {count} items in a chunk (threshold: {threshold})")
                 .translation("recycle.config.too_many_items_warning_message")
-                .define("too_many_items_warning_message", "recycle.warning.too_many_items");
+                .define("too_many_items_warning_message", "§e[Chunk Warning] Found {count} items in a chunk (threshold: {threshold})");
         
         BUILDER.pop();
         
@@ -271,11 +287,20 @@ public class Config {
         
         SCAN_MODE = BUILDER
                 .comment("Scan Mode / 扫描模式:",
-                        "  - 'chunk': Force-loaded Chunk Scan / 强加载区块扫描",
+                        "  - 'chunk': loaded Chunk Scan / 加载区块扫描",
                         "  - 'player': Player Surrounding Scan / 玩家周围扫描",
-                        "Default: player")
+                        "Default: chunk")
                 .translation("recycle.config.scan_mode")
-                .defineInList("scan_mode", "player", Arrays.asList("chunk", "player"));
+                .defineInList("scan_mode", "chunk", Arrays.asList("chunk", "player"));
+
+        // 区块加载级别模式
+        CHUNK_LOADING_MODE = BUILDER
+                .comment("Chunk loading level for scanning / 加载区块扫描级别:",
+                        "  - 'force': Only force-loaded chunks (ticket level <= 31) / 仅强加载区块（票据级别 <= 31）",
+                        "  - 'lazy': Include force-loaded and player chunks (ticket level <= 32) / 包含强加载和弱加载区块（票据级别 <= 32）",
+                        "Default: lazy")
+                .translation("recycle.config.chunk_loading_mode")
+                .defineInList("chunk_loading_mode", "lazy", Arrays.asList("force", "lazy"));
         
         PLAYER_SCAN_RADIUS = BUILDER
                 .comment("Chunk radius around players for optimized scanning / 玩家周围的区块扫描半径",
@@ -288,15 +313,7 @@ public class Config {
                         "Default: 100, Min: 50, Max: 500")
                 .translation("recycle.config.batch_size")
                 .defineInRange("batch_size", 100, 50, 500);
-        
-        // 区块加载级别模式
-        CHUNK_LOADING_MODE = BUILDER
-                .comment("Chunk loading mode for scanning / 区块加载模式用于扫描:",
-                        "  - 'force': Only force-loaded chunks (ticket level <= 31) / 仅强加载区块（票据级别 <= 31）",
-                        "  - 'lazy': Include force-loaded and player chunks (ticket level <= 32) / 包含强加载和弱加载区块（票据级别 <= 32）",
-                        "Default: lazy")
-                .translation("recycle.config.chunk_loading_mode")
-                .defineInList("chunk_loading_mode", "lazy", Arrays.asList("force", "lazy"));
+
         
         BUILDER.pop();
         
@@ -510,6 +527,22 @@ public class Config {
         return MAX_PROCESSING_TIME_MS.get() * 1_000_000L;
     }
     
+    /**
+     * 检查是否启用区块物品警告
+     */
+    public static boolean isChunkWarningEnabled() {
+        return ENABLE_CHUNK_ITEM_WARNING.get();
+    }
+    
+    /**
+     * 获取格式化的区块物品过多警告消息
+     */
+    public static String getChunkWarningMessage(int itemCount, int threshold) {
+        return TOO_MANY_ITEMS_WARNING_MESSAGE.get()
+                .replace("{count}", String.valueOf(itemCount))
+                .replace("{threshold}", String.valueOf(threshold));
+    }
+    
     // === UI和颜色相关便捷方法 ===
 
     /**
@@ -630,15 +663,16 @@ public class Config {
      */
     private static String formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
         try {
-            int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
-            int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
-            
-            return DIMENSION_ENTRY_FORMAT.get()
-                    .replace("{name}", getDimensionDisplayName(dimensionId))
-                    .replace("{items}", String.valueOf(itemCount))
-                    .replace("{entities}", String.valueOf(entityCount));
+            // 直接转换为DimensionCleanupStats记录类
+            if (stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats) {
+                return DIMENSION_ENTRY_FORMAT.get()
+                        .replace("{name}", getDimensionDisplayName(dimensionId))
+                        .replace("{items}", String.valueOf(dimensionStats.itemsCleaned()))
+                        .replace("{entities}", String.valueOf(dimensionStats.projectilesCleaned()));
+            }
+            return null;
         } catch (Exception e) {
-            // 静默处理反射异常
+            // 静默处理转换异常
             return null;
         }
     }
@@ -656,7 +690,7 @@ public class Config {
                     ResourceLocation resourceLocation = ResourceLocation.parse(entityTypeId);
                     EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(resourceLocation);
                     entityTypes.add(entityType);
-                }
+                },true
             );
         }
         
