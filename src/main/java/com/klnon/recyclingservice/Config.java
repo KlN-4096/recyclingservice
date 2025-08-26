@@ -506,7 +506,7 @@ public class Config {
     // === 便捷访问方法 ===
 
     public static int getMaxBoxes(){
-        return getMaxBoxes();
+        return MAX_BOXES_PER_DIMENSION.get();
     }
 
     public static MenuType<ChestMenu> getMenuTypeForRows() {

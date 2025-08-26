@@ -57,14 +57,6 @@ public class MessageSender {
     }
 
     /**
-     * 发送普通消息
-     */
-    public static void sendMessage(ServerPlayer player, String message) {
-        Component component = Component.literal(message);
-        player.sendSystemMessage(component);
-    }
-    
-    /**
      * 发送带颜色的消息
      */
     public static void sendColoredMessage(ServerPlayer player, String message, int color) {

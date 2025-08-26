@@ -140,7 +140,7 @@ public class TrashBoxUI {
             player.openMenu(provider);
 
             // 发送测试信息
-            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)));
+            MessageSender.sendColoredMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)), 0);
 
             return true;
         });

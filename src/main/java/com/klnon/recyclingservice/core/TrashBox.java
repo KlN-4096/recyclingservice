@@ -108,13 +108,6 @@ public class TrashBox implements Container {
         items.clear();
         setChanged();
     }
-    
-    /**
-     * 保持向后兼容的清空方法
-     */
-    public void clear() {
-        clearContent();
-    }
 
     /**
      * 获取容器大小 - Container接口方法
@@ -172,13 +165,6 @@ public class TrashBox implements Container {
                    .filter(item -> !item.isEmpty())
                    .map(ItemStack::copy)
                    .toList();
-    }
-    
-    /**
-     * 获取容器大小（固定槽位数）- 兼容方法
-     */
-    public int size() {
-        return getContainerSize();
     }
     
     /**
