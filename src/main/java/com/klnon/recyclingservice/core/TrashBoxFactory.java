@@ -21,7 +21,7 @@ public class TrashBoxFactory {
         if (boxNumber < 1 || boxNumber > Config.getMaxBoxes()) {
             return null;
         }
-        return new TrashBox(Config.getTrashBoxRows()*9, boxNumber);
+        return new TrashBox(Config.getTrashBoxRows()*9, boxNumber, dimensionId);
     }
     
     /**

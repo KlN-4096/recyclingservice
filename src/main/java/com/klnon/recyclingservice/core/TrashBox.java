@@ -5,6 +5,8 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.ResourceLocation;
+import com.klnon.recyclingservice.Config;
 
 import java.util.List;
 
@@ -18,10 +20,12 @@ public class TrashBox implements Container {
     public final NonNullList<ItemStack> items;
     private final int capacity;
     private final int boxNumber;
+    private final ResourceLocation dimensionId;
     
-    public TrashBox(int capacity, int boxNumber) {
+    public TrashBox(int capacity, int boxNumber, ResourceLocation dimensionId) {
         this.capacity = capacity;
         this.boxNumber = boxNumber;
+        this.dimensionId = dimensionId;
         this.items = NonNullList.withSize(capacity, ItemStack.EMPTY);
     }
     
@@ -165,6 +169,13 @@ public class TrashBox implements Container {
     }
     
     /**
+     * 检查当前维度是否允许玩家主动放入物品到垃圾箱
+     */
+    public boolean isAllowedToPutIn() {
+        return Config.isDimensionAllowPutIn(dimensionId.toString());
+    }
+    
+    /**
      * 检查垃圾箱是否已满
      */
     public boolean isFull() {
@@ -180,7 +191,7 @@ public class TrashBox implements Container {
                    .map(ItemStack::copy)
                    .toList();
     }
-    
+
     /**
      * 获取当前物品数量（非空槽位）
      */

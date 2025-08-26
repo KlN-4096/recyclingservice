@@ -61,9 +61,11 @@ public class AutoCleanupEvent {
     private static void doCleanup(MinecraftServer server) {
         CleanupService.performAutoCleanup(server)
             .thenAccept(result -> {
-                // 使用新的详细消息构建方法，支持tooltip显示其他维度信息
-                Component message = Config.getDetailedCleanupMessage(result.dimensionStats());
-                MessageSender.sendChatMessage(server, message);
+                // 如果有清理结果才显示消息
+                if (result.totalItemsCleaned() > 0 || result.totalProjectilesCleaned() > 0) {
+                    Component message = Config.getDetailedCleanupMessage(result.dimensionStats());
+                    MessageSender.sendChatMessage(server, message);
+                }
                 cleaning = false;
             })
             .exceptionally(e -> {

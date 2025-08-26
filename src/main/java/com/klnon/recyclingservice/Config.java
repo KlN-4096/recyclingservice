@@ -590,75 +590,57 @@ public class Config {
         StringBuilder mainMessage = new StringBuilder(CLEANUP_RESULT_HEADER.get());
         List<String> tooltipLines = new ArrayList<>();
         
-        // 硬编码3个主要维度
+        // 主要维度集合
         Set<String> mainDimensions = Set.of(
-            "minecraft:overworld", 
-            "minecraft:the_nether", 
-            "minecraft:the_end"
+            "minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"
         );
         
-        // 构建主消息（仅显示主要维度）
-        for (String mainDim : mainDimensions) {
-            ResourceLocation dimRes = ResourceLocation.parse(mainDim);
-            if (dimensionStats.containsKey(dimRes)) {
-                Object stats = dimensionStats.get(dimRes);
-                // 使用反射获取统计数据（保持类型安全）
-                try {
-                    int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
-                    int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
-                    
-                    // 使用配置的维度条目格式模板和简化的维度名称
-                    String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
-                            .replace("{name}", getDimensionDisplayName(dimRes))
-                            .replace("{items}", String.valueOf(itemCount))
-                            .replace("{entities}", String.valueOf(entityCount));
-                    
-                    mainMessage.append("\n").append(dimensionEntry);
-                } catch (Exception e) {
-                    // 静默处理反射异常，跳过该维度
-                }
-            }
-        }
-        
-        // 构建tooltip内容（显示所有非主要维度）
+        // 统一处理所有维度
         for (Map.Entry<ResourceLocation, ?> entry : dimensionStats.entrySet()) {
-            String dimString = entry.getKey().toString();
-            if (!mainDimensions.contains(dimString)) {
-                Object stats = entry.getValue();
-                try {
-                    int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
-                    int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
-                    
-                    // 同样使用配置的维度条目格式模板和简化的维度名称
-                    String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
-                            .replace("{name}", getDimensionDisplayName(entry.getKey()))
-                            .replace("{items}", String.valueOf(itemCount))
-                            .replace("{entities}", String.valueOf(entityCount));
-                    
+            String dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
+            if (dimensionEntry != null) {
+                if (mainDimensions.contains(entry.getKey().toString())) {
+                    // 主要维度显示在主消息中
+                    mainMessage.append("\n").append(dimensionEntry);
+                } else {
+                    // 其他维度显示在tooltip中
                     tooltipLines.add(dimensionEntry);
-                } catch (Exception e) {
-                    // 静默处理反射异常，跳过该维度
                 }
             }
         }
         
         MutableComponent mainComponent = Component.literal(mainMessage.toString());
         
-        // 如果有其他维度数据，添加悬停事件
+        // 添加tooltip悬停事件
         if (!tooltipLines.isEmpty()) {
-            MutableComponent tooltipContent = Component.empty();
-            for (int i = 0; i < tooltipLines.size(); i++) {
-                if (i > 0) tooltipContent = tooltipContent.append(Component.literal("\n"));
-                tooltipContent = tooltipContent.append(Component.literal(tooltipLines.get(i)));
-            }
-            
-            final MutableComponent finalTooltipContent = tooltipContent;
+            MutableComponent tooltipContent = Component.literal(String.join("\n", tooltipLines));
             mainComponent = mainComponent.withStyle(style -> 
-                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, finalTooltipContent))
+                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltipContent))
             );
         }
         
         return mainComponent;
+    }
+    
+    /**
+     * 格式化单个维度的清理条目
+     * @param dimensionId 维度ID
+     * @param stats 统计数据对象
+     * @return 格式化后的条目字符串，如果获取失败返回null
+     */
+    private static String formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
+        try {
+            int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
+            int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
+            
+            return DIMENSION_ENTRY_FORMAT.get()
+                    .replace("{name}", getDimensionDisplayName(dimensionId))
+                    .replace("{items}", String.valueOf(itemCount))
+                    .replace("{entities}", String.valueOf(entityCount));
+        } catch (Exception e) {
+            // 静默处理反射异常
+            return null;
+        }
     }
     
     /**

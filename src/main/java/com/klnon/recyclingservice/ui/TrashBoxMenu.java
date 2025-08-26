@@ -29,25 +29,31 @@ public class TrashBoxMenu extends ChestMenu {
 
     @Override
     public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
+        // 全面检查：如果是垃圾箱槽位且维度不允许放入，拦截所有可能的放入操作
+        if (slotId >= 0 && !trashBox.isAllowedToPutIn()) {
+            if (clickType==ClickType.QUICK_MOVE && slotId>=trashSlots)
+                return;
+            if ((!getCarried().isEmpty() || (clickType==ClickType.SWAP && slotId>trashSlots)) && slotId < trashSlots)
+                return;
+        }
         if (slotId >= 0 && slotId < trashSlots) {
             Slot slot = slots.get(slotId);
-            ItemStack slotItem = slot.getItem();
             ItemStack carried = getCarried();
             ItemStack result = ItemStack.EMPTY;
-
-            if (clickType == ClickType.PICKUP) {
+            ItemStack slotItem = slot.getItem();
+            if (clickType == ClickType.PICKUP && slotItem.getCount()>=slotItem.getMaxStackSize()) {
                 result = handlePickupClick(slot, slotItem, carried, button == 0);
-            } else if (clickType == ClickType.SWAP) {
+            } else if (clickType == ClickType.SWAP && slotItem.getCount()>slotItem.getMaxStackSize()) {
                 result = handleSwapClick(slot, slotItem, player.getInventory().getItem(button), button, player);
             } else if (clickType == ClickType.PICKUP_ALL) {
                 result = handleDoubleClick(slotItem);
-            } else {
+            } else if (clickType == ClickType.QUICK_MOVE) {
+                result = quickMoveStack(player, slotId);
+            }else {
                 super.clicked(slotId, button, clickType, player);
             }
             // 统一更新受影响的物品
             UiUtils.updateTooltip(result);
-            // 统一更新点击的slot中的物品
-//            UiUtils.updateTooltip(slotItem);
             return;
         }
 
@@ -100,7 +106,7 @@ public class TrashBoxMenu extends ChestMenu {
                 }
             } else {
                 // 不同物品交换（仅当槽位物品不超过配置上限）
-                if (slotItem.getCount() <= Config.getItemStackMultiplier(slotItem)) {
+                if (slotItem.getCount() <= slotItem.getMaxStackSize()) {
                     setCarried(slotItem.copy());
                     slot.set(carried.copy());
                 }
@@ -120,7 +126,7 @@ public class TrashBoxMenu extends ChestMenu {
             // 空槽位直接移动
             slot.set(swapItem.copy());
             player.getInventory().setItem(button, ItemStack.EMPTY);
-        } else if (slotItem.getCount() <= Config.getItemStackMultiplier(slotItem)) {
+        } else if (slotItem.getCount() <= slotItem.getMaxStackSize() || swapItem.isEmpty()) {
             // 交换（仅当槽位物品不超过配置上限）
             int moveCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             swapItem = slotItem.copyWithCount(moveCount);
@@ -166,22 +172,35 @@ public class TrashBoxMenu extends ChestMenu {
     @Override
     public @NotNull ItemStack quickMoveStack(@Nonnull Player player, int index) {
         Slot slot = this.slots.get(index);
-        if (!slot.hasItem()) return ItemStack.EMPTY;
-        
-        
+        if (!slot.mayPickup(player)) return ItemStack.EMPTY;
+
         if (index < trashSlots) {
             // 从垃圾箱到玩家背包：最多64个
             ItemStack slotItem = slot.getItem();
             int moveCount = Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
             ItemStack moveItem = slotItem.copyWithCount(moveCount);
-            // 成功清除LORA并成功移动
+
             if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
                 UiUtils.updateSlotAfterMove(slot, moveCount);
                 return ItemStack.EMPTY;
             }
         } else {
-            // 从玩家背包到垃圾箱：原版会调用重写过的moveItemStackTo
-            return super.quickMoveStack(player, index);
+            // 从玩家背包到垃圾箱：手动实现
+            ItemStack slotItem = slot.getItem();
+            if (!slotItem.isEmpty()) {
+                ItemStack originalStack = slotItem.copy();
+
+                // 尝试移动到垃圾箱槽位 (0 到 trashSlots-1)
+                if (moveItemStackTo(slotItem, 0, trashSlots, false)) {
+                    // 移动成功后更新槽位
+                    if (slotItem.isEmpty()) {
+                        slot.setByPlayer(ItemStack.EMPTY);
+                    } else {
+                        slot.setChanged();
+                    }
+                    return originalStack;
+                }
+            }
         }
 
         return ItemStack.EMPTY;
