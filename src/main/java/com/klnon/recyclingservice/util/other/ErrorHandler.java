@@ -13,41 +13,51 @@ import net.minecraft.server.level.ServerPlayer;
 public class ErrorHandler {
     private static final Logger LOGGER = Recyclingservice.LOGGER;
 
-    //   通用的错误处理
-    public static boolean handleOperation(ServerPlayer player, String operationName, Supplier<Boolean> operation) {
+    /**
+     * 通用错误处理方法 - 支持泛型返回值
+     * @param player 玩家（可选，为null时不发送玩家消息）
+     * @param operationName 操作名称
+     * @param operation 要执行的操作
+     * @param defaultValue 默认返回值（失败时）
+     * @param <T> 返回类型
+     * @return 操作结果或默认值
+     */
+    public static <T> T handleOperation(ServerPlayer player, String operationName, Supplier<T> operation, T defaultValue) {
         try {
-            boolean result = operation.get();
-            if (result) {
-                LOGGER.debug("Operation {} succeeded for player {}", operationName, player.getName().getString());
-            } else {
-                LOGGER.debug("Operation {} failed for player {}", operationName, player.getName().getString());
-            }
+            T result = operation.get();
+            String playerName = player != null ? player.getName().getString() : "System";
+            LOGGER.debug("Operation {} succeeded for {}", operationName, playerName);
             return result;
         } catch (Exception e) {
-            LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
-            MessageSender.sendErrorMessage(player, "operation.error.general");
-            return false;
+            String playerName = player != null ? player.getName().getString() : "System";
+            LOGGER.error("Operation {} failed for {}: {}", operationName, playerName, e.getMessage());
+            if (player != null) {
+                MessageSender.sendTranslatableMessage(player, "operation.error.general", MessageSender.MessageType.ERROR);
+            }
+            return defaultValue;
         }
     }
 
-    //   命令错误处理
+    /**
+     * 命令操作错误处理 - 专门用于命令执行
+     */
     public static int handleCommandOperation(CommandSourceStack source, ServerPlayer player, String operationName, Supplier<Boolean> operation) {
         try {
             boolean result = operation.get();
             if (result) {
                 LOGGER.debug("Operation {} succeeded for player {}", operationName, player.getName().getString());
                 source.sendSuccess(() -> Component.literal("§aOperation " + operationName + " succeeded"), false);
-                return 1;  // 成功返回1
+                return 1;
             } else {
                 LOGGER.debug("Operation {} failed for player {}", operationName, player.getName().getString());
                 source.sendFailure(Component.literal("§cOperation " + operationName + " failed"));
-                return 0;  // 失败返回0
+                return 0;
             }
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
             source.sendFailure(Component.literal("§cOperation " + operationName + " failed: " + e.getMessage()));
-            MessageSender.sendErrorMessage(player, "operation.error.general");
-            return 0;  // 异常返回0
+            MessageSender.sendTranslatableMessage(player, "operation.error.general", MessageSender.MessageType.ERROR);
+            return 0;
         }
     }
 
@@ -63,33 +73,6 @@ public class ErrorHandler {
         }
     }
 
-    /**
-     * 处理静态操作（无玩家上下文，支持泛型返回值）
-     */
-    public static <T> T handleStaticOperation(String operationName, Supplier<T> operation, T defaultValue) {
-        try {
-            T result = operation.get();
-            LOGGER.debug("Static operation {} succeeded", operationName);
-            return result;
-        } catch (Exception e) {
-            LOGGER.error("Static operation {} failed: {}", operationName, e.getMessage());
-            return defaultValue;
-        }
-    }
 
-    /**
-     * 处理带默认值的泛型操作（有玩家上下文）
-     */
-    public static <T> T handleOperation(ServerPlayer player, String operationName, Supplier<T> operation, T defaultValue) {
-        try {
-            T result = operation.get();
-            LOGGER.debug("Operation {} succeeded for player {}", operationName, player.getName().getString());
-            return result;
-        } catch (Exception e) {
-            LOGGER.error("Operation {} failed for player {}: {}", operationName, player.getName().getString(), e.getMessage());
-            MessageSender.sendErrorMessage(player, "operation.error.general");
-            return defaultValue;
-        }
-    }
 
   }

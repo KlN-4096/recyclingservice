@@ -78,7 +78,7 @@ public class ItemMerge {
         StringBuilder keyBuilder = new StringBuilder();
 
         // 基础物品类型
-        keyBuilder.append(stack.getItem().toString());
+        keyBuilder.append(stack.getItem());
 
         // 创建一个临时的ItemStack副本，移除LORE组件后计算哈希值
         ItemStack tempStack = stack.copy();

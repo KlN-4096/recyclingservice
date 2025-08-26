@@ -39,15 +39,18 @@ public class AutoCleanupEvent {
      * 检查并发送警告（仅在特定时间点）
      */
     private static void checkAndSendWarning(MinecraftServer server) {
-        int remainingSeconds = (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;
+        int remainingSeconds = getRemainingSeconds();
         
         // 只在特定时间点发送警告
         if (remainingSeconds == 60 || remainingSeconds == 30 || 
            (remainingSeconds <= 10 && remainingSeconds >= 1)) {
             
             String message = Config.getWarningMessage(remainingSeconds);
-            int color = Config.getWarningColor(remainingSeconds);
-            MessageSender.showActionBar(server, message, color);
+            // 根据剩余时间选择消息类型
+            MessageSender.MessageType messageType = remainingSeconds > 10 ? 
+                MessageSender.MessageType.WARNING_NORMAL : 
+                (remainingSeconds > 5 ? MessageSender.MessageType.WARNING_URGENT : MessageSender.MessageType.WARNING_CRITICAL);
+            MessageSender.showActionBar(server, message, messageType.getColor());
         }
     }
     
@@ -59,13 +62,12 @@ public class AutoCleanupEvent {
         CleanupService.performAutoCleanup(server)
             .thenAccept(result -> {
                 // 使用新的详细消息构建方法，支持tooltip显示其他维度信息
-                Component message = Config.getDetailedCleanupMessage(result.getDimensionStats());
-                // 配置文本中已包含§颜色代码，无需额外设置颜色
+                Component message = Config.getDetailedCleanupMessage(result.dimensionStats());
                 MessageSender.sendChatMessage(server, message);
                 cleaning = false;
             })
             .exceptionally(e -> {
-                MessageSender.showActionBar(server, Config.getCleanupFailedMessage(), Config.getErrorColor());
+                MessageSender.showActionBar(server, Config.getCleanupFailedMessage(), MessageSender.MessageType.ERROR.getColor());
                 cleaning = false;
                 return null;
             });
@@ -82,26 +84,11 @@ public class AutoCleanupEvent {
             doCleanup(server);
         }
     }
-    
-    /**
-     * 获取清理状态
-     */
-    public static boolean isCleanupInProgress() {
-        return cleaning;
-    }
-    
+
     /**
      * 获取距离下次清理的剩余秒数
      */
     public static int getRemainingSeconds() {
         return (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;
-    }
-    
-    /**
-     * 重置清理计时器（用于命令或特殊情况）
-     */
-    public static void resetTimer() {
-        ticks = 0;
-        cleaning = false;
     }
 }

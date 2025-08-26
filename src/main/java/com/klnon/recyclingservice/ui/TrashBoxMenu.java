@@ -20,7 +20,7 @@ public class TrashBoxMenu extends ChestMenu {
     
     private final TrashBox trashBox;
     private final int trashSlots;
-    
+
     public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
         super(Config.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.getTrashBoxRows());
         this.trashBox = trashBox;
@@ -40,7 +40,7 @@ public class TrashBoxMenu extends ChestMenu {
             } else if (clickType == ClickType.SWAP) {
                 result = handleSwapClick(slot, slotItem, player.getInventory().getItem(button), button, player);
             } else if (clickType == ClickType.PICKUP_ALL) {
-                result = handleDoubleClick(slotItem, player);
+                result = handleDoubleClick(slotItem);
             } else {
                 super.clicked(slotId, button, clickType, player);
             }
@@ -91,13 +91,12 @@ public class TrashBoxMenu extends ChestMenu {
                         int canAdd = Math.min(configLimit - slotItem.getCount(), carried.getCount());
                         slotItem.grow(canAdd);
                         carried.shrink(canAdd);
-                        if (carried.isEmpty()) setCarried(ItemStack.EMPTY);
                     } else {
                         // 右键：放入1个
                         slotItem.grow(1);
                         carried.shrink(1);
-                        if (carried.isEmpty()) setCarried(ItemStack.EMPTY);
                     }
+                    if (carried.isEmpty()) setCarried(ItemStack.EMPTY);
                 }
             } else {
                 // 不同物品交换（仅当槽位物品不超过配置上限）
@@ -132,7 +131,7 @@ public class TrashBoxMenu extends ChestMenu {
         return swapItem;
     }
 
-    private ItemStack handleDoubleClick(ItemStack clickedItem, Player player) {
+    private ItemStack handleDoubleClick(ItemStack clickedItem) {
         //这个因为是双击,所以始终返回手上物品
         ItemStack carried = getCarried();
         if (carried.isEmpty()) {

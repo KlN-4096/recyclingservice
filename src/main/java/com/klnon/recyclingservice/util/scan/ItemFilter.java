@@ -39,8 +39,8 @@ public class ItemFilter {
      */
     public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
         return itemEntities.stream()
-                .filter(entity -> shouldCleanItem(entity.getItem()))
-                .map(ItemEntity::getItem) // 直接引用，不拷贝
+                .map(ItemEntity::getItem)
+                .filter(ItemFilter::shouldCleanItem) // 直接引用，不拷贝
                 .collect(Collectors.toList());
     }
     
@@ -92,19 +92,26 @@ public class ItemFilter {
      * @return 是否有特殊组件
      */
     private static boolean hasAnySpecialComponent(ItemStack itemStack) {
-        return itemStack.has(DataComponents.CUSTOM_NAME) ||
-               itemStack.has(DataComponents.CUSTOM_DATA) ||
-               itemStack.has(DataComponents.WRITTEN_BOOK_CONTENT) ||
-               itemStack.has(DataComponents.WRITABLE_BOOK_CONTENT) ||
-               itemStack.has(DataComponents.POTION_CONTENTS) ||
-               itemStack.has(DataComponents.FIREWORK_EXPLOSION) ||
-               itemStack.has(DataComponents.FIREWORKS) ||
-               itemStack.has(DataComponents.CONTAINER) ||
-               itemStack.has(DataComponents.STORED_ENCHANTMENTS) ||
-               itemStack.has(DataComponents.SUSPICIOUS_STEW_EFFECTS) ||
-               itemStack.has(DataComponents.TRIM) ||
-               itemStack.has(DataComponents.DYED_COLOR) ||
-               itemStack.has(DataComponents.BANNER_PATTERNS) ||
-               itemStack.has(DataComponents.MAP_ID);
+        // 定义需要检查的特殊组件类型
+        net.minecraft.core.component.DataComponentType<?>[] specialComponents = {
+            DataComponents.CUSTOM_NAME,
+            DataComponents.CUSTOM_DATA,
+            DataComponents.WRITTEN_BOOK_CONTENT,
+            DataComponents.WRITABLE_BOOK_CONTENT,
+            DataComponents.POTION_CONTENTS,
+            DataComponents.FIREWORK_EXPLOSION,
+            DataComponents.FIREWORKS,
+            DataComponents.CONTAINER,
+            DataComponents.STORED_ENCHANTMENTS,
+            DataComponents.SUSPICIOUS_STEW_EFFECTS,
+            DataComponents.TRIM,
+            DataComponents.DYED_COLOR,
+            DataComponents.BANNER_PATTERNS,
+            DataComponents.MAP_ID
+        };
+        
+        // 使用流式操作检查是否包含任何特殊组件
+        return java.util.Arrays.stream(specialComponents)
+                .anyMatch(itemStack::has);
     }
 }

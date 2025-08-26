@@ -21,7 +21,7 @@ public class UiUtils {
             return false;
         }
         
-        return ErrorHandler.handleStaticOperation("modDetection", () -> {
+        return ErrorHandler.handleOperation(null, "modDetection", () -> {
             // 检查客户端是否注册了我们的mod网络通道
             ResourceLocation modChannel = ResourceLocation.fromNamespaceAndPath(
                 Recyclingservice.MODID, "main"

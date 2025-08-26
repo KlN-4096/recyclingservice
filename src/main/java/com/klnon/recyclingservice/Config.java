@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.Map;
-import java.util.HashMap;
 
 import com.klnon.recyclingservice.util.other.ErrorHandler;
 
@@ -35,22 +34,17 @@ public class Config {
     
     // === 警告消息设置 ===
     public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE;
-    public static final ModConfigSpec.ConfigValue<String> CLEANUP_COMPLETE_MESSAGE;
     
     // === 详细清理消息模板 ===
     public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER;
     public static final ModConfigSpec.ConfigValue<String> DIMENSION_ENTRY_FORMAT;
-    public static final ModConfigSpec.ConfigValue<String> OTHER_DIMENSIONS_TOOLTIP_HEADER;
     
     // === 垃圾箱设置 ===
     public static final ModConfigSpec.IntValue TRASH_BOX_ROWS;
-    public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_ALLOW_PUT_IN;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_TRASH_ALLOW_PUT_IN;
     
     // === 维度管理 ===
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SUPPORTED_DIMENSIONS;
     public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION;
-    public static final ModConfigSpec.BooleanValue AUTO_CREATE_DIMENSION_TRASH;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> MOD_DIMENSION_NAMES;
     
     // === 付费系统 ===
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE;
@@ -67,7 +61,6 @@ public class Config {
     
     // === 区域管理 ===
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
-    public static final ModConfigSpec.BooleanValue AUTO_STOP_CHUNK_LOADING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     
     // === 扫描优化设置 ===
@@ -82,29 +75,20 @@ public class Config {
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
     
-    // === 颜色配置 ===
-    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_NORMAL;
-    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_URGENT;
-    public static final ModConfigSpec.ConfigValue<String> WARNING_COLOR_CRITICAL;
-    public static final ModConfigSpec.ConfigValue<String> SUCCESS_COLOR;
-    public static final ModConfigSpec.ConfigValue<String> ERROR_COLOR;
     
     // === 消息模板 ===
     public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
-    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_HEADER;
-    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_TEST;
-    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_OPEN;
-    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_CURRENT;
-    public static final ModConfigSpec.ConfigValue<String> CMD_HELP_EXAMPLE;
-    public static final ModConfigSpec.ConfigValue<String> TEST_BOX_TITLE;
-    public static final ModConfigSpec.ConfigValue<String> TEST_BOX_OPENED;
-    public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> CMD_HELP_MESSAGES;
 
     // === 性能优化缓存 ===
     // HashSet缓存，将O(n)查找优化为O(1)
     private static volatile Set<String> whitelistCache = new HashSet<>();
     private static volatile Set<String> blacklistCache = new HashSet<>();
     private static volatile Set<String> projectileTypesCache = new HashSet<>();
+    
+    
+    // 允许放入物品的维度缓存
+    private static volatile Set<String> allowPutInDimensionsCache = new HashSet<>();
     
     static {
         // 基础清理设置
@@ -132,13 +116,7 @@ public class Config {
                         "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
                 .translation("recycle.config.warning_message")
                 .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
-        
-        CLEANUP_COMPLETE_MESSAGE = BUILDER
-                .comment("Message shown when cleanup is complete (use {count} for number of items cleaned) / 清理完成后显示的消息（使用{count}显示清理的物品数量）",
-                        "Default: §a[Auto Clean] Cleaned up {items} items and {entities} entities!")
-                .translation("recycle.config.cleanup_complete_message")
-                .define("cleanup_complete_message", "§a[Auto Clean] Cleaned up {items} items and {entities} entities!");
-        
+
         // 详细清理消息模板配置
         CLEANUP_RESULT_HEADER = BUILDER
                 .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
@@ -154,12 +132,6 @@ public class Config {
                 .translation("recycle.config.dimension_entry_format")
                 .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
         
-        OTHER_DIMENSIONS_TOOLTIP_HEADER = BUILDER
-                .comment("Header text for other dimensions in tooltip / 工具提示中其他维度的标题文本",
-                        "Default: §e§lOther Dimensions Cleanup Details:")
-                .translation("recycle.config.other_dimensions_tooltip_header")
-                .define("other_dimensions_tooltip_header", "§e§lOther Dimensions Cleanup Details:");
-        
         BUILDER.pop();
         
         // 垃圾箱设置
@@ -172,53 +144,25 @@ public class Config {
                 .defineInRange("trash_box_rows", 6, 1, 6);
         
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
-                .comment("Allow players to put items into dimension trash box / 是否允许玩家主动将物品放入维度垃圾箱",
-                        "Default: true")
+                .comment("Dimensions that allow players to put items into trash boxes / 允许玩家主动将物品放入垃圾箱的维度",
+                        "Default: Main 3 dimensions / 默认：主要3个维度")
                 .translation("recycle.config.dimension_trash_allow_put_in")
-                .define("dimension_trash_allow_put_in", true);
+                .defineListAllowEmpty("dimension_trash_allow_put_in",
+                    List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
+                    () -> "",
+                    Config::validateResourceLocation);
         
         BUILDER.pop();
         
         // 维度管理设置
         BUILDER.comment("Dimension management settings / 维度管理设置").push("dimension_management");
         
-        SUPPORTED_DIMENSIONS = BUILDER
-                .comment("List of dimensions to create trash boxes for / 支持创建垃圾箱的维度列表",
-                        "Default: [minecraft:overworld, minecraft:the_nether, minecraft:the_end]")
-                .translation("recycle.config.supported_dimensions")
-                .defineListAllowEmpty("supported_dimensions",
-                    List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
-                    () -> "",
-                    Config::validateResourceLocation);
-        
         MAX_BOXES_PER_DIMENSION = BUILDER
                 .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
                         "Default: 3, Min: 1, Max: 5")
                 .translation("recycle.config.max_boxes_per_dimension")
                 .defineInRange("max_boxes_per_dimension", 3, 1, 5);
-        
-        AUTO_CREATE_DIMENSION_TRASH = BUILDER
-                .comment("Automatically create trash boxes for new dimensions / 自动为新维度创建垃圾箱",
-                        "Default: true")
-                .translation("recycle.config.auto_create_dimension_trash")
-                .define("auto_create_dimension_trash", true);
-        
-        MOD_DIMENSION_NAMES = BUILDER
-                .comment("Dimension name mapping and display configuration / 维度名称映射和显示配置",
-                        "Format: 'dimension_id=display_name=type' where type is 'main' or 'other'",
-                        "Main dimensions show in chat, other dimensions show in tooltip",
-                        "格式：'维度ID=显示名称=类型'，类型为'main'或'other'",
-                        "主要维度显示在聊天栏，其他维度显示在工具提示中",
-                        "Default: Main 3 dimensions")
-                .translation("recycle.config.mod_dimension_names")
-                .defineListAllowEmpty("mod_dimension_names",
-                    List.of(
-                        "minecraft:overworld=Overworld=main",
-                        "minecraft:the_nether=nether=main",
-                        "minecraft:the_end=end=main"
-                    ),
-                    () -> "",
-                    Config::validateDimensionNameEntry);
+
         
         BUILDER.pop();
         
@@ -314,12 +258,6 @@ public class Config {
                 .translation("recycle.config.too_many_items_warning")
                 .defineInRange("too_many_items_warning_limit", 200, 50, 1000);
         
-        AUTO_STOP_CHUNK_LOADING = BUILDER
-                .comment("Automatically stop chunk loading when chunk has too many items / 当区块物品过多时自动停止区块加载",
-                        "Default: true")
-                .translation("recycle.config.auto_stop_chunk_loading")
-                .define("auto_stop_chunk_loading", true);
-        
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
                 .comment("Warning message for too many items (use {count} for item count, {threshold} for threshold) / 物品过多警告消息（使用{count}显示物品数量，{threshold}显示阈值）",
                         "Default: recycle.warning.too_many_items")
@@ -384,40 +322,6 @@ public class Config {
         
         BUILDER.pop();
         
-        // 颜色配置
-        BUILDER.comment("Color configuration for UI messages / UI消息颜色配置").push("colors");
-        
-        WARNING_COLOR_NORMAL = BUILDER
-                .comment("Color for normal warnings (hex format #RRGGBB) / 普通警告颜色（十六进制格式#RRGGBB）",
-                        "Default: #FFCC00")
-                .translation("recycle.config.warning_color_normal")
-                .define("warning_color_normal", "#FFCC00");
-        
-        WARNING_COLOR_URGENT = BUILDER
-                .comment("Color for urgent warnings / 紧急警告颜色",
-                        "Default: #FF6600")
-                .translation("recycle.config.warning_color_urgent")
-                .define("warning_color_urgent", "#FF6600");
-        
-        WARNING_COLOR_CRITICAL = BUILDER
-                .comment("Color for critical warnings / 关键警告颜色",
-                        "Default: #FF3300")
-                .translation("recycle.config.warning_color_critical")
-                .define("warning_color_critical", "#FF3300");
-        
-        SUCCESS_COLOR = BUILDER
-                .comment("Color for success messages / 成功消息颜色",
-                        "Default: #00FF00")
-                .translation("recycle.config.success_color")
-                .define("success_color", "#00FF00");
-        
-        ERROR_COLOR = BUILDER
-                .comment("Color for error messages / 错误消息颜色",
-                        "Default: #FF0000")
-                .translation("recycle.config.error_color")
-                .define("error_color", "#FF0000");
-        
-        BUILDER.pop();
         
         // 消息模板
         BUILDER.comment("Message templates for UI text / UI文本消息模板").push("messages");
@@ -428,53 +332,22 @@ public class Config {
                 .translation("recycle.config.error_cleanup_failed")
                 .define("error_cleanup_failed", "§cCleanup failed");
         
-        CMD_HELP_HEADER = BUILDER
-                .comment("Command help header / 命令帮助标题",
-                        "Default: §6=== Trash Box Command Help ===")
-                .translation("recycle.config.cmd_help_header")
-                .define("cmd_help_header", "§6=== Trash Box Command Help ===");
+        CMD_HELP_MESSAGES = BUILDER
+                .comment("Command help messages / 命令帮助消息",
+                        "Format: One message per line / 格式：每行一条消息",
+                        "Default help messages / 默认帮助消息")
+                .translation("recycle.config.cmd_help_messages")
+                .defineListAllowEmpty("cmd_help_messages",
+                    List.of(
+                        "§6=== Trash Box Command Help ===",
+                        "§e/bin test §7- Open test trash box",
+                        "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
+                        "§e/bin current <box> §7- Open current dimension trash box",
+                        "§7Example: §f/bin open minecraft:overworld 1"
+                    ),
+                    () -> "",
+                    obj -> obj instanceof String);
         
-        CMD_HELP_TEST = BUILDER
-                .comment("Command help for test command / 测试命令帮助",
-                        "Default: §e/bin test §7- Open test trash box")
-                .translation("recycle.config.cmd_help_test")
-                .define("cmd_help_test", "§e/bin test §7- Open test trash box");
-        
-        CMD_HELP_OPEN = BUILDER
-                .comment("Command help for open command / 打开命令帮助",
-                        "Default: §e/bin open <dimension> <box> §7- Open specific dimension trash box")
-                .translation("recycle.config.cmd_help_open")
-                .define("cmd_help_open", "§e/bin open <dimension> <box> §7- Open specific dimension trash box");
-        
-        CMD_HELP_CURRENT = BUILDER
-                .comment("Command help for current command / 当前维度命令帮助",
-                        "Default: §e/bin current <box> §7- Open current dimension trash box")
-                .translation("recycle.config.cmd_help_current")
-                .define("cmd_help_current", "§e/bin current <box> §7- Open current dimension trash box");
-        
-        CMD_HELP_EXAMPLE = BUILDER
-                .comment("Command help example / 命令示例",
-                        "Default: §7Example: §f/bin open minecraft:overworld 1")
-                .translation("recycle.config.cmd_help_example")
-                .define("cmd_help_example", "§7Example: §f/bin open minecraft:overworld 1");
-        
-        TEST_BOX_TITLE = BUILDER
-                .comment("Test box title template (use {ui_type} for UI type) / 测试垃圾箱标题模板（使用{ui_type}显示UI类型）",
-                        "Default: §6Test Trash Box §7(UI Type: {ui_type})")
-                .translation("recycle.config.test_box_title")
-                .define("test_box_title", "§6Test Trash Box §7(UI Type: {ui_type})");
-        
-        TEST_BOX_OPENED = BUILDER
-                .comment("Message when test box is opened (use {ui_type} for UI type) / 打开测试垃圾箱时的消息",
-                        "Default: §aTest trash box opened §7| UI Type: §b{ui_type}")
-                .translation("recycle.config.test_box_opened")
-                .define("test_box_opened", "§aTest trash box opened §7| UI Type: §b{ui_type}");
-        
-        ITEM_COUNT_DISPLAY = BUILDER
-                .comment("Item count display template (use {count} for count) / 物品数量显示模板",
-                        "Default: §7Available: §a{count} / §b{stack_limit}")
-                .translation("recycle.config.item_count_display")
-                .define("item_count_display", "§7Available: §a{count} / §b{stack_limit}");
         
         BUILDER.pop();
         
@@ -486,22 +359,15 @@ public class Config {
      * 验证资源ID格式是否正确
      */
     private static boolean validateResourceLocation(Object obj) {
-        if (!(obj instanceof String)) {
+        if (!(obj instanceof String id)) {
             return false;
         }
-        String id = (String) obj;
-        return ErrorHandler.handleStaticOperation("validateResourceLocation", () -> {
+        return ErrorHandler.handleOperation(null, "validateResourceLocation", () -> {
             ResourceLocation.parse(id);
             return true;
         }, false);
     }
 
-    /**
-     * 验证维度名称条目格式（宽松验证，无效条目自动忽略）
-     */
-    private static boolean validateDimensionNameEntry(Object obj) {
-        return obj instanceof String; // 简单验证，无效条目解析时会被忽略
-    }
 
     // === 便捷访问方法 ===
 
@@ -547,17 +413,10 @@ public class Config {
     }
     
     /**
-     * 检查维度是否在支持列表中
+     * 检查维度是否允许玩家主动放入物品到垃圾箱
      */
-    public static boolean isDimensionSupported(String dimensionId) {
-        return AUTO_CREATE_DIMENSION_TRASH.get() || SUPPORTED_DIMENSIONS.get().contains(dimensionId);
-    }
-    
-    /**
-     * 获取支持的维度列表
-     */
-    public static List<String> getSupportedDimensions() {
-        return new ArrayList<>(SUPPORTED_DIMENSIONS.get());
+    public static boolean isDimensionAllowPutIn(String dimensionId) {
+        return allowPutInDimensionsCache.contains(dimensionId);
     }
     
     /**
@@ -565,13 +424,6 @@ public class Config {
      */
     public static String getWarningMessage(int remainingSeconds) {
         return WARNING_MESSAGE.get().replace("{time}", String.valueOf(remainingSeconds));
-    }
-    
-    /**
-     * 获取格式化的清理完成消息
-     */
-    public static String getCleanupCompleteMessage(int itemCount,int entityCount) {
-        return CLEANUP_COMPLETE_MESSAGE.get().replace("{items}", String.valueOf(itemCount)).replace("{entities}", String.valueOf(entityCount));
     }
 
     // === 物品过滤便捷方法 ===
@@ -584,19 +436,12 @@ public class Config {
     }
     
     /**
-     * 检查是否为白名单模式
+     * 检查是否为白名单模式,反之则是黑名单
      */
     public static boolean isWhitelistMode() {
         return "whitelist".equals(getCleanMode());
     }
-    
-    /**
-     * 检查是否为黑名单模式
-     */
-    public static boolean isBlacklistMode() {
-        return "blacklist".equals(getCleanMode());
-    }
-    
+
     /**
      * 检查物品是否在白名单中（用于保留）
      */
@@ -635,21 +480,7 @@ public class Config {
     public static String getScanMode() {
         return SCAN_MODE.get();
     }
-    
-    /**
-     * 检查是否为区块扫描模式
-     */
-    public static boolean isChunkScanMode() {
-        return "chunk".equals(getScanMode());
-    }
-    
-    /**
-     * 检查是否为玩家周围扫描模式
-     */
-    public static boolean isPlayerScanMode() {
-        return "player".equals(getScanMode());
-    }
-    
+
     /**
      * 获取玩家扫描半径
      */
@@ -688,48 +519,11 @@ public class Config {
         return ITEM_STACK_MULTIPLIER.get()*itemStack.getMaxStackSize();
     }
     
-    /**
-     * 解析十六进制颜色字符串为整数
-     */
-    public static int parseColor(String colorStr) {
-        return ErrorHandler.handleStaticOperation(
-            "parseColor_" + colorStr,
-            () -> {
-                if (colorStr.startsWith("#")) {
-                    return Integer.parseInt(colorStr.substring(1), 16);
-                }
-                return Integer.parseInt(colorStr, 16);
-            },
-            0xFFFFFF // 默认白色
-        );
-    }
     
-    /**
-     * 获取不同类型警告的颜色
-     */
-    public static int getWarningColor(int remainingSeconds) {
-        if (remainingSeconds > 10) {
-            return parseColor(WARNING_COLOR_NORMAL.get());
-        } else if (remainingSeconds > 5) {
-            return parseColor(WARNING_COLOR_URGENT.get());
-        } else {
-            return parseColor(WARNING_COLOR_CRITICAL.get());
-        }
-    }
     
-    /**
-     * 获取成功消息颜色
-     */
-    public static int getSuccessColor() {
-        return parseColor(SUCCESS_COLOR.get());
-    }
     
-    /**
-     * 获取错误消息颜色
-     */
-    public static int getErrorColor() {
-        return parseColor(ERROR_COLOR.get());
-    }
+    
+    
     
     // === 消息格式化方法 ===
     
@@ -744,106 +538,51 @@ public class Config {
      * 获取格式化的测试垃圾箱标题
      */
     public static String getTestBoxTitle(String uiType) {
-        return TEST_BOX_TITLE.get().replace("{ui_type}", uiType);
+        return "§6Test Trash Box §7(UI Type: " + uiType + ")";
     }
     
     /**
      * 获取格式化的测试垃圾箱打开消息
      */
     public static String getTestBoxOpenedMessage(String uiType) {
-        return TEST_BOX_OPENED.get().replace("{ui_type}", uiType);
+        return "§aTest trash box opened §7| UI Type: §b" + uiType;
     }
     
     /**
      * 获取格式化的物品数量显示
      */
     public static String getItemCountDisplay(int count,ItemStack itemStack) {
-        return ITEM_COUNT_DISPLAY.get().replace("{count}", String.valueOf(count)).replace("{stack_limit}", String.valueOf(getItemStackMultiplier(itemStack)));
+        return "§7Available: §a" + count + " / §b" + getItemStackMultiplier(itemStack);
     }
     
     /**
      * 获取命令帮助消息组
      */
     public static String[] getCommandHelpMessages() {
-        return new String[] {
-            CMD_HELP_HEADER.get(),
-            CMD_HELP_TEST.get(),
-            CMD_HELP_OPEN.get(),
-            CMD_HELP_CURRENT.get(),
-            CMD_HELP_EXAMPLE.get()
-        };
+        List<? extends String> messages = CMD_HELP_MESSAGES.get();
+        return messages.toArray(new String[0]);
     }
     
     // === 维度相关便捷方法 ===
     
-    /**
-     * 解析维度名称配置，返回维度ID -> 显示名称的映射
-     * @return 维度显示名称映射
-     */
-    private static Map<String, String> parseDimensionDisplayNames() {
-        Map<String, String> nameMap = new HashMap<>();
-        for (String entry : MOD_DIMENSION_NAMES.get()) {
-            try {
-                String[] parts = entry.split("=", 3);
-                if (parts.length >= 2) {
-                    nameMap.put(parts[0], parts[1]); // 维度ID -> 显示名称
-                }
-            } catch (Exception e) {
-                // 忽略无效条目，如用户所要求
-            }
-        }
-        return nameMap;
-    }
+    
+    
     
     /**
-     * 解析维度名称配置，返回主要维度ID集合
-     * @return 主要维度ID集合
-     */
-    private static Set<String> parseMainDimensions() {
-        Set<String> mainDims = new HashSet<>();
-        for (String entry : MOD_DIMENSION_NAMES.get()) {
-            try {
-                String[] parts = entry.split("=", 3);
-                if (parts.length >= 3 && "main".equalsIgnoreCase(parts[2])) {
-                    mainDims.add(parts[0]); // 添加维度ID
-                }
-            } catch (Exception e) {
-                // 忽略无效条目
-            }
-        }
-        return mainDims;
-    }
-    
-    /**
-     * 获取维度的显示名称
+     * 获取维度的显示名称 - 简化版，直接去前缀
      * @param dimensionId 维度ID
-     * @return 本地化显示名称，如果没有映射则返回简化的ID
+     * @return 去前缀后的维度名称
      */
     public static String getDimensionDisplayName(ResourceLocation dimensionId) {
         String dimString = dimensionId.toString();
-        Map<String, String> nameMap = parseDimensionDisplayNames();
-        
-        // 优先返回配置的本地化名称
-        if (nameMap.containsKey(dimString)) {
-            return nameMap.get(dimString);
-        }
-        // 对于未配置的维度，返回简化的命名空间:路径格式
         return dimString.contains(":") ? 
             dimString.substring(dimString.indexOf(':') + 1) : dimString;
     }
     
-    /**
-     * 检查是否为主要维度（需要显示在主消息中）
-     * @param dimensionId 维度ID
-     * @return 是否为主要维度
-     */
-    public static boolean isMainDimension(ResourceLocation dimensionId) {
-        Set<String> mainDims = parseMainDimensions();
-        return mainDims.contains(dimensionId.toString());
-    }
+    
     
     /**
-     * 构建详细清理完成消息（带tooltip的Component格式）
+     * 构建详细清理完成消息（带tooltip的Component格式） - 简化版
      * @param dimensionStats 各维度清理统计信息
      * @return 带悬停详情的聊天组件
      */
@@ -851,10 +590,15 @@ public class Config {
         StringBuilder mainMessage = new StringBuilder(CLEANUP_RESULT_HEADER.get());
         List<String> tooltipLines = new ArrayList<>();
         
-        Set<String> mainDims = parseMainDimensions();
+        // 硬编码3个主要维度
+        Set<String> mainDimensions = Set.of(
+            "minecraft:overworld", 
+            "minecraft:the_nether", 
+            "minecraft:the_end"
+        );
         
         // 构建主消息（仅显示主要维度）
-        for (String mainDim : mainDims) {
+        for (String mainDim : mainDimensions) {
             ResourceLocation dimRes = ResourceLocation.parse(mainDim);
             if (dimensionStats.containsKey(dimRes)) {
                 Object stats = dimensionStats.get(dimRes);
@@ -863,7 +607,7 @@ public class Config {
                     int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
                     int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
                     
-                    // 使用配置的维度条目格式模板
+                    // 使用配置的维度条目格式模板和简化的维度名称
                     String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
                             .replace("{name}", getDimensionDisplayName(dimRes))
                             .replace("{items}", String.valueOf(itemCount))
@@ -877,20 +621,15 @@ public class Config {
         }
         
         // 构建tooltip内容（显示所有非主要维度）
-        boolean hasOtherDimensions = false;
         for (Map.Entry<ResourceLocation, ?> entry : dimensionStats.entrySet()) {
-            if (!isMainDimension(entry.getKey())) {
-                if (!hasOtherDimensions) {
-                    tooltipLines.add(OTHER_DIMENSIONS_TOOLTIP_HEADER.get());
-                    hasOtherDimensions = true;
-                }
-                
+            String dimString = entry.getKey().toString();
+            if (!mainDimensions.contains(dimString)) {
                 Object stats = entry.getValue();
                 try {
                     int itemCount = (int) stats.getClass().getMethod("getItemsCleaned").invoke(stats);
                     int entityCount = (int) stats.getClass().getMethod("getProjectilesCleaned").invoke(stats);
                     
-                    // 同样使用配置的维度条目格式模板
+                    // 同样使用配置的维度条目格式模板和简化的维度名称
                     String dimensionEntry = DIMENSION_ENTRY_FORMAT.get()
                             .replace("{name}", getDimensionDisplayName(entry.getKey()))
                             .replace("{items}", String.valueOf(itemCount))
@@ -952,5 +691,9 @@ public class Config {
         whitelistCache = new HashSet<>(WHITELIST.get());
         blacklistCache = new HashSet<>(BLACKLIST.get());
         projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
+        
+        
+        // 更新允许放入物品的维度缓存
+        allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());
     }
 }

@@ -23,7 +23,7 @@ public class DimensionTrashManager {
      * 获取或创建指定维度的垃圾箱
      */
     public TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        if (!Config.isDimensionSupported(dimensionId.toString()) || !TrashBoxFactory.isValidBoxNumber(boxNumber)) {
+        if (!TrashBoxFactory.isValidBoxNumber(boxNumber)) {
             return null;
         }
         
@@ -69,11 +69,8 @@ public class DimensionTrashManager {
             for (int i = startIndex; i < endIndex; i++) {
                 box.items.set(i - startIndex, items.get(i).copy());
             }
-            
             box.setChanged();
         }
-        
-        return;
     }
     
     /**
@@ -90,7 +87,7 @@ public class DimensionTrashManager {
     public void clearDimension(ResourceLocation dimensionId) {
         List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
         if (boxes != null) {
-            boxes.forEach(TrashBox::clear);
+            boxes.forEach(TrashBox::clearContent);
         }
     }
     

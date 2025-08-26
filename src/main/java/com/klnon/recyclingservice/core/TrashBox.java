@@ -36,8 +36,7 @@ public class TrashBox implements Container {
         // 利用NonNullList的indexOf找空槽位
         int emptySlot = items.indexOf(ItemStack.EMPTY);
         if (emptySlot != -1) {
-            UiUtils.updateTooltip(item);
-            items.set(emptySlot, item.copy());
+            setItem(emptySlot, item);
         }
     }
     
@@ -60,17 +59,22 @@ public class TrashBox implements Container {
         if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
-        
+
         ItemStack stackInSlot = items.get(slot);
         if (stackInSlot.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        
-        ItemStack result = stackInSlot.split(amount);
-        if (stackInSlot.isEmpty()) {
+
+        ItemStack result;
+        if (amount >= stackInSlot.getCount()) {
+            // 移除整个物品堆
+            result = stackInSlot;
             items.set(slot, ItemStack.EMPTY);
+        } else {
+            // 移除部分物品
+            result = stackInSlot.split(amount);
         }
-        
+
         setChanged();
         return result;
     }
@@ -83,10 +87,15 @@ public class TrashBox implements Container {
         if (slot < 0 || slot >= capacity) {
             return ItemStack.EMPTY;
         }
-        
-        ItemStack result = items.get(slot);
+
+        ItemStack stackInSlot = items.get(slot);
+        if (stackInSlot.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        // 移除整个物品堆，不触发变更事件
         items.set(slot, ItemStack.EMPTY);
-        return result;
+        return stackInSlot;
     }
 
     /**
@@ -95,7 +104,13 @@ public class TrashBox implements Container {
     @Override
     public void setItem(int slot,@Nonnull ItemStack stack) {
         if (slot >= 0 && slot < capacity) {
-            items.set(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copy());
+            if (stack.isEmpty()) {
+                items.set(slot, ItemStack.EMPTY);
+            } else {
+                ItemStack itemCopy = stack.copy();
+                UiUtils.updateTooltip(itemCopy);
+                items.set(slot, itemCopy);
+            }
             setChanged();
         }
     }
@@ -155,7 +170,6 @@ public class TrashBox implements Container {
     public boolean isFull() {
         return !items.contains(ItemStack.EMPTY);
     }
-
     
     /**
      * 获取非空物品列表

@@ -17,7 +17,6 @@ import net.minecraft.world.item.Items;
 
 /**
  * UI工具类 - 提供垃圾箱UI访问的便捷方法
- * 
  * 功能：
  * - 简化UI打开流程
  * - 统一错误处理
@@ -54,7 +53,7 @@ public class TrashBoxUI {
                 player.getName().getString(), dimensionId, boxNumber);
 
             return true;
-        });
+        }, false);
     }
     
     /**
@@ -80,58 +79,27 @@ public class TrashBoxUI {
             // 创建测试垃圾箱
             TrashBox testBox = new TrashBox(54, 999);
 
-            // 添加一些测试物品，使用自定义堆叠倍数
-            // 方块类 (Blocks)
-            ItemStack cobblestone = new ItemStack(Items.COBBLESTONE);
-            testBox.addItem(new ItemStack(Items.COBBLESTONE, Config.getItemStackMultiplier(cobblestone)));
-
-            // 原材料类 (Raw Materials)
-            ItemStack coal = new ItemStack(Items.COAL);
-            testBox.addItem(new ItemStack(Items.COAL, Config.getItemStackMultiplier(coal)));
-
-            // 工具类 (Tools)
-            ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
-            testBox.addItem(new ItemStack(Items.DIAMOND_PICKAXE, Config.getItemStackMultiplier(pickaxe)));
-
-            // 武器类 (Weapons)
-            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
-            testBox.addItem(new ItemStack(Items.DIAMOND_SWORD, Config.getItemStackMultiplier(sword)));
-
-            // 防具类 (Armor)
-            ItemStack helmet = new ItemStack(Items.DIAMOND_HELMET);
-            testBox.addItem(new ItemStack(Items.DIAMOND_HELMET, Config.getItemStackMultiplier(helmet)));
-
-            // 食物类 (Food)
-            ItemStack bread = new ItemStack(Items.BREAD);
-            testBox.addItem(new ItemStack(Items.BREAD, Config.getItemStackMultiplier(bread)));
-
-            // 药水类 (Potions)
-            ItemStack potion = new ItemStack(Items.POTION);
-            testBox.addItem(new ItemStack(Items.POTION, Config.getItemStackMultiplier(potion)));
-
-            // 红石类 (Redstone)
-            ItemStack redstone = new ItemStack(Items.REDSTONE);
-            testBox.addItem(new ItemStack(Items.REDSTONE, Config.getItemStackMultiplier(redstone)));
-
-            // 装饰类 (Decorative)
-            ItemStack flowerPot = new ItemStack(Items.FLOWER_POT);
-            testBox.addItem(new ItemStack(Items.FLOWER_POT, Config.getItemStackMultiplier(flowerPot)));
-
-            // 运输类 (Transportation)
-            ItemStack minecart = new ItemStack(Items.MINECART);
-            testBox.addItem(new ItemStack(Items.MINECART, Config.getItemStackMultiplier(minecart)));
-
-            // 音乐类 (Music)
-            ItemStack musicDisc = new ItemStack(Items.MUSIC_DISC_CAT);
-            testBox.addItem(new ItemStack(Items.MUSIC_DISC_CAT, Config.getItemStackMultiplier(musicDisc)));
-
-            // 生物蛋类 (Spawn Eggs)
-            ItemStack spawnEgg = new ItemStack(Items.COW_SPAWN_EGG);
-            testBox.addItem(new ItemStack(Items.COW_SPAWN_EGG, Config.getItemStackMultiplier(spawnEgg)));
-
-            // 杂项类 (Miscellaneous)
-            ItemStack book = new ItemStack(Items.BOOK);
-            testBox.addItem(new ItemStack(Items.BOOK, Config.getItemStackMultiplier(book)));
+            // 添加测试物品 - 简化后的代码
+            net.minecraft.world.item.Item[] testItems = {
+                Items.COBBLESTONE,      // 方块类
+                Items.COAL,            // 原材料类
+                Items.DIAMOND_PICKAXE, // 工具类
+                Items.DIAMOND_SWORD,   // 武器类
+                Items.DIAMOND_HELMET,  // 防具类
+                Items.BREAD,           // 食物类
+                Items.POTION,          // 药水类
+                Items.REDSTONE,        // 红石类
+                Items.FLOWER_POT,      // 装饰类
+                Items.MINECART,        // 运输类
+                Items.MUSIC_DISC_CAT,  // 音乐类
+                Items.COW_SPAWN_EGG,   // 生物蛋类
+                Items.BOOK             // 杂项类
+            };
+            
+            for (net.minecraft.world.item.Item item : testItems) {
+                ItemStack itemStack = new ItemStack(item);
+                testBox.addItem(new ItemStack(item, Config.getItemStackMultiplier(itemStack)));
+            }
 
             // 为垃圾箱起标题
             Component title = Component.literal(Config.getTestBoxTitle(getUIType(player)));
@@ -140,9 +108,9 @@ public class TrashBoxUI {
             player.openMenu(provider);
 
             // 发送测试信息
-            MessageSender.sendColoredMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)), 0);
+            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)), MessageSender.MessageType.DEFAULT);
 
             return true;
-        });
+        }, false);
     }
 }

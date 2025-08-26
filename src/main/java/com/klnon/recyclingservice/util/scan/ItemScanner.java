@@ -26,7 +26,8 @@ public class ItemScanner {
      * @return CompletableFuture包装的扫描结果
      */
     public static CompletableFuture<ScanResult> scanDimensionAsync(ServerLevel level) {
-        return CompletableFuture.supplyAsync(() -> ErrorHandler.handleStaticOperation(
+        return CompletableFuture.supplyAsync(() -> ErrorHandler.handleOperation(
+            null, // 无玩家上下文
             "scanDimension_" + level.dimension().location(),
             () -> {
                 List<ItemEntity> items = new ArrayList<>();
@@ -84,36 +85,15 @@ public class ItemScanner {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
 
-    
-    /**
-     * 扫描结果类 - 包含物品和弹射物
-     */
-    public static class ScanResult {
-        public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
-        private final List<ItemEntity> items;
-        private final List<Entity> projectiles;
-        
-        public ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
-            this.items = items;
-            this.projectiles = projectiles;
-        }
 
-        public List<ItemEntity> getItems() {
-            return items;
-        }
-        
-        public List<Entity> getProjectiles() {
-            return projectiles;
-        }
-        
+    /**
+         * 扫描结果类 - 包含物品和弹射物
+         */
+        public record ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
+            public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
+
         public boolean isEmpty() {
-            return items.isEmpty() && projectiles.isEmpty();
+                return items.isEmpty() && projectiles.isEmpty();
+            }
         }
-        
-        @Override
-        public String toString() {
-            return String.format("ScanResult{items=%d, projectiles=%d}", 
-                               items.size(), projectiles.size());
-        }
-    }
 }

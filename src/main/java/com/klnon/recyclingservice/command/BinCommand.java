@@ -16,19 +16,17 @@ import com.klnon.recyclingservice.Config;
 
 /**
  * 垃圾箱测试命令 - /bin
- * 
  * 用法：
  * /bin test - 打开测试垃圾箱
  * /bin open <dimension> <box_number> - 打开指定维度的垃圾箱
  * /bin current <box_number> - 打开当前维度的垃圾箱
- * 
  * 简化版命令，专注于UI测试
  */
 public class BinCommand {
     
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("bin")
-            .requires(source -> source.isPlayer())
+            .requires(CommandSourceStack::isPlayer)
             .requires(source -> source.hasPermission(2)) // 需要管理员权限
             .then(Commands.literal("test")
                 .executes(BinCommand::openTestTrashBox))
