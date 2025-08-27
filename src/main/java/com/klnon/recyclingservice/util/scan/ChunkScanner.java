@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.other.MessageSender;
+import com.klnon.recyclingservice.util.other.ChunkFreezer;
 import net.minecraft.network.chat.Component;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.server.level.ChunkHolder;
@@ -46,7 +47,9 @@ public class ChunkScanner {
                 (center.z + chunkRadius + 1) * 16
         );
 
-        processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize);
+        // 获取chunkMap用于区块冻结
+        Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap = ChunkFreezer.getChunkHolderMap(level);
+        processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, center, chunkMap);
 
         if (!currentBatch.isEmpty()) {
             processor.accept(currentBatch);
@@ -80,7 +83,7 @@ public class ChunkScanner {
                         pos.getMaxBlockX() + 1, level.getMaxBuildHeight(), pos.getMaxBlockZ() + 1
                     );
                     
-                    processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize);
+                    processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, pos, visibleChunkMap);
                 }
             }
         } catch (Exception e) {
@@ -112,7 +115,8 @@ public class ChunkScanner {
      */
     private static void processEntitiesInBounds(ServerLevel level, AABB bounds,
                                                 Set<EntityType<?>> entityTypes, EntityBatch currentBatch,
-                                                Consumer<EntityBatch> processor, int batchSize) {
+                                                Consumer<EntityBatch> processor, int batchSize, ChunkPos chunkPos,
+                                                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap) {
         int[] itemCount = {0};
         
         level.getEntities((Entity) null, bounds, entity -> {
@@ -132,12 +136,22 @@ public class ChunkScanner {
             return false;
         });
         
-        // 检查并发出警告
-        if (Config.isChunkWarningEnabled() && itemCount[0] >= Config.TOO_MANY_ITEMS_WARNING.get()) {
-            String message = Config.getChunkWarningMessage(itemCount[0], Config.TOO_MANY_ITEMS_WARNING.get());
-            MessageSender.sendChatMessage(level.getServer(), 
-                Component.literal(message).withStyle(style -> 
-                    style.withColor(MessageSender.MessageType.WARNING_NORMAL.getColor())));
+        // 检查并发出警告和冻结区块
+        if (itemCount[0] >= Config.TOO_MANY_ITEMS_WARNING.get()) {
+            // 计算区块中心的世界坐标
+            int worldX = chunkPos.x * 16 + 8;
+            int worldZ = chunkPos.z * 16 + 8;
+            
+            // 冻结连通的强加载区块（如果启用）
+            if (Config.isChunkFreezingEnabled() && chunkMap != null) {
+                ChunkFreezer.freezeConnectedChunks(chunkPos, level, chunkMap);
+            }
+            
+            // 发送警告消息（如果启用）
+            if (Config.isChunkWarningEnabled()) {
+                Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ);
+                MessageSender.sendChatMessage(level.getServer(), warningMessage);
+            }
         }
     }
 

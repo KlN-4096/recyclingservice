@@ -62,6 +62,7 @@ public class Config {
     
     // === 区域管理 ===
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING;
+    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING;
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     
@@ -268,6 +269,14 @@ public class Config {
                 .translation("recycle.config.enable_chunk_item_warning")
                 .define("enable_chunk_item_warning", true);
         
+        ENABLE_CHUNK_FREEZING = BUILDER
+                .comment("Enable automatic chunk freezing when too many items are detected / 启用检测到大量物品时自动冻结区块功能",
+                        "When enabled, chunks with excessive items will be automatically frozen to improve server performance",
+                        "启用后，物品过多的区块将自动冻结以提升服务器性能",
+                        "Default: true")
+                .translation("recycle.config.enable_chunk_freezing")
+                .define("enable_chunk_freezing", true);
+        
         TOO_MANY_ITEMS_WARNING = BUILDER
                 .comment("Warn when a chunk has more than this many items / 当区块中物品超过此数量时发出警告",
                         "Default: 50, Min: 5, Max: 10000")
@@ -275,10 +284,10 @@ public class Config {
                 .defineInRange("too_many_items_warning_limit", 50, 5, 10000);
         
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
-                .comment("Warning message for too many items (use {count} for item count, {threshold} for threshold) / 物品过多警告消息（使用{count}显示物品数量，{threshold}显示阈值）",
-                        "Default: §e[Chunk Warning] Found {count} items in a chunk (threshold: {threshold})")
+                .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标）",
+                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}), now frozen - teleport")
                 .translation("recycle.config.too_many_items_warning_message")
-                .define("too_many_items_warning_message", "§e[Chunk Warning] Found {count} items in a chunk (threshold: {threshold})");
+                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}), now frozen - teleport");
         
         BUILDER.pop();
         
@@ -535,12 +544,31 @@ public class Config {
     }
     
     /**
-     * 获取格式化的区块物品过多警告消息
+     * 检查是否启用区块冻结功能
      */
-    public static String getChunkWarningMessage(int itemCount, int threshold) {
-        return TOO_MANY_ITEMS_WARNING_MESSAGE.get()
+    public static boolean isChunkFreezingEnabled() {
+        return ENABLE_CHUNK_FREEZING.get();
+    }
+    
+    /**
+     * 获取格式化的物品过多警告消息（支持点击传送）
+     */
+    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ) {
+        String message = TOO_MANY_ITEMS_WARNING_MESSAGE.get()
                 .replace("{count}", String.valueOf(itemCount))
-                .replace("{threshold}", String.valueOf(threshold));
+                .replace("{x}", String.valueOf(worldX))
+                .replace("{z}", String.valueOf(worldZ));
+        
+        return Component.literal(message)
+                .withStyle(style -> style
+                    .withColor(net.minecraft.ChatFormatting.YELLOW)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                        net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND,
+                        "/tp @s " + worldX + " ~ " + worldZ))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                        Component.literal("§7Click to teleport (OP required)\n§7Coordinate: " + worldX + ", " + worldZ)))
+                );
     }
     
     // === UI和颜色相关便捷方法 ===
