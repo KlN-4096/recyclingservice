@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
+
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.other.MessageSender;
@@ -119,7 +122,8 @@ public class ChunkScanner {
                                                 Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap) {
         int[] itemCount = {0};
         
-        level.getEntities((Entity) null, bounds, entity -> {
+        // 重试机制处理并发修改异常
+        scanEntitiesWithRetry(level, bounds, entity -> {
             // 统计物品数量用于警告
             if (entity.getType() == EntityType.ITEM) {
                 itemCount[0]++;
@@ -134,7 +138,7 @@ public class ChunkScanner {
                 }
             }
             return false;
-        });
+        }, chunkPos);
         
         // 检查并发出警告和冻结区块
         if (itemCount[0] >= Config.TOO_MANY_ITEMS_WARNING.get()) {
@@ -151,6 +155,60 @@ public class ChunkScanner {
             if (Config.isChunkWarningEnabled()) {
                 Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ);
                 MessageSender.sendChatMessage(level.getServer(), warningMessage);
+            }
+        }
+    }
+    
+    /**
+     * 带重试机制的实体扫描方法
+     * 处理并发修改异常，使用递增等待时间和随机化避免冲突
+     * 
+     * @param level 服务器维度
+     * @param bounds 扫描边界
+     * @param entityProcessor 实体处理器
+     * @param chunkPos 区块位置（用于日志）
+     */
+    private static void scanEntitiesWithRetry(ServerLevel level, AABB bounds, 
+                                             Predicate<Entity> entityProcessor, ChunkPos chunkPos) {
+        final int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount <= maxRetries) {
+            try {
+                level.getEntities((Entity) null, bounds, entityProcessor);
+                return; // 成功执行，退出重试循环
+                
+            } catch (java.util.ConcurrentModificationException e) {
+                retryCount++;
+                
+                if (retryCount > maxRetries) {
+                    // 超过最大重试次数，记录警告并退出
+                    Recyclingservice.LOGGER.warn("Failed to scan chunk ({}, {}) after {} retries due to concurrent modification. Skipping this chunk.", 
+                        chunkPos.x, chunkPos.z, maxRetries);
+                    return;
+                }
+                
+                try {
+                    // 递增等待时间：5-10ms, 20-50ms, 100-200ms
+                    int baseDelay = retryCount == 1 ? 5 : (retryCount == 2 ? 20 : 100);
+                    int maxDelay = retryCount == 1 ? 10 : (retryCount == 2 ? 50 : 200);
+                    int randomDelay = baseDelay + ThreadLocalRandom.current().nextInt(maxDelay - baseDelay + 1);
+                    
+                    Thread.sleep(randomDelay);
+                    
+                    Recyclingservice.LOGGER.debug("Retrying chunk scan ({}, {}) - attempt {} after {}ms delay", 
+                        chunkPos.x, chunkPos.z, retryCount, randomDelay);
+                        
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // 恢复中断状态
+                    Recyclingservice.LOGGER.warn("Chunk scan retry interrupted for ({}, {})", chunkPos.x, chunkPos.z);
+                    return;
+                }
+            } catch (Exception e) {
+                // 其他异常直接抛出，不重试
+                Recyclingservice.LOGGER.error("Unexpected error during chunk scan ({}, {}): {}", 
+                    chunkPos.x, chunkPos.z, e.getMessage());
+                return;
             }
         }
     }
