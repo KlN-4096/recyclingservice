@@ -284,10 +284,10 @@ public class Config {
                 .defineInRange("too_many_items_warning_limit", 50, 5, 10000);
         
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
-                .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标）",
-                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}), now frozen - teleport")
+                .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates, {ticket} for ticket level) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标，{ticket}显示票据级别）",
+                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticket:{ticket}, now frozen - teleport")
                 .translation("recycle.config.too_many_items_warning_message")
-                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}), now frozen - teleport");
+                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticket:{ticket}, now frozen - teleport");
         
         BUILDER.pop();
         
@@ -369,6 +369,7 @@ public class Config {
                         "§e/bin test §7- Open test trash box",
                         "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
                         "§e/bin current <box> §7- Open current dimension trash box",
+                        "§e/bin cleanup §7- Manually trigger cleanup",
                         "§7Example: §f/bin open minecraft:overworld 1"
                     ),
                     () -> "",
@@ -553,11 +554,12 @@ public class Config {
     /**
      * 获取格式化的物品过多警告消息（支持点击传送）
      */
-    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ) {
+    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ, int ticketLevel) {
         String message = TOO_MANY_ITEMS_WARNING_MESSAGE.get()
                 .replace("{count}", String.valueOf(itemCount))
                 .replace("{x}", String.valueOf(worldX))
-                .replace("{z}", String.valueOf(worldZ));
+                .replace("{z}", String.valueOf(worldZ))
+                .replace("{ticket}", String.valueOf(ticketLevel));
         
         return Component.literal(message)
                 .withStyle(style -> style
@@ -567,7 +569,7 @@ public class Config {
                         "/tp @s " + worldX + " ~ " + worldZ))
                     .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
                         net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7Click to teleport (OP required)\n§7Coordinate: " + worldX + ", " + worldZ)))
+                        Component.literal("§7Click to teleport (OP required)\n§7Coordinate: " + worldX + ", " + worldZ + "\n§7Ticket Level: " + ticketLevel)))
                 );
     }
     

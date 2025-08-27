@@ -121,6 +121,18 @@ public class ChunkScanner {
                                                 Consumer<EntityBatch> processor, int batchSize, ChunkPos chunkPos,
                                                 Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap) {
         int[] itemCount = {0};
+        int ticketLevel = -1;
+        
+        // 获取区块的ticket level
+        if (chunkMap != null) {
+            long posKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
+            ChunkHolder holder = chunkMap.get(posKey);
+            if (holder != null) {
+                ticketLevel = holder.getTicketLevel();
+            }
+        }
+        
+        final int finalTicketLevel = ticketLevel;
         
         // 重试机制处理并发修改异常
         scanEntitiesWithRetry(level, bounds, entity -> {
@@ -146,14 +158,14 @@ public class ChunkScanner {
             int worldX = chunkPos.x * 16 + 8;
             int worldZ = chunkPos.z * 16 + 8;
             
-            // 冻结连通的强加载区块（如果启用）
-            if (Config.isChunkFreezingEnabled() && chunkMap != null) {
-                ChunkFreezer.freezeConnectedChunks(chunkPos, level, chunkMap);
+            // 冻结单个区块（如果启用）
+            if (Config.isChunkFreezingEnabled()) {
+                ChunkFreezer.freezeChunk(chunkPos, level);
             }
             
             // 发送警告消息（如果启用）
             if (Config.isChunkWarningEnabled()) {
-                Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ);
+                Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ, finalTicketLevel);
                 MessageSender.sendChatMessage(level.getServer(), warningMessage);
             }
         }

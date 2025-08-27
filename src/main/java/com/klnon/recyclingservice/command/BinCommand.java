@@ -12,15 +12,16 @@ import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
 import com.klnon.recyclingservice.util.other.ErrorHandler;
+import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.Config;
 
 /**
- * 垃圾箱测试命令 - /bin
+ * 垃圾箱和清理命令 - /bin
  * 用法：
  * /bin test - 打开测试垃圾箱
  * /bin open <dimension> <box_number> - 打开指定维度的垃圾箱
  * /bin current <box_number> - 打开当前维度的垃圾箱
- * 简化版命令，专注于UI测试
+ * /bin cleanup - 手动触发清理
  */
 public class BinCommand {
     
@@ -37,6 +38,8 @@ public class BinCommand {
             .then(Commands.literal("current")
                 .then(Commands.argument("box_number", IntegerArgumentType.integer(1, 5))
                     .executes(BinCommand::openCurrentDimensionTrashBox)))
+            .then(Commands.literal("cleanup")
+                .executes(BinCommand::manualCleanup))
             .executes(BinCommand::showHelp));
     }
     
@@ -101,6 +104,24 @@ public class BinCommand {
                 // 打开当前维度的垃圾箱
                 ResourceLocation dimensionId = player.level().dimension().location();
                 return TrashBoxUI.openTrashBox(player, dimensionId, boxNumber, trashManager);
+            });
+    }
+    
+    /**
+     * 手动触发清理命令
+     */
+    private static int manualCleanup(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        
+        return ErrorHandler.handleCommandOperation(source, player, "手动清理",
+            () -> {
+                source.sendSuccess(() -> Component.literal("§6[Manual Cleanup] Starting cleanup..."), true);
+                
+                // 触发手动清理
+                AutoCleanupEvent.manualClean(player.getServer());
+                
+                return true;
             });
     }
 }
