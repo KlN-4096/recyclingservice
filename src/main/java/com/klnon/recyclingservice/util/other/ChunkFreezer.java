@@ -36,7 +36,7 @@ public class ChunkFreezer {
      */
     public static int freezeChunk(ChunkPos chunkPos, ServerLevel level) {
         return ErrorHandler.handleOperation(null, "freezeChunk", () -> {
-            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            DistanceManager distanceManager = level.getChunkSource().chunkMap.getDistanceManager();
             int removedCount = 0;
             
             try {
