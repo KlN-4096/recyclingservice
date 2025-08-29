@@ -121,18 +121,6 @@ public class ChunkScanner {
                                                 Consumer<EntityBatch> processor, int batchSize, ChunkPos chunkPos,
                                                 Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap) {
         int[] itemCount = {0};
-        int ticketLevel = -1;
-        
-        // 获取区块的ticket level
-        if (chunkMap != null) {
-            long posKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
-            ChunkHolder holder = chunkMap.get(posKey);
-            if (holder != null) {
-                ticketLevel = holder.getTicketLevel();
-            }
-        }
-        
-        final int finalTicketLevel = ticketLevel;
         
         // 重试机制处理并发修改异常
         scanEntitiesWithRetry(level, bounds, entity -> {
@@ -158,14 +146,44 @@ public class ChunkScanner {
             int worldX = chunkPos.x * 16 + 8;
             int worldZ = chunkPos.z * 16 + 8;
             
-            // 冻结单个区块（如果启用）
+            // 批量冻结所有影响区块的加载器（如果启用）
             if (Config.isChunkFreezingEnabled()) {
-                ChunkFreezer.freezeChunk(chunkPos, level);
+                // 批量冻结所有影响目标区块的加载器
+                ChunkFreezer.FreezeResult freezeResult = ChunkFreezer.freezeAllAffectingChunkLoaders(chunkPos, level);
+                
+                if (!freezeResult.isEmpty()) {
+                    Recyclingservice.LOGGER.info("Batch frozen {} chunk loaders affecting chunk ({}, {}): {} tickets removed", 
+                        freezeResult.getFrozenChunkCount(), chunkPos.x, chunkPos.z, freezeResult.totalFrozenTickets());
+                    
+                    // 详细记录每个被冻结的区块
+                    for (ChunkPos frozenChunk : freezeResult.frozenChunks()) {
+                        Recyclingservice.LOGGER.debug("  → Frozen chunk loader at ({}, {})", 
+                            frozenChunk.x, frozenChunk.z);
+                    }
+                } else {
+                    // 如果找不到任何加载器，冻结当前区块（回退逻辑）
+                    int frozenTickets = ChunkFreezer.freezeChunk(chunkPos, level);
+                    if (frozenTickets > 0) {
+                        Recyclingservice.LOGGER.info("No affecting chunk loaders found, frozen current chunk ({}, {}) with {} tickets", 
+                            chunkPos.x, chunkPos.z, frozenTickets);
+                    }
+                }
             }
             
             // 发送警告消息（如果启用）
             if (Config.isChunkWarningEnabled()) {
-                Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ, finalTicketLevel);
+                // 获取区块的ticketLevel用于显示
+                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkHolderMap = ChunkFreezer.getChunkHolderMap(level);
+                int ticketLevel = 33; // 默认值：未加载
+                if (chunkHolderMap != null) {
+                    long chunkKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
+                    ChunkHolder holder = chunkHolderMap.get(chunkKey);
+                    if (holder != null) {
+                        ticketLevel = holder.getTicketLevel();
+                    }
+                }
+                
+                Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ, ticketLevel);
                 MessageSender.sendChatMessage(level.getServer(), warningMessage);
             }
         }

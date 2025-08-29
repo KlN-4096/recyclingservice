@@ -53,6 +53,7 @@ public class TrashBoxMenu extends ChestMenu {
                 super.clicked(slotId, button, clickType, player);
             }
             // 统一更新受影响的物品
+            UiUtils.updateTooltip(slotItem);
             UiUtils.updateTooltip(result);
             return;
         }

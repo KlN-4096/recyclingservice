@@ -65,6 +65,7 @@ public class Config {
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING;
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
+    public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS;
     
     // === 扫描优化设置 ===
     public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
@@ -123,9 +124,9 @@ public class Config {
         // 详细清理消息模板配置
         CLEANUP_RESULT_HEADER = BUILDER
                 .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
-                        "Default: §a§lCleanup Results:")
+                        "Default: > §a§lCleanup results:")
                 .translation("recycle.config.cleanup_result_header")
-                .define("cleanup_result_header", "§a§lCleanup Results:");
+                .define("cleanup_result_header", "> §a§lCleanup results:");
         
         DIMENSION_ENTRY_FORMAT = BUILDER
                 .comment("Format for each dimension entry in cleanup message / 清理消息中每个维度条目的格式",
@@ -285,9 +286,17 @@ public class Config {
         
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
                 .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates, {ticket} for ticket level) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标，{ticket}显示票据级别）",
-                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticket:{ticket}, now frozen - teleport")
+                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}")
                 .translation("recycle.config.too_many_items_warning_message")
-                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticket:{ticket}, now frozen - teleport");
+                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}");
+        
+        CHUNK_FREEZING_SEARCH_RADIUS = BUILDER
+                .comment("Search radius for chunk loader freezing / 区块加载器冻结搜索半径",
+                        "Determines the search area when looking for chunk loaders that affect chunks with excessive items",
+                        "决定寻找影响物品过多区块的区块加载器的搜索范围",
+                        "Default: 8, Min: 2, Max: 16")
+                .translation("recycle.config.chunk_freezing_search_radius")
+                .defineInRange("chunk_freezing_search_radius", 8, 2, 16);
         
         BUILDER.pop();
         
@@ -550,6 +559,13 @@ public class Config {
      */
     public static boolean isChunkFreezingEnabled() {
         return ENABLE_CHUNK_FREEZING.get();
+    }
+    
+    /**
+     * 获取区块冻结搜索半径
+     */
+    public static int getChunkFreezingSearchRadius() {
+        return CHUNK_FREEZING_SEARCH_RADIUS.get();
     }
     
     /**

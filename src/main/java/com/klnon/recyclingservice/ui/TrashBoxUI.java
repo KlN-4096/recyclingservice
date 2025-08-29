@@ -77,7 +77,7 @@ public class TrashBoxUI {
     public static boolean openTestTrashBox(ServerPlayer player) {
         return ErrorHandler.handleOperation(player, "openTestTrashBox", () -> {
             // 创建测试垃圾箱 - 使用测试维度ID
-            TrashBox testBox = new TrashBox(54, 999, ResourceLocation.parse("recyclingservice:test"));
+            TrashBox testBox = new TrashBox(54, 999, ResourceLocation.parse("minecraft:overworld"));
 
             // 添加测试物品 - 简化后的代码
             net.minecraft.world.item.Item[] testItems = {
