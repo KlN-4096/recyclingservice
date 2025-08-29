@@ -370,6 +370,7 @@ public class Config {
                         "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
                         "§e/bin current <box> §7- Open current dimension trash box",
                         "§e/bin cleanup §7- Manually trigger cleanup",
+                        "§e/bin tickets <x> <z> §7- Show chunk tickets info",
                         "§7Example: §f/bin open minecraft:overworld 1"
                     ),
                     () -> "",

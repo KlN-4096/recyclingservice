@@ -9,11 +9,18 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.Ticket;
+
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
 import com.klnon.recyclingservice.util.other.ErrorHandler;
 import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.Config;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.DistanceManager;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.util.SortedArraySet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 /**
  * 垃圾箱和清理命令 - /bin
@@ -22,6 +29,7 @@ import com.klnon.recyclingservice.Config;
  * /bin open <dimension> <box_number> - 打开指定维度的垃圾箱
  * /bin current <box_number> - 打开当前维度的垃圾箱
  * /bin cleanup - 手动触发清理
+ * /bin tickets <x> <z> - 查看指定区块坐标的所有tickets
  */
 public class BinCommand {
     
@@ -40,6 +48,10 @@ public class BinCommand {
                     .executes(BinCommand::openCurrentDimensionTrashBox)))
             .then(Commands.literal("cleanup")
                 .executes(BinCommand::manualCleanup))
+            .then(Commands.literal("tickets")
+                .then(Commands.argument("x", IntegerArgumentType.integer())
+                    .then(Commands.argument("z", IntegerArgumentType.integer())
+                        .executes(BinCommand::showChunkTickets))))
             .executes(BinCommand::showHelp));
     }
     
@@ -123,5 +135,42 @@ public class BinCommand {
                 
                 return true;
             });
+    }
+    
+    /**
+     * 显示区块tickets信息 - 硬编码实现
+     */
+    private static int showChunkTickets(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        
+        int x = IntegerArgumentType.getInteger(context, "x")/16;
+        int z = IntegerArgumentType.getInteger(context, "z")/16;
+        
+        ServerLevel level = player.serverLevel();
+        
+        // 直接访问distanceManager
+        DistanceManager distanceManager = level.getChunkSource().distanceManager;
+        Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
+        long chunkKey = ChunkPos.asLong(x, z);
+        
+        source.sendSuccess(() -> Component.literal("§6=== Chunk (" + x + ", " + z + ") Tickets ==="), false);
+        
+        SortedArraySet<Ticket<?>> chunkTickets = tickets.get(chunkKey);
+        if (chunkTickets == null || chunkTickets.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("§7No tickets found for this chunk"), false);
+            return 1;
+        }
+        
+        source.sendSuccess(() -> Component.literal("§aTotal tickets: " + chunkTickets.size()), false);
+        
+        int index = 1;
+        for (Ticket<?> ticket : chunkTickets) {
+            String ticketInfo = String.format("§e[%d] §f%s §7(Level: %d)", 
+                index++, ticket.getType().toString(), ticket.getTicketLevel());
+            source.sendSuccess(() -> Component.literal(ticketInfo), false);
+        }
+        
+        return 1;
     }
 }
