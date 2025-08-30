@@ -128,43 +128,17 @@ public class Config {
                         "Default: true")
                 .translation("recycle.config.show_cleanup_warnings")
                 .define("show_cleanup_warnings", true);
-        
-        BUILDER.pop();
-        
-        // 警告消息设置
-        BUILDER.comment("Warning message settings / 警告消息设置").push("warning_messages");
-        
-        WARNING_MESSAGE = BUILDER
-                .comment("Warning message template (use {time} for remaining seconds) / 警告消息模板（使用{time}显示剩余秒数）",
-                        "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
-                .translation("recycle.config.warning_message")
-                .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
 
+        
         WARNING_COUNTDOWN_START = BUILDER
                 .comment("Start countdown warnings when remaining time reaches this many seconds / 剩余时间达到多少秒时开始倒计时警告",
                         "Set to 0 to completely disable countdown warnings / 设为0完全禁用倒计时警告",
-                        "Default: 30, Min: 0, Max: 300")
+                        "Default: 15, Min: 0, Max: 300")
                 .translation("recycle.config.warning_countdown_start")
-                .defineInRange("warning_countdown_start", 30, 0, 300);
-
-        // 详细清理消息模板配置
-        CLEANUP_RESULT_HEADER = BUILDER
-                .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
-                        "Default: > §a§lCleanup results:")
-                .translation("recycle.config.cleanup_result_header")
-                .define("cleanup_result_header", "> §a§lCleanup results:");
-        
-        DIMENSION_ENTRY_FORMAT = BUILDER
-                .comment("Format for each dimension entry in cleanup message / 清理消息中每个维度条目的格式",
-                        "Available placeholders: {name} {items} {entities}",
-                        "可用占位符: {name} {items} {entities}",
-                        "Note: A clickable button '[打开垃圾箱]' will be automatically added after each entry",
-                        "注意：每个条目后会自动添加可点击的'[打开垃圾箱]'按钮",
-                        "Default: §f{name}: §b{items} §fitems, §d{entities} §fentities")
-                .translation("recycle.config.dimension_entry_format")
-                .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
+                .defineInRange("warning_countdown_start", 15, 0, 300);
         
         BUILDER.pop();
+    
         
         // 垃圾箱设置
         BUILDER.comment("Trash box settings / 垃圾箱系统设置").push("trash_box");
@@ -174,6 +148,12 @@ public class Config {
                         "Default: 6, Min: 1, Max: 6")
                 .translation("recycle.config.trash_box_rows")
                 .defineInRange("trash_box_rows", 6, 1, 6);
+
+        ITEM_STACK_MULTIPLIER = BUILDER
+                .comment("Stack size multiplier for items / 物品堆叠倍数",
+                        "Default: 100 (means 64*100=6400), Min: 1, Max: 1000")
+                .translation("recycle.config.item_stack_multiplier")
+                .defineInRange("item_stack_multiplier", 100, 1, 1000);
         
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
                 .comment("Dimensions that allow players to put items into trash boxes / 允许玩家主动将物品放入垃圾箱的维度",
@@ -183,20 +163,14 @@ public class Config {
                     List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
                     () -> "",
                     Config::validateResourceLocation);
-
-        //是否允许玩家访问所处维度垃圾箱
+        
         DIMENSION_TRASH_CROSS_ACCESS = BUILDER
                 .comment("Allow players to access trash boxes from other dimensions / 允许玩家跨维度访问垃圾箱",
                         "When false, players can only access trash boxes in their current dimension, ignoring DIMENSION_TRASH_ALLOW_PUT_IN / 为false时，玩家只能访问当前维度的垃圾箱，忽略DIMENSION_TRASH_ALLOW_PUT_IN配置",
                         "Default: true / 默认：true")
                 .translation("recycle.config.dimension_trash_cross_access")
                 .define("dimension_trash_cross_access", true);
-        
-        BUILDER.pop();
-        
-        // 维度管理设置
-        BUILDER.comment("Dimension management settings / 维度管理设置").push("dimension_management");
-        
+
         MAX_BOXES_PER_DIMENSION = BUILDER
                 .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
                         "Default: 3, Min: 1, Max: 5")
@@ -209,18 +183,6 @@ public class Config {
         // 邮费系统
         BUILDER.comment("Payment system for cross-dimension access / 跨维度访问邮费系统").push("payment");
         
-        PAYMENT_ITEM_TYPE = BUILDER
-                .comment("What item to use as payment (example: minecraft:emerald) / 用作邮费的物品类型（例如：minecraft:emerald）",
-                        "Default: minecraft:emerald")
-                .translation("recycle.config.payment_item_type")
-                .define("payment_item_type", "minecraft:emerald");
-        
-        CROSS_DIMENSION_ACCESS_COST = BUILDER
-                .comment("Payment required to access other dimension trash boxes / 访问其他维度垃圾箱需要的邮费数量",
-                        "Default: 1, Min: 1, Max: 64")
-                .translation("recycle.config.cross_dimension_access_cost")
-                .defineInRange("cross_dimension_access_cost", 1, 1, 64);
-        
         PAYMENT_MODE = BUILDER
                 .comment("When to charge payment / 何时收取邮费:",
                         "  - 'enabled': Pay when putting items into trash box / 放入垃圾箱时付费",
@@ -228,6 +190,18 @@ public class Config {
                         "Default: enabled")
                 .translation("recycle.config.payment_mode")
                 .defineInList("payment_mode", "enabled", Arrays.asList("enabled", "none"));
+
+        PAYMENT_ITEM_TYPE = BUILDER
+                .comment("What item to use as payment (example: minecraft:emerald) / 用作邮费的物品类型（例如：minecraft:emerald）",
+                        "Default: minecraft:emerald")
+                .translation("recycle.config.payment_item_type")
+                .define("payment_item_type", "minecraft:emerald");
+        
+        CROSS_DIMENSION_ACCESS_COST = BUILDER
+                .comment("Payment required to access the dimension trash boxes / 访问维度垃圾箱需要的邮费数量",
+                        "Default: 1, Min: 1, Max: 64")
+                .translation("recycle.config.cross_dimension_access_cost")
+                .defineInRange("cross_dimension_access_cost", 1, 1, 64);
         
         SAME_DIMENSION_PAYMENT_ENABLED = BUILDER
                 .comment("Whether same dimension access requires payment / 是否同维度访问需要邮费",
@@ -235,9 +209,9 @@ public class Config {
                         "false: Same dimension access is free / false: 同维度访问免费",
                         "Default: true")
                 .translation("recycle.config.same_dimension_payment_enabled")
-                .define("same_dimension_payment_enabled", true);
+                .define("same_dimension_payment_enabled", false);
         
-DIMENSION_MULTIPLIERS = BUILDER
+        DIMENSION_MULTIPLIERS = BUILDER
                 .comment("Cost multipliers for each dimension / 各维度邮费倍数",
                         "Format: \"dimension_id:multiplier\" / 格式：\"维度ID:倍数\"",
                         "Example: minecraft:overworld:1.0,minecraft:the_nether:1.5,minecraft:the_end:2.0",
@@ -248,21 +222,6 @@ DIMENSION_MULTIPLIERS = BUILDER
                         List.of("minecraft:overworld:1.5", "minecraft:the_nether:1.5", "minecraft:the_end:2.0"), 
                         () -> "minecraft:overworld:1.5",
                         obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+(\\.[0-9]+)?$"));
-        
-        // 邮费消息模板
-        PAYMENT_ERROR_MESSAGE = BUILDER
-                .comment("Message shown when player doesn't have enough payment items / 玩家邮费物品不足时显示的消息",
-                        "Placeholders: {cost} = required amount, {item} = item name / 占位符：{cost} = 需要数量，{item} = 物品名称",
-                        "Default: §cNeed {cost} {item} as postage!")
-                .translation("recycle.config.payment_error_message")
-                .define("payment_error_message", "§cNeed {cost} {item} as postage!");
-        
-        PAYMENT_SUCCESS_MESSAGE = BUILDER
-                .comment("Message shown when payment is successfully deducted / 成功扣除邮费时显示的消息",
-                        "Placeholders: {cost} = deducted amount, {item} = item name / 占位符：{cost} = 扣除数量，{item} = 物品名称",
-                        "Default: §aDeducted {cost} {item} as postage")
-                .translation("recycle.config.payment_success_message")
-                .define("payment_success_message", "§aDeducted {cost} {item} as postage");
         
         BUILDER.pop();
         
@@ -279,10 +238,10 @@ DIMENSION_MULTIPLIERS = BUILDER
         
         WHITELIST = BUILDER
                 .comment("Items that will be kept (protected from cleaning) / 白名单：永远保留的物品",
-                        "Default: [minecraft:diamond, minecraft:netherite_ingot, minecraft:elytra]")
+                        "Default: [minecraft:netherite_ingot, minecraft:elytra]")
                 .translation("recycle.config.whitelist")
                 .defineListAllowEmpty("whitelist",
-                    List.of("minecraft:diamond", "minecraft:netherite_ingot", "minecraft:elytra"),
+                    List.of("minecraft:netherite_ingot", "minecraft:elytra"),
                     () -> "",
                     Config::validateResourceLocation);
         
@@ -368,12 +327,6 @@ DIMENSION_MULTIPLIERS = BUILDER
                 .translation("recycle.config.too_many_items_warning")
                 .defineInRange("too_many_items_warning_limit", 50, 5, 10000);
         
-        TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
-                .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates, {ticket} for ticket level) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标，{ticket}显示票据级别）",
-                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}")
-                .translation("recycle.config.too_many_items_warning_message")
-                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}");
-        
         CHUNK_FREEZING_SEARCH_RADIUS = BUILDER
                 .comment("Search radius for chunk loader freezing / 区块加载器冻结搜索半径",
                         "Determines the search area when looking for chunk loaders that affect chunks with excessive items",
@@ -430,32 +383,50 @@ DIMENSION_MULTIPLIERS = BUILDER
         
         BUILDER.pop();
         
-        // UI界面设置
-        BUILDER.comment("UI interface settings / UI界面设置").push("ui_settings");
-
-        ITEM_STACK_MULTIPLIER = BUILDER
-                .comment("Stack size multiplier for items / 物品堆叠倍数",
-                        "Default: 100 (means 64*100=6400), Min: 1, Max: 1000")
-                .translation("recycle.config.item_stack_multiplier")
-                .defineInRange("item_stack_multiplier", 100, 1, 1000);
-        
-        BUILDER.pop();
-        
-        // 调试设置
-        BUILDER.comment("Debug settings / 调试设置").push("debug");
-        
-        ENABLE_DEBUG_LOGS = BUILDER
-                .comment("Enable debug logging for ErrorHandler operations / 启用ErrorHandler操作的调试日志",
-                        "When disabled, reduces log spam from routine operations / 禁用时减少常规操作的日志输出",
-                        "Default: false")
-                .translation("recycle.config.enable_debug_logs")
-                .define("enable_debug_logs", false);
-        
-        BUILDER.pop();
-        
-        
         // 消息模板
         BUILDER.comment("Message templates for UI text / UI文本消息模板").push("messages");
+        
+        WARNING_MESSAGE = BUILDER
+                .comment("Warning message template (use {time} for remaining seconds) / 警告消息模板（使用{time}显示剩余秒数）",
+                        "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
+                .translation("recycle.config.warning_message")
+                .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
+
+        CLEANUP_RESULT_HEADER = BUILDER
+                .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
+                        "Default: > §a§lCleanup results:")
+                .translation("recycle.config.cleanup_result_header")
+                .define("cleanup_result_header", "> §a§lCleanup results:");
+        
+        DIMENSION_ENTRY_FORMAT = BUILDER
+                .comment("Format for each dimension entry in cleanup message / 清理消息中每个维度条目的格式",
+                        "Available placeholders: {name} {items} {entities}",
+                        "可用占位符: {name} {items} {entities}",
+                        "Note: A clickable button '[打开垃圾箱]' will be automatically added after each entry",
+                        "注意：每个条目后会自动添加可点击的'[打开垃圾箱]'按钮",
+                        "Default: §f{name}: §b{items} §fitems, §d{entities} §fentities")
+                .translation("recycle.config.dimension_entry_format")
+                .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
+        
+        PAYMENT_ERROR_MESSAGE = BUILDER
+                .comment("Message shown when player doesn't have enough payment items / 玩家邮费物品不足时显示的消息",
+                        "Placeholders: {cost} = required amount, {item} = item name / 占位符：{cost} = 需要数量，{item} = 物品名称",
+                        "Default: §cNeed {cost} {item} as postage!")
+                .translation("recycle.config.payment_error_message")
+                .define("payment_error_message", "§cNeed {cost} {item} as postage!");
+        
+        PAYMENT_SUCCESS_MESSAGE = BUILDER
+                .comment("Message shown when payment is successfully deducted / 成功扣除邮费时显示的消息",
+                        "Placeholders: {cost} = deducted amount, {item} = item name / 占位符：{cost} = 扣除数量，{item} = 物品名称",
+                        "Default: §aDeducted {cost} {item} as postage")
+                .translation("recycle.config.payment_success_message")
+                .define("payment_success_message", "§aDeducted {cost} {item} as postage");
+
+        TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
+                .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates, {ticket} for ticket level) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标，{ticket}显示票据级别）",
+                        "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}")
+                .translation("recycle.config.too_many_items_warning_message")
+                .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}");
         
         ERROR_CLEANUP_FAILED = BUILDER
                 .comment("Message shown when cleanup fails / 清理失败时显示的消息",
@@ -489,6 +460,20 @@ DIMENSION_MULTIPLIERS = BUILDER
         
         
         BUILDER.pop();
+
+        
+        // 调试设置
+        BUILDER.comment("Debug settings / 调试设置").push("debug");
+        
+        ENABLE_DEBUG_LOGS = BUILDER
+                .comment("Enable debug logging for ErrorHandler operations / 启用ErrorHandler操作的调试日志",
+                        "When disabled, reduces log spam from routine operations / 禁用时减少常规操作的日志输出",
+                        "Default: false")
+                .translation("recycle.config.enable_debug_logs")
+                .define("enable_debug_logs", false);
+        
+        BUILDER.pop();
+        
         
         // 构建配置规范
         SPEC = BUILDER.build();
