@@ -1,14 +1,14 @@
-package com.klnon.recyclingservice.util.scan;
+package com.klnon.recyclingservice.util.cleanup;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.klnon.recyclingservice.util.other.UiUtils;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.ui.UiUtils;
 
 public class ItemMerge {
     /**

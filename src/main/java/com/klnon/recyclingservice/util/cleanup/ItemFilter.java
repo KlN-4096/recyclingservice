@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util.scan;
+package com.klnon.recyclingservice.util.cleanup;
 
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;

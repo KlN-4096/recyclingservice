@@ -1,10 +1,11 @@
-package com.klnon.recyclingservice.util.other;
+package com.klnon.recyclingservice.util.ui;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
+import com.klnon.recyclingservice.util.core.ErrorHandler;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;

@@ -15,10 +15,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
+import com.klnon.recyclingservice.util.core.ErrorHandler;
+
 import java.util.Map;
-
-import com.klnon.recyclingservice.util.other.ErrorHandler;
-
 import java.util.HashSet;
 
 public class Config {
@@ -53,6 +53,8 @@ public class Config {
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST;
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_MODE;
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_MULTIPLIER;
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ERROR_MESSAGE;
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_SUCCESS_MESSAGE;
     
     // === 物品过滤 ===
     public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE;
@@ -208,12 +210,11 @@ public class Config {
         
         PAYMENT_MODE = BUILDER
                 .comment("When to charge payment / 何时收取邮费:",
-                        "  - 'insert': Pay when putting items into trash box / 放入垃圾箱时付费",
-                        "  - 'withdraw': Pay when taking items from trash box / 从垃圾箱取出时付费",
-                        "  - 'both': Pay for both operations / 放入和取出都付费",
-                        "Default: withdraw")
+                        "  - 'enabled': Pay when putting items into trash box / 放入垃圾箱时付费",
+                        "  - 'none': Disable this function / 禁用邮费系统",
+                        "Default: enabled")
                 .translation("recycle.config.payment_mode")
-                .defineInList("payment_mode", "withdraw", Arrays.asList("insert", "withdraw", "both"));
+                .defineInList("payment_mode", "enabled", Arrays.asList("enabled", "none"));
         
         CROSS_DIMENSION_MULTIPLIER = BUILDER
                 .comment("Cost multiplier for cross-dimension access / 跨维度访问邮费倍数",
@@ -221,6 +222,21 @@ public class Config {
                         "Default: 2, Min: 1, Max: 10")
                 .translation("recycle.config.cross_dimension_multiplier")
                 .defineInRange("cross_dimension_multiplier", 2, 1, 10);
+        
+        // 邮费消息模板
+        PAYMENT_ERROR_MESSAGE = BUILDER
+                .comment("Message shown when player doesn't have enough payment items / 玩家邮费物品不足时显示的消息",
+                        "Placeholders: {cost} = required amount, {item} = item name / 占位符：{cost} = 需要数量，{item} = 物品名称",
+                        "Default: §cNeed {cost} {item} as postage!")
+                .translation("recycle.config.payment_error_message")
+                .define("payment_error_message", "§cNeed {cost} {item} as postage!");
+        
+        PAYMENT_SUCCESS_MESSAGE = BUILDER
+                .comment("Message shown when payment is successfully deducted / 成功扣除邮费时显示的消息",
+                        "Placeholders: {cost} = deducted amount, {item} = item name / 占位符：{cost} = 扣除数量，{item} = 物品名称",
+                        "Default: §aDeducted {cost} {item} as postage")
+                .translation("recycle.config.payment_success_message")
+                .define("payment_success_message", "§aDeducted {cost} {item} as postage");
         
         BUILDER.pop();
         
@@ -506,17 +522,29 @@ public class Config {
     }
     
     /**
-     * 计算邮费数量
+     * 获取邮费不足错误消息模板
+     */
+    public static String getPaymentErrorMessage() {
+        return PAYMENT_ERROR_MESSAGE.get();
+    }
+    
+    /**
+     * 获取邮费扣除成功消息模板
+     */
+    public static String getPaymentSuccessMessage() {
+        return PAYMENT_SUCCESS_MESSAGE.get();
+    }
+    
+    /**
+     * 计算邮费数量（仅用于insert操作）
      * @param playerDim 玩家所在维度
      * @param trashDim 垃圾箱所在维度
-     * @param operation 操作类型 ("insert", "withdraw")
      * @return 需要支付的邮费数量，0表示免费
      */
-    public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
+    public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim) {
+        // 只有在enabled模式下才收费
         String mode = getPaymentMode();
-        
-        // 检查模式匹配
-        if (!"both".equals(mode) && !mode.equals(operation)) {
+        if (!mode.equals("enabled")) {
             return 0;
         }
         

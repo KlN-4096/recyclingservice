@@ -1,10 +1,11 @@
-package com.klnon.recyclingservice.util.other;
+package com.klnon.recyclingservice.util.management;
 
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import com.klnon.recyclingservice.Recyclingservice;
+import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.Config;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;

@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util.other;
+package com.klnon.recyclingservice.util.management;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -100,9 +100,11 @@ public class PaymentUtils {
      */
     public static void sendPaymentErrorMessage(Player player, int requiredCost) {
         String itemName = getPaymentItemDisplayName();
-        Component message = Component.literal(
-            String.format("§c需要 %d 个 %s 作为邮费！", requiredCost, itemName)
-        );
+        String messageTemplate = Config.getPaymentErrorMessage();
+        String formattedMessage = messageTemplate
+                .replace("{cost}", String.valueOf(requiredCost))
+                .replace("{item}", itemName);
+        Component message = Component.literal(formattedMessage);
         player.displayClientMessage(message, true);
     }
     
@@ -113,9 +115,11 @@ public class PaymentUtils {
      */
     public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
         String itemName = getPaymentItemDisplayName();
-        Component message = Component.literal(
-            String.format("§a已扣除 %d 个 %s 作为邮费", deductedCost, itemName)
-        );
+        String messageTemplate = Config.getPaymentSuccessMessage();
+        String formattedMessage = messageTemplate
+                .replace("{cost}", String.valueOf(deductedCost))
+                .replace("{item}", itemName);
+        Component message = Component.literal(formattedMessage);
         player.displayClientMessage(message, true);
     }
     

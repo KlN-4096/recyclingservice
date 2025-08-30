@@ -13,7 +13,7 @@ import net.minecraft.server.level.Ticket;
 
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
-import com.klnon.recyclingservice.util.other.ErrorHandler;
+import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.server.level.ServerLevel;

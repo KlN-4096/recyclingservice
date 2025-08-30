@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util.scan;
+package com.klnon.recyclingservice.util.cleanup;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -11,8 +11,9 @@ import java.util.function.Predicate;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.util.other.MessageSender;
-import com.klnon.recyclingservice.util.other.ChunkFreezer;
+import com.klnon.recyclingservice.util.core.MessageSender;
+import com.klnon.recyclingservice.util.management.ChunkFreezer;
+
 import net.minecraft.network.chat.Component;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.server.level.ChunkHolder;

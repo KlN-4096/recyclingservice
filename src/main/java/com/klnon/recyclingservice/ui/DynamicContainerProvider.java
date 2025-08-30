@@ -6,7 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.network.chat.Component;
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.other.UiUtils;
+import com.klnon.recyclingservice.util.ui.UiUtils;
 
 import javax.annotation.Nonnull;
 

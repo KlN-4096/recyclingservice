@@ -1,11 +1,11 @@
 package com.klnon.recyclingservice.ui;
 
 import com.klnon.recyclingservice.core.TrashBox;
-import com.klnon.recyclingservice.util.other.UiUtils;
-import com.klnon.recyclingservice.util.other.PaymentUtils;
+import com.klnon.recyclingservice.util.cleanup.ItemMerge;
+import com.klnon.recyclingservice.util.management.PaymentUtils;
+import com.klnon.recyclingservice.util.ui.UiUtils;
 import com.klnon.recyclingservice.Config;
 
-import com.klnon.recyclingservice.util.scan.ItemMerge;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -59,6 +59,7 @@ public class TrashBoxMenu extends ChestMenu {
             }else {
                 super.clicked(slotId, button, clickType, player);
             }
+            
             // 统一更新受影响的物品
             UiUtils.updateTooltip(slotItem);
             UiUtils.updateTooltip(result);
@@ -271,26 +272,38 @@ public class TrashBoxMenu extends ChestMenu {
      * @return true=继续操作，false=阻止操作
      */
     private boolean handlePayment(int slotId, ClickType clickType, Player player) {
-        // 1. 判断操作类型
         String operation = getOperationType(slotId, clickType);
         if (operation == null) return true; // 不涉及邮费的操作
         
-        // 2. 计算费用
         ResourceLocation playerDim = player.level().dimension().location();
         ResourceLocation trashDim = trashBox.getDimensionId();
-        int cost = Config.calculatePaymentCost(playerDim, trashDim, operation);
         
-        if (cost <= 0) return true; // 无需付费
+        if ("insert".equals(operation)) {
+            return handleInsertPayment(playerDim, trashDim, player);
+        }
         
-        // 3. 检查和扣除邮费
+        return true;
+    }
+    
+    
+    /**
+     * 处理放入操作的邮费
+     */
+    private boolean handleInsertPayment(ResourceLocation playerDim, ResourceLocation trashDim, Player player) {
+        int cost = Config.calculatePaymentCost(playerDim, trashDim);
+        if (cost <= 0) return true;
+        
+        // 检查和扣除邮费
         return PaymentUtils.checkAndDeductPayment(player, cost);
     }
+    
+    
     
     /**
      * 根据点击行为判断操作类型
      * @param slotId 槽位ID
      * @param clickType 点击类型
-     * @return "insert"、"withdraw" 或 null（不收费）
+     * @return "insert" 或 null（不收费）
      */
     private String getOperationType(int slotId, ClickType clickType) {
         if (slotId >= 0 && slotId < trashSlots) {
@@ -300,8 +313,6 @@ public class TrashBoxMenu extends ChestMenu {
             
             if (!carried.isEmpty() || clickType == ClickType.SWAP) {
                 return "insert"; // 放入操作
-            } else if (!slotItem.isEmpty()) {
-                return "withdraw"; // 取出操作
             }
         } else if (slotId >= trashSlots && clickType == ClickType.QUICK_MOVE) {
             return "insert"; // Shift点击放入

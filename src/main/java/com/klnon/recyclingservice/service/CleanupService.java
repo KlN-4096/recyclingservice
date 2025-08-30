@@ -5,10 +5,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
-import com.klnon.recyclingservice.util.delete.MainThreadScheduler;
-import com.klnon.recyclingservice.util.scan.ItemFilter;
-import com.klnon.recyclingservice.util.scan.ItemMerge;
-import com.klnon.recyclingservice.util.scan.ItemScanner;
+import com.klnon.recyclingservice.util.cleanup.ItemFilter;
+import com.klnon.recyclingservice.util.cleanup.ItemMerge;
+import com.klnon.recyclingservice.util.cleanup.ItemScanner;
+import com.klnon.recyclingservice.util.cleanup.MainThreadScheduler;
 
 import javax.annotation.Nonnull;
 import java.util.*;
