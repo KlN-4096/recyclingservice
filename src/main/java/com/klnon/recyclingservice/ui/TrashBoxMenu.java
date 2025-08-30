@@ -2,9 +2,11 @@ package com.klnon.recyclingservice.ui;
 
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.other.UiUtils;
+import com.klnon.recyclingservice.util.other.PaymentUtils;
 import com.klnon.recyclingservice.Config;
 
 import com.klnon.recyclingservice.util.scan.ItemMerge;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
@@ -29,6 +31,11 @@ public class TrashBoxMenu extends ChestMenu {
 
     @Override
     public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
+        // 邮费检查和扣除
+        if (!handlePayment(slotId, clickType, player)) {
+            return; // 邮费不足，阻止操作
+        }
+        
         // 全面检查：如果是垃圾箱槽位且维度不允许放入，拦截所有可能的放入操作
         if (slotId >= 0 && !trashBox.isAllowedToPutIn()) {
             if (clickType==ClickType.QUICK_MOVE && slotId>=trashSlots)
@@ -254,5 +261,52 @@ public class TrashBoxMenu extends ChestMenu {
         }
         
         return moved;
+    }
+    
+    /**
+     * 处理邮费检查和扣除
+     * @param slotId 点击的槽位ID
+     * @param clickType 点击类型
+     * @param player 玩家
+     * @return true=继续操作，false=阻止操作
+     */
+    private boolean handlePayment(int slotId, ClickType clickType, Player player) {
+        // 1. 判断操作类型
+        String operation = getOperationType(slotId, clickType);
+        if (operation == null) return true; // 不涉及邮费的操作
+        
+        // 2. 计算费用
+        ResourceLocation playerDim = player.level().dimension().location();
+        ResourceLocation trashDim = trashBox.getDimensionId();
+        int cost = Config.calculatePaymentCost(playerDim, trashDim, operation);
+        
+        if (cost <= 0) return true; // 无需付费
+        
+        // 3. 检查和扣除邮费
+        return PaymentUtils.checkAndDeductPayment(player, cost);
+    }
+    
+    /**
+     * 根据点击行为判断操作类型
+     * @param slotId 槽位ID
+     * @param clickType 点击类型
+     * @return "insert"、"withdraw" 或 null（不收费）
+     */
+    private String getOperationType(int slotId, ClickType clickType) {
+        if (slotId >= 0 && slotId < trashSlots) {
+            // 点击垃圾箱槽位
+            ItemStack carried = getCarried();
+            ItemStack slotItem = slots.get(slotId).getItem();
+            
+            if (!carried.isEmpty() || clickType == ClickType.SWAP) {
+                return "insert"; // 放入操作
+            } else if (!slotItem.isEmpty()) {
+                return "withdraw"; // 取出操作
+            }
+        } else if (slotId >= trashSlots && clickType == ClickType.QUICK_MOVE) {
+            return "insert"; // Shift点击放入
+        }
+        
+        return null; // 其他操作不收费
     }
 }

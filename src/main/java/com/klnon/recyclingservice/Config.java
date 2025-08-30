@@ -51,6 +51,8 @@ public class Config {
     // === 付费系统 ===
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE;
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST;
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_MODE;
+    public static final ModConfigSpec.IntValue CROSS_DIMENSION_MULTIPLIER;
     
     // === 物品过滤 ===
     public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE;
@@ -203,6 +205,22 @@ public class Config {
                         "Default: 1, Min: 1, Max: 64")
                 .translation("recycle.config.cross_dimension_access_cost")
                 .defineInRange("cross_dimension_access_cost", 1, 1, 64);
+        
+        PAYMENT_MODE = BUILDER
+                .comment("When to charge payment / 何时收取邮费:",
+                        "  - 'insert': Pay when putting items into trash box / 放入垃圾箱时付费",
+                        "  - 'withdraw': Pay when taking items from trash box / 从垃圾箱取出时付费",
+                        "  - 'both': Pay for both operations / 放入和取出都付费",
+                        "Default: withdraw")
+                .translation("recycle.config.payment_mode")
+                .defineInList("payment_mode", "withdraw", Arrays.asList("insert", "withdraw", "both"));
+        
+        CROSS_DIMENSION_MULTIPLIER = BUILDER
+                .comment("Cost multiplier for cross-dimension access / 跨维度访问邮费倍数",
+                        "Final cost = base_cost * multiplier / 最终邮费 = 基础邮费 × 倍数",
+                        "Default: 2, Min: 1, Max: 10")
+                .translation("recycle.config.cross_dimension_multiplier")
+                .defineInRange("cross_dimension_multiplier", 2, 1, 10);
         
         BUILDER.pop();
         
@@ -471,6 +489,41 @@ public class Config {
      */
     public static int getCrossDimensionCost() {
         return CROSS_DIMENSION_ACCESS_COST.get();
+    }
+    
+    /**
+     * 获取邮费模式
+     */
+    public static String getPaymentMode() {
+        return PAYMENT_MODE.get();
+    }
+    
+    /**
+     * 获取跨维度邮费倍数
+     */
+    public static int getCrossDimensionMultiplier() {
+        return CROSS_DIMENSION_MULTIPLIER.get();
+    }
+    
+    /**
+     * 计算邮费数量
+     * @param playerDim 玩家所在维度
+     * @param trashDim 垃圾箱所在维度
+     * @param operation 操作类型 ("insert", "withdraw")
+     * @return 需要支付的邮费数量，0表示免费
+     */
+    public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
+        String mode = getPaymentMode();
+        
+        // 检查模式匹配
+        if (!"both".equals(mode) && !mode.equals(operation)) {
+            return 0;
+        }
+        
+        int baseCost = getCrossDimensionCost();
+        
+        // 同维度基础费用，跨维度乘以倍数
+        return playerDim.equals(trashDim) ? baseCost : baseCost * getCrossDimensionMultiplier();
     }
     
     /**

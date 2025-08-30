@@ -169,6 +169,13 @@ public class TrashBox implements Container {
     }
     
     /**
+     * 获取垃圾箱所在维度ID
+     */
+    public ResourceLocation getDimensionId() {
+        return dimensionId;
+    }
+    
+    /**
      * 检查当前维度是否允许玩家主动放入物品到垃圾箱
      */
     public boolean isAllowedToPutIn() {
