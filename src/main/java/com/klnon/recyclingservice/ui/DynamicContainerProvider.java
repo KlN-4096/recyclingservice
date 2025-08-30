@@ -53,14 +53,4 @@ public record DynamicContainerProvider(TrashBox trashBox, Component title) imple
         }
     }
 
-    /**
-     * 创建带自定义标题的垃圾箱容器提供者
-     *
-     * @param trashBox 垃圾箱实例
-     * @param title    自定义标题
-     * @return 配置好的容器提供者
-     */
-    public static MenuProvider create(TrashBox trashBox, Component title) {
-        return new DynamicContainerProvider(trashBox, title);
-    }
 }

@@ -23,7 +23,7 @@ public class DimensionTrashManager {
      * 获取或创建指定维度的垃圾箱
      */
     public TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        if (!TrashBoxFactory.isValidBoxNumber(boxNumber)) {
+        if (boxNumber < 1 || boxNumber > Config.getMaxBoxes()) {
             return null;
         }
         
@@ -32,7 +32,7 @@ public class DimensionTrashManager {
         // 当目标打开的垃圾箱编号大于当前垃圾箱总数才新建
         while (boxes.size() < boxNumber) {
             int newBoxNumber = boxes.size() + 1;
-            TrashBox newBox = TrashBoxFactory.createForDimension(dimensionId, newBoxNumber);
+            TrashBox newBox = new TrashBox(Config.getTrashBoxRows()*9, newBoxNumber, dimensionId);
             boxes.add(newBox);
         }
         

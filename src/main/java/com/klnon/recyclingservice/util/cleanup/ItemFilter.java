@@ -38,16 +38,20 @@ public class ItemFilter {
     }
 
     /**
-     * 过滤掉落物实体，返回应该被清理的物品引用（零拷贝优化）
-     * 支持Create模组处理检测
+     * 过滤掉落物实体，同时返回物品和实体（避免重复过滤）
      * @param itemEntities 掉落物实体列表
-     * @return 应该被清理的物品堆引用列表
+     * @return 过滤结果，包含ItemStack列表和Entity列表
      */
-    public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
-        return itemEntities.stream()
-                .filter(ItemFilter::shouldCleanItem) // 使用新的重载方法，支持Create检测
+    public static FilterResult<ItemEntity> filterItemEntities(List<ItemEntity> itemEntities) {
+        List<ItemEntity> validEntities = itemEntities.stream()
+                .filter(ItemFilter::shouldCleanItem)
+                .collect(Collectors.toList());
+        
+        List<ItemStack> itemStacks = validEntities.stream()
                 .map(ItemEntity::getItem)
                 .collect(Collectors.toList());
+                
+        return new FilterResult<>(itemStacks, validEntities);
     }
     
     /**
@@ -59,6 +63,22 @@ public class ItemFilter {
         return projectiles.stream()
                 .filter(ItemFilter::shouldCleanProjectile)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 过滤结果类 - 同时包含ItemStack和Entity，避免重复过滤
+     */
+    public static class FilterResult<T extends Entity> {
+        private final List<ItemStack> itemStacks;
+        private final List<T> entities;
+        
+        public FilterResult(List<ItemStack> itemStacks, List<T> entities) {
+            this.itemStacks = itemStacks;
+            this.entities = entities;
+        }
+        
+        public List<ItemStack> getItemStacks() { return itemStacks; }
+        public List<T> getEntities() { return entities; }
     }
 
     /**

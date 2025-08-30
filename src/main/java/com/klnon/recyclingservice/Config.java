@@ -10,15 +10,18 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.ChatFormatting;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.klnon.recyclingservice.util.core.ErrorHandler;
-
-import java.util.Map;
 import java.util.HashSet;
 
 public class Config {
@@ -27,6 +30,9 @@ public class Config {
     
     // 配置规范
     public static final ModConfigSpec SPEC;
+    
+    // 维度倍数缓存（用于避免重复解析配置）
+    private static final Map<String, Double> dimensionMultiplierCache = new ConcurrentHashMap<>();
     
     // === 基础清理设置 ===
     public static final ModConfigSpec.IntValue AUTO_CLEAN_TIME;
@@ -52,7 +58,8 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE;
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST;
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_MODE;
-    public static final ModConfigSpec.IntValue CROSS_DIMENSION_MULTIPLIER;
+    public static final ModConfigSpec.BooleanValue SAME_DIMENSION_PAYMENT_ENABLED;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS;
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ERROR_MESSAGE;
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_SUCCESS_MESSAGE;
     
@@ -147,6 +154,8 @@ public class Config {
                 .comment("Format for each dimension entry in cleanup message / 清理消息中每个维度条目的格式",
                         "Available placeholders: {name} {items} {entities}",
                         "可用占位符: {name} {items} {entities}",
+                        "Note: A clickable button '[打开垃圾箱]' will be automatically added after each entry",
+                        "注意：每个条目后会自动添加可点击的'[打开垃圾箱]'按钮",
                         "Default: §f{name}: §b{items} §fitems, §d{entities} §fentities")
                 .translation("recycle.config.dimension_entry_format")
                 .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
@@ -216,12 +225,25 @@ public class Config {
                 .translation("recycle.config.payment_mode")
                 .defineInList("payment_mode", "enabled", Arrays.asList("enabled", "none"));
         
-        CROSS_DIMENSION_MULTIPLIER = BUILDER
-                .comment("Cost multiplier for cross-dimension access / 跨维度访问邮费倍数",
-                        "Final cost = base_cost * multiplier / 最终邮费 = 基础邮费 × 倍数",
-                        "Default: 2, Min: 1, Max: 10")
-                .translation("recycle.config.cross_dimension_multiplier")
-                .defineInRange("cross_dimension_multiplier", 2, 1, 10);
+        SAME_DIMENSION_PAYMENT_ENABLED = BUILDER
+                .comment("Whether same dimension access requires payment / 是否同维度访问需要邮费",
+                        "true: Same dimension access costs base_cost / true: 同维度访问需要基础邮费",
+                        "false: Same dimension access is free / false: 同维度访问免费",
+                        "Default: true")
+                .translation("recycle.config.same_dimension_payment_enabled")
+                .define("same_dimension_payment_enabled", true);
+        
+DIMENSION_MULTIPLIERS = BUILDER
+                .comment("Cost multipliers for each dimension / 各维度邮费倍数",
+                        "Format: \"dimension_id:multiplier\" / 格式：\"维度ID:倍数\"",
+                        "Example: minecraft:overworld:1.0,minecraft:the_nether:1.5,minecraft:the_end:2.0",
+                        "If dimension not configured, uses default 1.0 / 未配置的维度使用默认值1.0",
+                        "NOTE: Multiplier only applies when player is in DIFFERENT dimension / 注意：倍数仅在玩家位于不同维度时生效")
+                .translation("recycle.config.dimension_multipliers")
+                .defineListAllowEmpty("dimension_multipliers", 
+                        List.of("minecraft:overworld:1.5", "minecraft:the_nether:1.5", "minecraft:the_end:2.0"), 
+                        () -> "minecraft:overworld:1.5",
+                        obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+(\\.[0-9]+)?$"));
         
         // 邮费消息模板
         PAYMENT_ERROR_MESSAGE = BUILDER
@@ -515,10 +537,43 @@ public class Config {
     }
     
     /**
-     * 获取跨维度邮费倍数
+     * 检查是否启用同维度邮费
      */
-    public static int getCrossDimensionMultiplier() {
-        return CROSS_DIMENSION_MULTIPLIER.get();
+    public static boolean isSameDimensionPaymentEnabled() {
+        return SAME_DIMENSION_PAYMENT_ENABLED.get();
+    }
+    
+    /**
+     * 获取指定维度的邮费倍数
+     * @param dimensionId 维度ID（如 "minecraft:overworld"）
+     * @return 该维度的邮费倍数，未配置则返回1.0
+     */
+    public static double getDimensionMultiplier(String dimensionId) {
+        return dimensionMultiplierCache.getOrDefault(dimensionId, 1.0);
+    }
+    
+    /**
+     * 解析维度倍数配置并更新缓存
+     */
+    private static void parseDimensionMultipliers() {
+        dimensionMultiplierCache.clear();
+        
+        List<? extends String> configList = DIMENSION_MULTIPLIERS.get();
+        for (String entry : configList) {
+            try {
+                String[] parts = entry.split(":");
+                if (parts.length == 3) {
+                    String namespace = parts[0];
+                    String path = parts[1];
+                    double multiplier = Double.parseDouble(parts[2]);
+                    String dimensionId = namespace + ":" + path;
+                    dimensionMultiplierCache.put(dimensionId, multiplier);
+                }
+            } catch (NumberFormatException e) {
+                ErrorHandler.handleVoidOperation("parseDimensionMultiplier", 
+                    () -> {}, true); // 静默处理解析错误
+            }
+        }
     }
     
     /**
@@ -550,8 +605,15 @@ public class Config {
         
         int baseCost = getCrossDimensionCost();
         
-        // 同维度基础费用，跨维度乘以倍数
-        return playerDim.equals(trashDim) ? baseCost : baseCost * getCrossDimensionMultiplier();
+        // 同维度和跨维度分别处理
+        if (playerDim.equals(trashDim)) {
+            // 同维度访问：根据开关决定是否收费
+            return isSameDimensionPaymentEnabled() ? baseCost : 0;
+        } else {
+            // 跨维度访问：使用目标维度（垃圾箱所在维度）的倍数
+            double multiplier = getDimensionMultiplier(trashDim.toString());
+            return (int) Math.ceil(baseCost * multiplier);
+        }
     }
     
     /**
@@ -582,7 +644,7 @@ public class Config {
      */
     public static boolean shouldShowCountdown(int remainingSeconds) {
         int startTime = getCountdownStartTime();
-        return startTime > 0 && remainingSeconds <= startTime && remainingSeconds > 0;
+        return remainingSeconds <= startTime && remainingSeconds > 0;
     }
 
     // === 物品过滤便捷方法 ===
@@ -793,13 +855,13 @@ public class Config {
     
     
     /**
-     * 构建详细清理完成消息（带tooltip的Component格式） - 简化版
+     * 构建详细清理完成消息（带tooltip和可点击按钮的Component格式）
      * @param dimensionStats 各维度清理统计信息
-     * @return 带悬停详情的聊天组件
+     * @return 带悬停详情和可点击按钮的聊天组件
      */
     public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
-        StringBuilder mainMessage = new StringBuilder(CLEANUP_RESULT_HEADER.get());
-        List<String> tooltipLines = new ArrayList<>();
+        MutableComponent mainComponent = Component.literal(CLEANUP_RESULT_HEADER.get());
+        List<Component> tooltipComponents = new ArrayList<>();
         
         // 主要维度集合
         Set<String> mainDimensions = Set.of(
@@ -808,25 +870,33 @@ public class Config {
         
         // 统一处理所有维度
         for (Map.Entry<ResourceLocation, ?> entry : dimensionStats.entrySet()) {
-            String dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
+            Component dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
             if (dimensionEntry != null) {
                 if (mainDimensions.contains(entry.getKey().toString())) {
-                    // 主要维度显示在主消息中
-                    mainMessage.append("\n").append(dimensionEntry);
+                    // 主要维度显示在主消息中（添加换行）
+                    mainComponent = mainComponent.append(Component.literal("\n")).append(dimensionEntry);
                 } else {
                     // 其他维度显示在tooltip中
-                    tooltipLines.add(dimensionEntry);
+                    tooltipComponents.add(dimensionEntry);
                 }
             }
         }
         
-        MutableComponent mainComponent = Component.literal(mainMessage.toString());
-        
         // 添加tooltip悬停事件
-        if (!tooltipLines.isEmpty()) {
-            MutableComponent tooltipContent = Component.literal(String.join("\n", tooltipLines));
+        if (!tooltipComponents.isEmpty()) {
+            // 构建tooltip内容，每个组件用换行分隔
+            MutableComponent tooltipContent = Component.empty();
+            for (int i = 0; i < tooltipComponents.size(); i++) {
+                if (i > 0) {
+                    tooltipContent = tooltipContent.append(Component.literal("\n"));
+                }
+                tooltipContent = tooltipContent.append(tooltipComponents.get(i));
+            }
+            
+            // 使用final变量避免lambda问题
+            final MutableComponent finalTooltipContent = tooltipContent;
             mainComponent = mainComponent.withStyle(style -> 
-                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltipContent))
+                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, finalTooltipContent))
             );
         }
         
@@ -834,19 +904,34 @@ public class Config {
     }
     
     /**
-     * 格式化单个维度的清理条目
+     * 格式化单个维度的清理条目，包含可点击的打开垃圾箱按钮
      * @param dimensionId 维度ID
      * @param stats 统计数据对象
-     * @return 格式化后的条目字符串，如果获取失败返回null
+     * @return 格式化后的条目Component，如果获取失败返回null
      */
-    private static String formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
+    private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
         try {
             // 直接转换为DimensionCleanupStats记录类
             if (stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats) {
-                return DIMENSION_ENTRY_FORMAT.get()
+                // 创建基础文本
+                String baseText = DIMENSION_ENTRY_FORMAT.get()
                         .replace("{name}", getDimensionDisplayName(dimensionId))
                         .replace("{items}", String.valueOf(dimensionStats.itemsCleaned()))
                         .replace("{entities}", String.valueOf(dimensionStats.projectilesCleaned()));
+                
+                // 创建可点击的按钮
+                MutableComponent button = Component.literal(" [打开垃圾箱]")
+                        .withStyle(Style.EMPTY
+                                .withColor(ChatFormatting.GREEN)
+                                .withUnderlined(true)
+                                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
+                                        "/bin open " + dimensionId.toString() + " 1"))
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        Component.literal("点击打开 " + getDimensionDisplayName(dimensionId) + " 的1号垃圾箱")
+                                                .withStyle(ChatFormatting.YELLOW))));
+                
+                // 组合文本和按钮
+                return Component.literal(baseText).append(button);
             }
             return null;
         } catch (Exception e) {
@@ -886,6 +971,8 @@ public class Config {
         blacklistCache = new HashSet<>(BLACKLIST.get());
         projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
         
+        // 解析维度倍数配置
+        parseDimensionMultipliers();
         
         // 更新允许放入物品的维度缓存
         allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());

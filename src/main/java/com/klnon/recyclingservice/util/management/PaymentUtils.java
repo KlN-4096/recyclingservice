@@ -23,14 +23,7 @@ public class PaymentUtils {
      * @return 是否有足够邮费
      */
     public static boolean hasEnoughPayment(Player player, int requiredCost) {
-        if (requiredCost <= 0) {
-            return true;
-        }
-        
-        ResourceLocation paymentItem = Config.getPaymentItem();
-        int playerHas = countPlayerItems(player, paymentItem);
-        
-        return playerHas >= requiredCost;
+        return processPayment(player, requiredCost, false) >= 0;
     }
     
     /**
@@ -40,46 +33,45 @@ public class PaymentUtils {
      * @return 是否成功扣除
      */
     public static boolean deductPayment(Player player, int cost) {
-        if (cost <= 0) {
-            return true;
-        }
-        
-        ResourceLocation paymentItem = Config.getPaymentItem();
-        
-        // 再次检查是否有足够物品
-        if (!hasEnoughPayment(player, cost)) {
-            return false;
-        }
-        
-        // 扣除物品
-        int remaining = cost;
-        for (ItemStack stack : player.getInventory().items) {
-            if (remaining <= 0) break;
-            
-            if (isPaymentItem(stack, paymentItem)) {
-                int deduct = Math.min(remaining, stack.getCount());
-                stack.shrink(deduct);
-                remaining -= deduct;
-            }
-        }
-        
-        return remaining == 0;
+        return processPayment(player, cost, true) >= 0;
     }
     
     /**
-     * 统计玩家拥有的指定物品数量
+     * 优化的支付处理方法 - 单次遍历完成检查和扣除
      * @param player 玩家
-     * @param paymentItem 邮费物品类型
-     * @return 拥有的数量
+     * @param requiredCost 需要的邮费数量
+     * @param actuallyDeduct 是否实际扣除（false=仅检查，true=检查并扣除）
+     * @return 成功返回>=0，失败返回-1
      */
-    private static int countPlayerItems(Player player, ResourceLocation paymentItem) {
-        int count = 0;
+    private static int processPayment(Player player, int requiredCost, boolean actuallyDeduct) {
+        if (requiredCost <= 0) {
+            return 0;
+        }
+        
+        ResourceLocation paymentItem = Config.getPaymentItem();
+        int totalFound = 0;
+        int remaining = requiredCost;
+        
+        // 单次遍历完成检查和扣除
         for (ItemStack stack : player.getInventory().items) {
             if (isPaymentItem(stack, paymentItem)) {
-                count += stack.getCount();
+                int stackCount = stack.getCount();
+                totalFound += stackCount;
+                
+                if (actuallyDeduct && remaining > 0) {
+                    int deduct = Math.min(remaining, stackCount);
+                    stack.shrink(deduct);
+                    remaining -= deduct;
+                }
             }
         }
-        return count;
+        
+        // 检查是否有足够的物品
+        if (totalFound < requiredCost) {
+            return -1; // 不足
+        }
+        
+        return actuallyDeduct ? (remaining == 0 ? 0 : -1) : 0;
     }
     
     /**
@@ -134,7 +126,7 @@ public class PaymentUtils {
     }
     
     /**
-     * 检查并扣除邮费的便捷方法
+     * 检查并扣除邮费的便捷方法 - 优化为单次遍历
      * @param player 玩家
      * @param cost 邮费数量
      * @return 是否成功（true=允许操作，false=阻止操作）
@@ -144,18 +136,13 @@ public class PaymentUtils {
             return true;
         }
         
-        if (!hasEnoughPayment(player, cost)) {
+        // 直接尝试扣除，如果失败说明不足
+        if (deductPayment(player, cost)) {
+            sendPaymentSuccessMessage(player, cost);
+            return true;
+        } else {
             sendPaymentErrorMessage(player, cost);
             return false;
         }
-        
-        if (!deductPayment(player, cost)) {
-            sendPaymentErrorMessage(player, cost);
-            return false;
-        }
-        
-        // 只有在真正扣除了邮费时才显示成功消息
-        sendPaymentSuccessMessage(player, cost);
-        return true;
     }
 }

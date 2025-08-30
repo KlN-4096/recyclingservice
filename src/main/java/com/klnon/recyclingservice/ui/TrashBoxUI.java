@@ -40,10 +40,10 @@ public class TrashBoxUI {
             if (trashBox == null)
                 return false;
 
-            // 创建动态容器提供者
-            Component title = Component.translatable("container.recyclingservice.trash_box_with_dimension",
-                dimensionId.toString(), boxNumber);
-            MenuProvider provider = DynamicContainerProvider.create(trashBox, title);
+            // 创建简洁的标题：例如 "overworld-1"
+            String dimensionName = dimensionId.getPath(); // 获取路径部分，例如 "overworld"
+            Component title = Component.literal(dimensionName + "-" + boxNumber);
+            MenuProvider provider = new DynamicContainerProvider(trashBox, title);
 
             // 打开容器界面
             player.openMenu(provider);
@@ -56,16 +56,6 @@ public class TrashBoxUI {
         }, false);
     }
     
-    /**
-     * 获取玩家的UI类型描述
-     * 用于调试和状态显示
-     * 
-     * @param player 玩家
-     * @return UI类型描述
-     */
-    public static String getUIType(Player player) {
-        return UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla";
-    }
     
     /**
      * 测试接口：创建一个测试垃圾箱并打开UI
@@ -102,13 +92,15 @@ public class TrashBoxUI {
             }
 
             // 为垃圾箱起标题
-            Component title = Component.literal(Config.getTestBoxTitle(getUIType(player)));
-            MenuProvider provider = DynamicContainerProvider.create(testBox, title);
+            Component title = Component.literal(Config.getTestBoxTitle(
+                UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla"));
+            MenuProvider provider = new DynamicContainerProvider(testBox, title);
 
             player.openMenu(provider);
 
             // 发送测试信息
-            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(getUIType(player)), MessageSender.MessageType.DEFAULT);
+            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(
+                UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla"), MessageSender.MessageType.DEFAULT);
 
             return true;
         }, false);

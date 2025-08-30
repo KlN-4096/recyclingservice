@@ -3,6 +3,7 @@ package com.klnon.recyclingservice.service;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.util.cleanup.ItemFilter;
@@ -97,20 +98,15 @@ public class CleanupService {
             ResourceLocation dimensionId,
             ItemScanner.ScanResult scanResult) {
         
-        // 处理掉落物品,先合并再过滤（零拷贝优化）
-        List<ItemStack> itemsToClean = ItemMerge.combine(
-            ItemFilter.filterItems(scanResult.items()));
+        // 优化：一次过滤获得物品和实体，避免重复判断
+        ItemFilter.FilterResult<ItemEntity> itemFilterResult = ItemFilter.filterItemEntities(scanResult.items());
+        List<ItemStack> itemsToClean = ItemMerge.combine(itemFilterResult.getItemStacks());
         
         // 将物品存储到对应维度的垃圾箱
         trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
         // 准备待删除实体列表
-        List<Entity> entitiesToDelete = new ArrayList<>();
-        
-        // 添加需要删除的掉落物实体（支持Create模组处理检测）
-        scanResult.items().stream()
-            .filter(ItemFilter::shouldCleanItem) // 使用新的重载方法，直接传递entity
-            .forEach(entitiesToDelete::add);
+        List<Entity> entitiesToDelete = new ArrayList<>(itemFilterResult.getEntities());
         
         // 添加需要清理的弹射物
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
