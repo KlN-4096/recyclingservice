@@ -94,6 +94,9 @@ public class Config {
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
     
+    // === 调试设置 ===
+    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS;
+    
     
     // === 消息模板 ===
     public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
@@ -437,6 +440,18 @@ DIMENSION_MULTIPLIERS = BUILDER
         
         BUILDER.pop();
         
+        // 调试设置
+        BUILDER.comment("Debug settings / 调试设置").push("debug");
+        
+        ENABLE_DEBUG_LOGS = BUILDER
+                .comment("Enable debug logging for ErrorHandler operations / 启用ErrorHandler操作的调试日志",
+                        "When disabled, reduces log spam from routine operations / 禁用时减少常规操作的日志输出",
+                        "Default: false")
+                .translation("recycle.config.enable_debug_logs")
+                .define("enable_debug_logs", false);
+        
+        BUILDER.pop();
+        
         
         // 消息模板
         BUILDER.comment("Message templates for UI text / UI文本消息模板").push("messages");
@@ -571,7 +586,7 @@ DIMENSION_MULTIPLIERS = BUILDER
                 }
             } catch (NumberFormatException e) {
                 ErrorHandler.handleVoidOperation("parseDimensionMultiplier", 
-                    () -> {}, true); // 静默处理解析错误
+                    () -> {}); // 处理解析错误
             }
         }
     }
@@ -953,7 +968,7 @@ DIMENSION_MULTIPLIERS = BUILDER
                     ResourceLocation resourceLocation = ResourceLocation.parse(entityTypeId);
                     EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(resourceLocation);
                     entityTypes.add(entityType);
-                },true
+                }
             );
         }
         
@@ -976,5 +991,12 @@ DIMENSION_MULTIPLIERS = BUILDER
         
         // 更新允许放入物品的维度缓存
         allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());
+    }
+    
+    /**
+     * 检查是否启用调试日志
+     */
+    public static boolean isDebugLogsEnabled() {
+        return ENABLE_DEBUG_LOGS.get();
     }
 }

@@ -4,10 +4,10 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
+import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 public class ErrorHandler {
@@ -23,7 +23,11 @@ public class ErrorHandler {
         
         try {
             T result = operation.get();
-            LOGGER.debug("Operation {} succeeded for {}", operationName, playerName);
+            // 使用三元运算符优化DEBUG日志
+            Runnable debugLogger = Config.isDebugLogsEnabled() ? 
+                () -> LOGGER.debug("Operation {} succeeded for {}", operationName, playerName) : null;
+            if (debugLogger != null) debugLogger.run();
+            
             if (onSuccess != null) onSuccess.run();
             return result != null ? result : successResult;
         } catch (Exception e) {
@@ -49,26 +53,20 @@ public class ErrorHandler {
     public static int handleCommandOperation(CommandSourceStack source, ServerPlayer player, String operationName, Supplier<Boolean> operation) {
         return executeWithErrorHandling(
             operationName, player, 
-            () -> operation.get() ? 1 : 0,
-            null, 0,
-            () -> source.sendSuccess(() -> Component.literal("§aOperation " + operationName + " succeeded"), false),
-            () -> source.sendFailure(Component.literal("§cOperation " + operationName + " failed"))
-        );
+            () -> operation.get() ? 1 : 0,null, 0,null,null);
     }
 
     /**
      * 处理void操作（不需要返回值）
      */
-    public static void handleVoidOperation(String operationName, Runnable operation, Boolean silence) {
+    public static void handleVoidOperation(String operationName, Runnable operation) {
         executeWithErrorHandling(
             operationName, null,
             () -> { operation.run(); return null; },
             null, null,
-            silence ? null : () -> LOGGER.debug("Void operation {} completed successfully", operationName),
-            silence ? null : () -> {} // 错误已在核心方法中记录
+            Config.isDebugLogsEnabled() ? 
+                () -> LOGGER.debug("Void operation {} completed successfully", operationName) : null,
+            null
         );
     }
-
-
-
   }
