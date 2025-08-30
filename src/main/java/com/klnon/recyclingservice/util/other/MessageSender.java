@@ -13,9 +13,7 @@ public class MessageSender {
     public enum MessageType {
         SUCCESS(0x55FF55),      // 绿色
         ERROR(0xFF5555),        // 红色
-        WARNING_NORMAL(0xFFAA00),   // 橙黄色
-        WARNING_URGENT(0xFF6600),   // 橙红色
-        WARNING_CRITICAL(0xFF3300), // 深红色
+        WARNING(0xFFAA00),      // 黄色 - 统一的警告样式
         DEFAULT(0xFFFFFF);      // 白色
         
         private final int color;

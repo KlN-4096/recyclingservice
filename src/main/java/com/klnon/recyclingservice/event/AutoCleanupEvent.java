@@ -41,16 +41,10 @@ public class AutoCleanupEvent {
     private static void checkAndSendWarning(MinecraftServer server) {
         int remainingSeconds = getRemainingSeconds();
         
-        // 只在特定时间点发送警告
-        if (remainingSeconds == 60 || remainingSeconds == 30 || 
-           (remainingSeconds <= 10 && remainingSeconds >= 1)) {
-            
+        // 使用配置的倒计时开始时间
+        if (Config.shouldShowCountdown(remainingSeconds)) {
             String message = Config.getWarningMessage(remainingSeconds);
-            // 根据剩余时间选择消息类型
-            MessageSender.MessageType messageType = remainingSeconds > 10 ? 
-                MessageSender.MessageType.WARNING_NORMAL : 
-                (remainingSeconds > 5 ? MessageSender.MessageType.WARNING_URGENT : MessageSender.MessageType.WARNING_CRITICAL);
-            MessageSender.showActionBar(server, message, messageType.getColor());
+            MessageSender.showActionBar(server, message, MessageSender.MessageType.WARNING.getColor());
         }
     }
     

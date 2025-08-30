@@ -34,6 +34,7 @@ public class Config {
     
     // === 警告消息设置 ===
     public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE;
+    public static final ModConfigSpec.IntValue WARNING_COUNTDOWN_START;
     
     // === 详细清理消息模板 ===
     public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER;
@@ -120,6 +121,13 @@ public class Config {
                         "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
                 .translation("recycle.config.warning_message")
                 .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
+
+        WARNING_COUNTDOWN_START = BUILDER
+                .comment("Start countdown warnings when remaining time reaches this many seconds / 剩余时间达到多少秒时开始倒计时警告",
+                        "Set to 0 to completely disable countdown warnings / 设为0完全禁用倒计时警告",
+                        "Default: 30, Min: 0, Max: 300")
+                .translation("recycle.config.warning_countdown_start")
+                .defineInRange("warning_countdown_start", 30, 0, 300);
 
         // 详细清理消息模板配置
         CLEANUP_RESULT_HEADER = BUILDER
@@ -461,6 +469,23 @@ public class Config {
      */
     public static String getWarningMessage(int remainingSeconds) {
         return WARNING_MESSAGE.get().replace("{time}", String.valueOf(remainingSeconds));
+    }
+    
+    /**
+     * 获取倒计时开始时间
+     */
+    public static int getCountdownStartTime() {
+        return WARNING_COUNTDOWN_START.get();
+    }
+
+    /**
+     * 检查是否应该显示倒计时
+     * @param remainingSeconds 剩余秒数
+     * @return 是否显示倒计时
+     */
+    public static boolean shouldShowCountdown(int remainingSeconds) {
+        int startTime = getCountdownStartTime();
+        return startTime > 0 && remainingSeconds <= startTime && remainingSeconds > 0;
     }
 
     // === 物品过滤便捷方法 ===
