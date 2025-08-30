@@ -80,7 +80,7 @@ public class UiUtils {
      *
      * @param item 可能包含自定义Lore的物品
      */
-    private static void cleanItemStack(ItemStack item) {
+    public static void cleanItemStack(ItemStack item) {
         if (item.isEmpty()) {
             return;
         }

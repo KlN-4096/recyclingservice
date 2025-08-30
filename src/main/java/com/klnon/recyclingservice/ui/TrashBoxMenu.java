@@ -56,7 +56,15 @@ public class TrashBoxMenu extends ChestMenu {
                 result = handleDoubleClick(slotItem);
             } else if (clickType == ClickType.QUICK_MOVE) {
                 result = quickMoveStack(player, slotId);
-            }else {
+            }else if  (clickType == ClickType.THROW && this.getCarried().isEmpty()) {
+                Slot slot3 = this.slots.get(slotId);
+                result =slot3.getItem();
+                int j1 = button == 0 ? 1 : result.getCount();
+                UiUtils.cleanItemStack(result);
+                result = slot3.safeTake(j1, Integer.MAX_VALUE, player);
+                player.drop(result, true);
+                return;
+            }else{
                 super.clicked(slotId, button, clickType, player);
             }
             
@@ -317,7 +325,7 @@ public class TrashBoxMenu extends ChestMenu {
             if(!player.getInventory().getItem(button).isEmpty() && clickType == ClickType.SWAP){
                 return "insert"; // 放入操作
             }
-        } else if (slotId >= trashSlots && clickType == ClickType.QUICK_MOVE) {
+        } else if (slotId >= trashSlots && !slots.get(slotId).getItem().isEmpty() && clickType == ClickType.QUICK_MOVE) {
             return "insert"; // Shift点击放入
         }
         
