@@ -32,7 +32,7 @@ public class TrashBoxMenu extends ChestMenu {
     @Override
     public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
         // 邮费检查和扣除
-        if (!handlePayment(slotId, clickType, player)) {
+        if (!handlePayment(slotId, button, clickType, player)) {
             return; // 邮费不足，阻止操作
         }
         
@@ -271,8 +271,8 @@ public class TrashBoxMenu extends ChestMenu {
      * @param player 玩家
      * @return true=继续操作，false=阻止操作
      */
-    private boolean handlePayment(int slotId, ClickType clickType, Player player) {
-        String operation = getOperationType(slotId, clickType);
+    private boolean handlePayment(int slotId, int button, ClickType clickType, Player player) {
+        String operation = getOperationType(slotId, button, clickType, player);
         if (operation == null) return true; // 不涉及邮费的操作
         
         ResourceLocation playerDim = player.level().dimension().location();
@@ -305,13 +305,16 @@ public class TrashBoxMenu extends ChestMenu {
      * @param clickType 点击类型
      * @return "insert" 或 null（不收费）
      */
-    private String getOperationType(int slotId, ClickType clickType) {
+    private String getOperationType(int slotId, int button, ClickType clickType, Player player) {
         if (slotId >= 0 && slotId < trashSlots) {
             // 点击垃圾箱槽位
             ItemStack carried = getCarried();
             ItemStack slotItem = slots.get(slotId).getItem();
             
-            if (!carried.isEmpty() || clickType == ClickType.SWAP) {
+            if (!carried.isEmpty() && clickType == ClickType.PICKUP) {
+                return "insert"; // 放入操作
+            }
+            if(!player.getInventory().getItem(button).isEmpty() && clickType == ClickType.SWAP){
                 return "insert"; // 放入操作
             }
         } else if (slotId >= trashSlots && clickType == ClickType.QUICK_MOVE) {

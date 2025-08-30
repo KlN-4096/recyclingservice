@@ -190,7 +190,7 @@ public class BinCommand {
         
         return ErrorHandler.handleCommandOperation(source, player, "手动清理",
             () -> {
-                source.sendSuccess(() -> Component.literal("§6[Manual Cleanup] Starting cleanup..."), true);
+                source.sendSuccess(() -> Component.literal(Config.getManualCleanupStartMessage()), true);
                 
                 // 触发手动清理
                 if (player != null) {

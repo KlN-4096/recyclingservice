@@ -100,6 +100,7 @@ public class Config {
     
     // === 消息模板 ===
     public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
+    public static final ModConfigSpec.ConfigValue<String> MANUAL_CLEANUP_START;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> CMD_HELP_MESSAGES;
 
     // === 性能优化缓存 ===
@@ -462,6 +463,12 @@ DIMENSION_MULTIPLIERS = BUILDER
                 .translation("recycle.config.error_cleanup_failed")
                 .define("error_cleanup_failed", "§cCleanup failed");
         
+        MANUAL_CLEANUP_START = BUILDER
+                .comment("Message shown when manual cleanup starts / 手动清理开始时显示的消息",
+                        "Default: §6[Manual Cleanup] Starting cleanup...")
+                .translation("recycle.config.manual_cleanup_start")
+                .define("manual_cleanup_start", "§6[Manual Cleanup] Starting cleanup...");
+        
         CMD_HELP_MESSAGES = BUILDER
                 .comment("Command help messages / 命令帮助消息",
                         "Format: One message per line / 格式：每行一条消息",
@@ -494,10 +501,12 @@ DIMENSION_MULTIPLIERS = BUILDER
         if (!(obj instanceof String id)) {
             return false;
         }
-        return ErrorHandler.handleOperation(null, "validateResourceLocation", () -> {
+        try {
             ResourceLocation.parse(id);
             return true;
-        }, false);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
 
@@ -820,6 +829,13 @@ DIMENSION_MULTIPLIERS = BUILDER
      */
     public static String getCleanupFailedMessage() {
         return ERROR_CLEANUP_FAILED.get();
+    }
+    
+    /**
+     * 获取手动清理开始消息
+     */
+    public static String getManualCleanupStartMessage() {
+        return MANUAL_CLEANUP_START.get();
     }
     
     /**
