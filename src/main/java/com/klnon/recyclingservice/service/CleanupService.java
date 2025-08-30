@@ -107,9 +107,9 @@ public class CleanupService {
         // 准备待删除实体列表
         List<Entity> entitiesToDelete = new ArrayList<>();
         
-        // 添加需要删除的掉落物实体
+        // 添加需要删除的掉落物实体（支持Create模组处理检测）
         scanResult.items().stream()
-            .filter(entity -> ItemFilter.shouldCleanItem(entity.getItem()))
+            .filter(ItemFilter::shouldCleanItem) // 使用新的重载方法，直接传递entity
             .forEach(entitiesToDelete::add);
         
         // 添加需要清理的弹射物

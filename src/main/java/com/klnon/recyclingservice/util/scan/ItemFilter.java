@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import com.klnon.recyclingservice.Config;
 
 import java.util.List;
@@ -15,18 +16,22 @@ import java.util.stream.Collectors;
  * 遵循KISS原则：简单的过滤逻辑，统一所有过滤方法
  */
 public class ItemFilter {
-    
     /**
-     * 检查物品是否应该被清理（核心方法）
-     * @param itemStack 物品堆
+     * 检查ItemEntity是否应该被清理（支持Create模组处理检测）
+     * @param entity 掉落物实体
      * @return 是否应该清理
      */
-    public static boolean shouldCleanItem(ItemStack itemStack) {
-        if (itemStack.isEmpty()) {
+    public static boolean shouldCleanItem(ItemEntity entity) {
+        // 检查是否启用了Create模组保护且物品正在被处理
+        if (Config.shouldProtectCreateProcessingItems() && isBeingProcessedByCreate(entity)) {
+            return false; // 保护正在处理中的物品
+        }
+        
+        if (entity.getItem().isEmpty()) {
             return false;
         }
         
-        String itemId = BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString();
+        String itemId = BuiltInRegistries.ITEM.getKey(entity.getItem().getItem()).toString();
         return Config.isWhitelistMode() 
             ? !Config.isInWhitelist(itemId)  // 白名单模式：不在保留列表中的都清理
             : Config.isInBlacklist(itemId);  // 黑名单模式：只清理黑名单中的
@@ -34,13 +39,14 @@ public class ItemFilter {
 
     /**
      * 过滤掉落物实体，返回应该被清理的物品引用（零拷贝优化）
+     * 支持Create模组处理检测
      * @param itemEntities 掉落物实体列表
      * @return 应该被清理的物品堆引用列表
      */
     public static List<ItemStack> filterItems(List<ItemEntity> itemEntities) {
         return itemEntities.stream()
+                .filter(ItemFilter::shouldCleanItem) // 使用新的重载方法，支持Create检测
                 .map(ItemEntity::getItem)
-                .filter(ItemFilter::shouldCleanItem) // 直接引用，不拷贝
                 .collect(Collectors.toList());
     }
     
@@ -113,5 +119,29 @@ public class ItemFilter {
         // 使用流式操作检查是否包含任何特殊组件
         return java.util.Arrays.stream(specialComponents)
                 .anyMatch(itemStack::has);
+    }
+
+    /**
+     * 检查物品是否正在被Create模组处理
+     * 基于Create模组源码逻辑：检查PersistentData中的Processing.Time >= 0
+     * @param entity 掉落物实体
+     * @return 是否正在被Create模组处理
+     */
+    private static boolean isBeingProcessedByCreate(ItemEntity entity) {
+        CompoundTag persistentData = entity.getPersistentData();
+        
+        // 检查是否包含CreateData
+        if (!persistentData.contains("CreateData")) {
+            return false;
+        }
+        
+        CompoundTag createData = persistentData.getCompound("CreateData");
+        if (!createData.contains("Processing")) {
+            return false;
+        }
+        
+        CompoundTag processing = createData.getCompound("Processing");
+        // Time >= 0 表示正在处理中，Time = -1 表示处理已完成或失败
+        return processing.getInt("Time") >= 0;
     }
 }

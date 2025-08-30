@@ -61,6 +61,9 @@ public class Config {
     public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN;
     
+    // === Create模组兼容性 ===
+    public static final ModConfigSpec.BooleanValue PROTECT_CREATE_PROCESSING_ITEMS;
+    
     // === 区域管理 ===
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING;
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING;
@@ -267,6 +270,19 @@ public class Config {
                     () -> "",
                     Config::validateResourceLocation);
 
+        BUILDER.pop();
+        
+        // Create模组兼容性设置
+        BUILDER.comment("Create mod compatibility settings / Create模组兼容性设置").push("create_mod_compatibility");
+        
+        PROTECT_CREATE_PROCESSING_ITEMS = BUILDER
+                .comment("Protect items being processed by Create mod fans / 保护正在被Create模组鼓风机处理的物品",
+                        "When enabled, items with Create processing NBT data will not be cleaned up",
+                        "启用后，带有Create处理NBT数据的物品不会被清理",
+                        "Default: true")
+                .translation("recycle.config.protect_create_processing_items")
+                .define("protect_create_processing_items", true);
+        
         BUILDER.pop();
         
         // 区块管理
@@ -532,6 +548,15 @@ public class Config {
      */
     public static boolean isProjectileTypeToClean(String entityTypeId) {
         return projectileTypesCache.contains(entityTypeId);
+    }
+
+    // === Create模组兼容性便捷方法 ===
+    
+    /**
+     * 检查是否保护正在被Create模组处理的物品
+     */
+    public static boolean shouldProtectCreateProcessingItems() {
+        return PROTECT_CREATE_PROCESSING_ITEMS.get();
     }
 
     // === 扫描优化便捷方法 ===
