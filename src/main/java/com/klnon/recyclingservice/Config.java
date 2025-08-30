@@ -956,7 +956,7 @@ DIMENSION_MULTIPLIERS = BUILDER
                                 .withColor(ChatFormatting.GREEN)
                                 .withUnderlined(true)
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
-                                        "/bin open " + dimensionId.toString() + " 1"))
+                                        "/bin open " + dimensionId + " 1"))
                                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                         Component.literal("点击打开 " + getDimensionDisplayName(dimensionId) + " 的1号垃圾箱")
                                                 .withStyle(ChatFormatting.YELLOW))));

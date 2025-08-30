@@ -24,6 +24,7 @@ import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.DistanceManager;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.util.SortedArraySet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -81,7 +82,7 @@ public class BinCommand {
         CommandSourceStack source = context.getSource();
         // require中isPlayer()已经检测过,确保是玩家
         ServerPlayer player = (ServerPlayer) source.getEntity();
-        return ErrorHandler.handleCommandOperation(source, player, "打开测试垃圾箱",
+        return ErrorHandler.handleCommandOperation(player, "打开测试垃圾箱",
           () -> TrashBoxUI.openTestTrashBox(player));
     }
     
@@ -92,7 +93,7 @@ public class BinCommand {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = (ServerPlayer) source.getEntity();
         
-        return ErrorHandler.handleCommandOperation(source, player, "打开指定维度垃圾箱",
+        return ErrorHandler.handleCommandOperation(player, "打开指定维度垃圾箱",
             () -> {
                 ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
                 int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
@@ -114,29 +115,27 @@ public class BinCommand {
             CommandContext<CommandSourceStack> context, 
             com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
         
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-            return ErrorHandler.handleOperation(null, "suggestDimensions", () -> {
-                try {
-                    // 获取服务器所有已加载的维度
-                    MinecraftServer server = context.getSource().getServer();
-                    List<String> dimensionIds = server.levelKeys().stream()
-                        .map(ResourceKey::location)
-                        .map(ResourceLocation::toString)
-                        .toList();
-                    
-                    return SharedSuggestionProvider.suggest(dimensionIds, builder).join();
-                    
-                } catch (Exception e) {
-                    // 如果无法获取服务器信息，fallback到常用维度
-                    List<String> fallbackDimensions = List.of(
-                        "minecraft:overworld", 
-                        "minecraft:the_nether", 
-                        "minecraft:the_end"
-                    );
-                    return SharedSuggestionProvider.suggest(fallbackDimensions, builder).join();
-                }
-            }, SharedSuggestionProvider.suggest(List.of("minecraft:overworld"), builder).join());
-        });
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHandler.handleOperation(null, "suggestDimensions", () -> {
+            try {
+                // 获取服务器所有已加载的维度
+                MinecraftServer server = context.getSource().getServer();
+                List<String> dimensionIds = server.levelKeys().stream()
+                    .map(ResourceKey::location)
+                    .map(ResourceLocation::toString)
+                    .toList();
+
+                return SharedSuggestionProvider.suggest(dimensionIds, builder).join();
+
+            } catch (Exception e) {
+                // 如果无法获取服务器信息，fallback到常用维度
+                List<String> fallbackDimensions = List.of(
+                    "minecraft:overworld",
+                    "minecraft:the_nether",
+                    "minecraft:the_end"
+                );
+                return SharedSuggestionProvider.suggest(fallbackDimensions, builder).join();
+            }
+        }, SharedSuggestionProvider.suggest(List.of("minecraft:overworld"), builder).join()));
     }
     
     /**
@@ -150,35 +149,33 @@ public class BinCommand {
             CommandContext<CommandSourceStack> context, 
             com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
         
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-            return ErrorHandler.handleOperation(null, "suggestBoxNumbers", () -> {
-                try {
-                    // 尝试获取维度ID
-                    ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
-                    var trashManager = CleanupService.getTrashManager();
-                    List<com.klnon.recyclingservice.core.TrashBox> existingBoxes = trashManager.getDimensionTrashBoxes(dimensionId);
-                    
-                    List<String> suggestions = new ArrayList<>();
-                    
-                    // 只添加已存在的垃圾箱编号
-                    for (int i = 1; i <= existingBoxes.size(); i++) {
-                        suggestions.add(String.valueOf(i));
-                    }
-                    
-                    // 如果没有任何垃圾箱，显示1号（防止空白补全）
-                    if (suggestions.isEmpty()) {
-                        suggestions.add("1");
-                    }
-                    
-                    return SharedSuggestionProvider.suggest(suggestions, builder).join();
-                    
-                } catch (Exception e) {
-                    // 如果无法获取维度信息，fallback到静态补全
-                    List<String> fallbackSuggestions = List.of("1", "2", "3", "4", "5");
-                    return SharedSuggestionProvider.suggest(fallbackSuggestions, builder).join();
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHandler.handleOperation(null, "suggestBoxNumbers", () -> {
+            try {
+                // 尝试获取维度ID
+                ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
+                var trashManager = CleanupService.getTrashManager();
+                List<com.klnon.recyclingservice.core.TrashBox> existingBoxes = trashManager.getDimensionTrashBoxes(dimensionId);
+
+                List<String> suggestions = new ArrayList<>();
+
+                // 只添加已存在的垃圾箱编号
+                for (int i = 1; i <= existingBoxes.size(); i++) {
+                    suggestions.add(String.valueOf(i));
                 }
-            }, SharedSuggestionProvider.suggest(List.of("1"), builder).join());
-        });
+
+                // 如果没有任何垃圾箱，显示1号（防止空白补全）
+                if (suggestions.isEmpty()) {
+                    suggestions.add("1");
+                }
+
+                return SharedSuggestionProvider.suggest(suggestions, builder).join();
+
+            } catch (Exception e) {
+                // 如果无法获取维度信息，fallback到静态补全
+                List<String> fallbackSuggestions = List.of("1", "2", "3", "4", "5");
+                return SharedSuggestionProvider.suggest(fallbackSuggestions, builder).join();
+            }
+        }, SharedSuggestionProvider.suggest(List.of("1"), builder).join()));
     }
     
     /**
@@ -188,7 +185,7 @@ public class BinCommand {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = (ServerPlayer) source.getEntity();
         
-        return ErrorHandler.handleCommandOperation(source, player, "手动清理",
+        return ErrorHandler.handleCommandOperation(player, "手动清理",
             () -> {
                 source.sendSuccess(() -> Component.literal(Config.getManualCleanupStartMessage()), true);
                 
@@ -206,35 +203,53 @@ public class BinCommand {
      */
     private static int showChunkTickets(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        ServerPlayer player = (ServerPlayer) source.getEntity();
-        
-        int x = IntegerArgumentType.getInteger(context, "x")/16;
-        int z = IntegerArgumentType.getInteger(context, "z")/16;
 
-        ServerLevel level = player.serverLevel();
+        try {
+            // 检查实体是否存在且为玩家
+            Entity entity = source.getEntity();
+            if (!(entity instanceof ServerPlayer player)) {
+                source.sendFailure(Component.literal("§cThis command can only be executed by a player"));
+                return 0; // 返回0表示命令执行失败
+            }
 
-        // 直接访问distanceManager
-        DistanceManager distanceManager = level.getChunkSource().distanceManager;
-        Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
-        long chunkKey = ChunkPos.asLong(x, z);
-        
-        source.sendSuccess(() -> Component.literal("§6=== Chunk (" + x + ", " + z + ") Tickets ==="), false);
-        
-        SortedArraySet<Ticket<?>> chunkTickets = tickets.get(chunkKey);
-        if (chunkTickets == null || chunkTickets.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§7No tickets found for this chunk"), false);
-            return 1;
+            ServerLevel level = player.serverLevel();
+
+            // 检查level是否为null
+
+            int x = IntegerArgumentType.getInteger(context, "x") / 16;
+            int z = IntegerArgumentType.getInteger(context, "z") / 16;
+
+            // 直接访问distanceManager
+            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
+            long chunkKey = ChunkPos.asLong(x, z);
+
+            source.sendSuccess(() -> Component.literal("§6=== Chunk (" + x + ", " + z + ") Tickets ==="), false);
+
+            SortedArraySet<Ticket<?>> chunkTickets = tickets.get(chunkKey);
+            if (chunkTickets == null || chunkTickets.isEmpty()) {
+                source.sendSuccess(() -> Component.literal("§7No tickets found for this chunk"), false);
+                return 1; // 成功执行但没有找到tickets
+            }
+
+            source.sendSuccess(() -> Component.literal("§aTotal tickets: " + chunkTickets.size()), false);
+
+            int index = 1;
+            for (Ticket<?> ticket : chunkTickets) {
+                final int currentIndex = index++; // 为lambda表达式创建final变量
+                String ticketInfo = String.format("§e[%d] §f%s §7(Level: %d)",
+                        currentIndex, ticket.getType(), ticket.getTicketLevel());
+                source.sendSuccess(() -> Component.literal(ticketInfo), false);
+            }
+
+            return 1; // 成功执行并找到了tickets
+
+        } catch (IllegalArgumentException e) {
+            source.sendFailure(Component.literal("§cInvalid arguments: " + e.getMessage()));
+            return 0;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("§cAn error occurred while retrieving chunk tickets: " + e.getMessage()));
+            return 0;
         }
-        
-        source.sendSuccess(() -> Component.literal("§aTotal tickets: " + chunkTickets.size()), false);
-        
-        int index = 1;
-        for (Ticket<?> ticket : chunkTickets) {
-            String ticketInfo = String.format("§e[%d] §f%s §7(Level: %d)", 
-                index++, ticket.getType(), ticket.getTicketLevel());
-            source.sendSuccess(() -> Component.literal(ticketInfo), false);
-        }
-        
-        return 1;
     }
 }

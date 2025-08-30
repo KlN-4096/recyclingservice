@@ -12,6 +12,9 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.server.level.*;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.util.SortedArraySet;
+
+import javax.annotation.Nonnull;
+
 /**
  * 区块冻结工具类
  * 通过DistanceManager.removeTicket()移除区块的tickets来实现"冻结"效果
@@ -228,7 +231,7 @@ public class ChunkFreezer {
         }
         
         @Override
-        public String toString() {
+        public @Nonnull String toString() {
             if (isEmpty()) {
                 return "FreezeResult{no chunks frozen}";
             }

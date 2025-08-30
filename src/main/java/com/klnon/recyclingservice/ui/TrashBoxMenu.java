@@ -191,9 +191,9 @@ public class TrashBoxMenu extends ChestMenu {
         Slot slot = this.slots.get(index);
         if (!slot.mayPickup(player)) return ItemStack.EMPTY;
 
+        ItemStack slotItem = slot.getItem();
         if (index < trashSlots) {
             // 从垃圾箱到玩家背包：最多64个
-            ItemStack slotItem = slot.getItem();
             int moveCount = Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
             ItemStack moveItem = slotItem.copyWithCount(moveCount);
 
@@ -203,7 +203,6 @@ public class TrashBoxMenu extends ChestMenu {
             }
         } else {
             // 从玩家背包到垃圾箱：手动实现
-            ItemStack slotItem = slot.getItem();
             if (!slotItem.isEmpty()) {
                 ItemStack originalStack = slotItem.copy();
 
@@ -317,8 +316,7 @@ public class TrashBoxMenu extends ChestMenu {
         if (slotId >= 0 && slotId < trashSlots) {
             // 点击垃圾箱槽位
             ItemStack carried = getCarried();
-            ItemStack slotItem = slots.get(slotId).getItem();
-            
+
             if (!carried.isEmpty() && clickType == ClickType.PICKUP) {
                 return "insert"; // 放入操作
             }

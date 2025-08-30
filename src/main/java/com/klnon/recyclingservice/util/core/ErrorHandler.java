@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
 
 public class ErrorHandler {
@@ -16,8 +15,8 @@ public class ErrorHandler {
     /**
      * 核心错误处理方法 - 统一的异常处理逻辑
      */
-    private static <T> T executeWithErrorHandling(String operationName, ServerPlayer player, Supplier<T> operation, 
-                                                  T successResult, T failureResult, 
+    private static <T> T executeWithErrorHandling(String operationName, ServerPlayer player, Supplier<T> operation,
+                                                  T successResult, T failureResult,
                                                   Runnable onSuccess, Runnable onFailure) {
         String playerName = player != null ? player.getName().getString() : "System";
         
@@ -50,10 +49,10 @@ public class ErrorHandler {
     /**
      * 命令操作错误处理 - 专门用于命令执行
      */
-    public static int handleCommandOperation(CommandSourceStack source, ServerPlayer player, String operationName, Supplier<Boolean> operation) {
+    public static int handleCommandOperation(ServerPlayer player, String operationName, Supplier<Boolean> operation) {
         return executeWithErrorHandling(
             operationName, player, 
-            () -> operation.get() ? 1 : 0,null, 0,null,null);
+            () -> operation.get() ? 1 : 0,1, 0,null,null);
     }
 
     /**
@@ -66,7 +65,7 @@ public class ErrorHandler {
             null, null,
             Config.isDebugLogsEnabled() ? 
                 () -> LOGGER.debug("Void operation {} completed successfully", operationName) : null,
-            null
-        );
+            Config.isDebugLogsEnabled() ?
+                () -> LOGGER.debug("Void operation {} completed failure", operationName) : null);
     }
   }

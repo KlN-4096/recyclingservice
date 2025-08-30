@@ -65,21 +65,7 @@ public class ItemFilter {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 过滤结果类 - 同时包含ItemStack和Entity，避免重复过滤
-     */
-    public static class FilterResult<T extends Entity> {
-        private final List<ItemStack> itemStacks;
-        private final List<T> entities;
-        
-        public FilterResult(List<ItemStack> itemStacks, List<T> entities) {
-            this.itemStacks = itemStacks;
-            this.entities = entities;
-        }
-        
-        public List<ItemStack> getItemStacks() { return itemStacks; }
-        public List<T> getEntities() { return entities; }
-    }
+
 
     /**
      * 检查弹射物是否应该被清理
@@ -163,5 +149,11 @@ public class ItemFilter {
         CompoundTag processing = createData.getCompound("Processing");
         // Time >= 0 表示正在处理中，Time = -1 表示处理已完成或失败
         return processing.getInt("Time") >= 0;
+    }
+
+    /**
+     * 过滤结果类 - 同时包含ItemStack和Entity，避免重复过滤
+     */
+    public record FilterResult<T extends Entity>(List<ItemStack> itemStacks, List<T> entities) {
     }
 }

@@ -8,8 +8,6 @@ import net.minecraft.resources.ResourceLocation;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.ui.UiUtils;
 
-import java.util.List;
-
 import javax.annotation.Nonnull;
 
 /**
@@ -162,13 +160,6 @@ public class TrashBox implements Container {
     }
 
     /**
-     * 获取垃圾箱编号
-     */
-    public int getBoxNumber() {
-        return boxNumber;
-    }
-    
-    /**
      * 获取垃圾箱所在维度ID
      */
     public ResourceLocation getDimensionId() {
@@ -180,23 +171,6 @@ public class TrashBox implements Container {
      */
     public boolean isAllowedToPutIn() {
         return Config.isDimensionAllowPutIn(dimensionId.toString());
-    }
-    
-    /**
-     * 检查垃圾箱是否已满
-     */
-    public boolean isFull() {
-        return !items.contains(ItemStack.EMPTY);
-    }
-    
-    /**
-     * 获取非空物品列表
-     */
-    public List<ItemStack> getNonEmptyItems() {
-        return items.stream()
-                   .filter(item -> !item.isEmpty())
-                   .map(ItemStack::copy)
-                   .toList();
     }
 
     /**

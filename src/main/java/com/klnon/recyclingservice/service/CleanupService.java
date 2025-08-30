@@ -100,13 +100,13 @@ public class CleanupService {
         
         // 优化：一次过滤获得物品和实体，避免重复判断
         ItemFilter.FilterResult<ItemEntity> itemFilterResult = ItemFilter.filterItemEntities(scanResult.items());
-        List<ItemStack> itemsToClean = ItemMerge.combine(itemFilterResult.getItemStacks());
+        List<ItemStack> itemsToClean = ItemMerge.combine(itemFilterResult.itemStacks());
         
         // 将物品存储到对应维度的垃圾箱
         trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
         // 准备待删除实体列表
-        List<Entity> entitiesToDelete = new ArrayList<>(itemFilterResult.getEntities());
+        List<Entity> entitiesToDelete = new ArrayList<>(itemFilterResult.entities());
         
         // 添加需要清理的弹射物
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());

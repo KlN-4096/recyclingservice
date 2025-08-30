@@ -52,8 +52,7 @@ public class ChunkScanner {
         );
 
         // 获取chunkMap用于区块冻结
-        Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap = ChunkFreezer.getChunkHolderMap(level);
-        processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, center, chunkMap);
+        processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, center);
 
         if (!currentBatch.isEmpty()) {
             processor.accept(currentBatch);
@@ -87,7 +86,7 @@ public class ChunkScanner {
                         pos.getMaxBlockX() + 1, level.getMaxBuildHeight(), pos.getMaxBlockZ() + 1
                     );
                     
-                    processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, pos, visibleChunkMap);
+                    processEntitiesInBounds(level, bounds, entityTypes, currentBatch, processor, batchSize, pos);
                 }
             }
         } catch (Exception e) {
@@ -119,8 +118,7 @@ public class ChunkScanner {
      */
     private static void processEntitiesInBounds(ServerLevel level, AABB bounds,
                                                 Set<EntityType<?>> entityTypes, EntityBatch currentBatch,
-                                                Consumer<EntityBatch> processor, int batchSize, ChunkPos chunkPos,
-                                                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap) {
+                                                Consumer<EntityBatch> processor, int batchSize, ChunkPos chunkPos) {
         int[] itemCount = {0};
         
         // 重试机制处理并发修改异常
@@ -204,7 +202,7 @@ public class ChunkScanner {
         final int maxRetries = 3;
         int retryCount = 0;
         
-        while (retryCount <= maxRetries) {
+        while (true) {
             try {
                 level.getEntities((Entity) null, bounds, entityProcessor);
                 return; // 成功执行，退出重试循环
@@ -218,18 +216,17 @@ public class ChunkScanner {
                         chunkPos.x, chunkPos.z, maxRetries);
                     return;
                 }
-                
+
                 try {
                     // 递增等待时间：5-10ms, 20-50ms, 100-200ms
                     int baseDelay = retryCount == 1 ? 5 : (retryCount == 2 ? 20 : 100);
                     int maxDelay = retryCount == 1 ? 10 : (retryCount == 2 ? 50 : 200);
                     int randomDelay = baseDelay + ThreadLocalRandom.current().nextInt(maxDelay - baseDelay + 1);
-                    
                     Thread.sleep(randomDelay);
-                    
-                    Recyclingservice.LOGGER.debug("Retrying chunk scan ({}, {}) - attempt {} after {}ms delay", 
+
+                    Recyclingservice.LOGGER.debug("Retrying chunk scan ({}, {}) - attempt {} after {}ms delay",
                         chunkPos.x, chunkPos.z, retryCount, randomDelay);
-                        
+
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt(); // 恢复中断状态
                     Recyclingservice.LOGGER.warn("Chunk scan retry interrupted for ({}, {})", chunkPos.x, chunkPos.z);

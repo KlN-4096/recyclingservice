@@ -15,17 +15,7 @@ import com.klnon.recyclingservice.Config;
  * - 发送邮费相关消息
  */
 public class PaymentUtils {
-    
-    /**
-     * 检查玩家是否有足够的邮费物品
-     * @param player 玩家
-     * @param requiredCost 需要的邮费数量
-     * @return 是否有足够邮费
-     */
-    public static boolean hasEnoughPayment(Player player, int requiredCost) {
-        return processPayment(player, requiredCost, false) >= 0;
-    }
-    
+
     /**
      * 扣除玩家的邮费
      * @param player 玩家
@@ -33,17 +23,17 @@ public class PaymentUtils {
      * @return 是否成功扣除
      */
     public static boolean deductPayment(Player player, int cost) {
-        return processPayment(player, cost, true) >= 0;
+        return processPayment(player, cost) >= 0;
     }
     
     /**
      * 优化的支付处理方法 - 单次遍历完成检查和扣除
-     * @param player 玩家
+     *
+     * @param player       玩家
      * @param requiredCost 需要的邮费数量
-     * @param actuallyDeduct 是否实际扣除（false=仅检查，true=检查并扣除）
      * @return 成功返回>=0，失败返回-1
      */
-    private static int processPayment(Player player, int requiredCost, boolean actuallyDeduct) {
+    private static int processPayment(Player player, int requiredCost) {
         if (requiredCost <= 0) {
             return 0;
         }
@@ -58,7 +48,7 @@ public class PaymentUtils {
                 int stackCount = stack.getCount();
                 totalFound += stackCount;
                 
-                if (actuallyDeduct && remaining > 0) {
+                if (remaining > 0) {
                     int deduct = Math.min(remaining, stackCount);
                     stack.shrink(deduct);
                     remaining -= deduct;
@@ -71,7 +61,7 @@ public class PaymentUtils {
             return -1; // 不足
         }
         
-        return actuallyDeduct ? (remaining == 0 ? 0 : -1) : 0;
+        return (remaining == 0 ? 0 : -1);
     }
     
     /**
