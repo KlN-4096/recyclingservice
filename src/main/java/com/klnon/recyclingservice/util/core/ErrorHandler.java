@@ -5,7 +5,6 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.util.core.MessageSender.MessageType;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
