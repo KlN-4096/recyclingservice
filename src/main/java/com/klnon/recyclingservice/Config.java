@@ -50,8 +50,8 @@ public class Config {
     // === 付费系统 ===
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE;
     public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST;
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_MODE;
-    public static final ModConfigSpec.BooleanValue SAME_DIMENSION_PAYMENT_ENABLED;
+    public static final ModConfigSpec.ConfigValue<String> INSERT_PAYMENT_MODE;
+    public static final ModConfigSpec.ConfigValue<String> EXTRACT_PAYMENT_MODE;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS;
     
     // === 物品过滤 ===
@@ -190,13 +190,15 @@ public class Config {
         // 邮费系统
         BUILDER.comment("Payment system for cross-dimension access / 跨维度访问邮费系统").push("payment");
         
-        PAYMENT_MODE = BUILDER
-                .comment("When to charge payment / 何时收取邮费:",
-                        "  - 'enabled': Pay when putting items into trash box / 放入垃圾箱时付费",
-                        "  - 'none': Disable this function / 禁用邮费系统",
-                        "Default: enabled")
-                .translation("recycle.config.payment_mode")
-                .defineInList("payment_mode", "enabled", Arrays.asList("enabled", "none"));
+        INSERT_PAYMENT_MODE = BUILDER
+                .comment("Insert payment mode / 放入邮费模式",
+                        "  - 'all_dimensions_pay': Insert to any dimension requires payment / 放入任何维度都需要邮费",
+                        "  - 'current_dimension_free': Insert to current dimension is free, other dimensions require payment / 当前维度放入免费，其他维度需要邮费",
+                        "  - 'all_free': Insert to any dimension is free / 放入任何维度都免费",
+                        "Default: current_dimension_free")
+                .translation("recycle.config.insert_payment_mode")
+                .defineInList("insert_payment_mode", "current_dimension_free", 
+                        Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
 
         PAYMENT_ITEM_TYPE = BUILDER
                 .comment("What item to use as payment (example: minecraft:emerald) / 用作邮费的物品类型（例如：minecraft:emerald）",
@@ -210,13 +212,15 @@ public class Config {
                 .translation("recycle.config.cross_dimension_access_cost")
                 .defineInRange("cross_dimension_access_cost", 1, 1, 64);
         
-        SAME_DIMENSION_PAYMENT_ENABLED = BUILDER
-                .comment("Whether same dimension access requires payment / 是否同维度访问需要邮费",
-                        "true: Same dimension access costs base_cost / true: 同维度访问需要基础邮费",
-                        "false: Same dimension access is free / false: 同维度访问免费",
-                        "Default: true")
-                .translation("recycle.config.same_dimension_payment_enabled")
-                .define("same_dimension_payment_enabled", false);
+        EXTRACT_PAYMENT_MODE = BUILDER
+                .comment("Extract payment mode / 取出邮费模式",
+                        "  - 'all_dimensions_pay': Extract from any dimension requires payment / 从任何维度取出都需要邮费",
+                        "  - 'current_dimension_free': Extract from current dimension is free, other dimensions require payment / 当前维度取出免费，其他维度需要邮费",  
+                        "  - 'all_free': Extract from any dimension is free / 从任何维度取出都免费",
+                        "Default: current_dimension_free")
+                .translation("recycle.config.extract_payment_mode")
+                .defineInList("extract_payment_mode", "current_dimension_free", 
+                        Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
         
         DIMENSION_MULTIPLIERS = BUILDER
                 .comment("Cost multipliers for each dimension / 各维度邮费倍数",
@@ -564,17 +568,17 @@ public class Config {
     }
     
     /**
-     * 获取邮费模式
+     * 获取放入邮费模式
      */
-    public static String getPaymentMode() {
-        return PAYMENT_MODE.get();
+    public static String getInsertPaymentMode() {
+        return INSERT_PAYMENT_MODE.get();
     }
     
     /**
-     * 检查是否启用同维度邮费
+     * 获取取出邮费模式
      */
-    public static boolean isSameDimensionPaymentEnabled() {
-        return SAME_DIMENSION_PAYMENT_ENABLED.get();
+    public static String getExtractPaymentMode() {
+        return EXTRACT_PAYMENT_MODE.get();
     }
     
     /**
@@ -625,29 +629,43 @@ public class Config {
     }
     
     /**
-     * 计算邮费数量（仅用于insert操作）
+     * 计算邮费数量（支持insert和extract操作）
+     * @param playerDim 玩家所在维度
+     * @param trashDim 垃圾箱所在维度
+     * @param operation 操作类型："insert" 或 "extract"
+     * @return 需要支付的邮费数量，0表示免费
+     */
+    public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
+        boolean isSameDimension = playerDim.equals(trashDim);
+        String paymentMode = "insert".equals(operation) ? getInsertPaymentMode() : getExtractPaymentMode();
+        
+        return switch (paymentMode) {
+            case "all_free" -> 0;
+            case "current_dimension_free" -> isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
+            case "all_dimensions_pay" -> isSameDimension ? getCrossDimensionCost() : calculateCrossDimensionCost(trashDim);
+            default -> 0;
+        };
+    }
+    
+    /**
+     * 计算跨维度邮费
+     * @param trashDim 垃圾箱所在维度
+     * @return 计算后的邮费数量
+     */
+    private static int calculateCrossDimensionCost(ResourceLocation trashDim) {
+        int baseCost = getCrossDimensionCost();
+        double multiplier = getDimensionMultiplier(trashDim.toString());
+        return (int) Math.ceil(baseCost * multiplier);
+    }
+    
+    /**
+     * 计算邮费数量（兼容旧版本，默认为insert操作）
      * @param playerDim 玩家所在维度
      * @param trashDim 垃圾箱所在维度
      * @return 需要支付的邮费数量，0表示免费
      */
     public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim) {
-        // 只有在enabled模式下才收费
-        String mode = getPaymentMode();
-        if (!mode.equals("enabled")) {
-            return 0;
-        }
-        
-        int baseCost = getCrossDimensionCost();
-        
-        // 同维度和跨维度分别处理
-        if (playerDim.equals(trashDim)) {
-            // 同维度访问：根据开关决定是否收费
-            return isSameDimensionPaymentEnabled() ? baseCost : 0;
-        } else {
-            // 跨维度访问：使用目标维度（垃圾箱所在维度）的倍数
-            double multiplier = getDimensionMultiplier(trashDim.toString());
-            return (int) Math.ceil(baseCost * multiplier);
-        }
+        return calculatePaymentCost(playerDim, trashDim, "insert");
     }
     
     /**

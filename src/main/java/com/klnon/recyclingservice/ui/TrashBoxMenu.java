@@ -287,6 +287,8 @@ public class TrashBoxMenu extends ChestMenu {
         
         if ("insert".equals(operation)) {
             return handleInsertPayment(playerDim, trashDim, player);
+        } else if ("extract".equals(operation)) {
+            return handleExtractPayment(playerDim, trashDim, player);
         }
         
         return true;
@@ -297,7 +299,18 @@ public class TrashBoxMenu extends ChestMenu {
      * 处理放入操作的邮费
      */
     private boolean handleInsertPayment(ResourceLocation playerDim, ResourceLocation trashDim, Player player) {
-        int cost = Config.calculatePaymentCost(playerDim, trashDim);
+        int cost = Config.calculatePaymentCost(playerDim, trashDim, "insert");
+        if (cost <= 0) return true;
+        
+        // 检查和扣除邮费
+        return PaymentUtils.checkAndDeductPayment(player, cost);
+    }
+    
+    /**
+     * 处理取出操作的邮费
+     */
+    private boolean handleExtractPayment(ResourceLocation playerDim, ResourceLocation trashDim, Player player) {
+        int cost = Config.calculatePaymentCost(playerDim, trashDim, "extract");
         if (cost <= 0) return true;
         
         // 检查和扣除邮费
@@ -310,18 +323,36 @@ public class TrashBoxMenu extends ChestMenu {
      * 根据点击行为判断操作类型
      * @param slotId 槽位ID
      * @param clickType 点击类型
-     * @return "insert" 或 null（不收费）
+     * @return "insert"、"extract" 或 null（不收费）
      */
     private String getOperationType(int slotId, int button, ClickType clickType, Player player) {
         if (slotId >= 0 && slotId < trashSlots) {
             // 点击垃圾箱槽位
             ItemStack carried = getCarried();
+            ItemStack slotItem = slots.get(slotId).getItem();
 
             if (!carried.isEmpty() && clickType == ClickType.PICKUP) {
                 return "insert"; // 放入操作
             }
             if(!player.getInventory().getItem(button).isEmpty() && clickType == ClickType.SWAP){
                 return "insert"; // 放入操作
+            }
+            
+            // 取出操作识别
+            if (carried.isEmpty() && !slotItem.isEmpty() && clickType == ClickType.PICKUP) {
+                return "extract"; // 取出操作
+            }
+            if (clickType == ClickType.SWAP && !slotItem.isEmpty()) {
+                return "extract"; // 数字键交换取出
+            }
+            if (clickType == ClickType.QUICK_MOVE && !slotItem.isEmpty()) {
+                return "extract"; // Shift点击取出
+            }
+            if (clickType == ClickType.PICKUP_ALL) {
+                return "extract"; // 双击收集
+            }
+            if (clickType == ClickType.THROW && carried.isEmpty() && !slotItem.isEmpty()) {
+                return "extract"; // Q键丢出
             }
         } else if (slotId >= trashSlots && !slots.get(slotId).getItem().isEmpty() && clickType == ClickType.QUICK_MOVE) {
             return "insert"; // Shift点击放入

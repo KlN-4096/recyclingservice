@@ -1,13 +1,11 @@
 package com.klnon.recyclingservice.util.management;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.Config;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.server.level.*;
 import net.minecraft.world.level.ChunkPos;
@@ -77,7 +75,7 @@ public class ChunkFreezer {
             
             if (removedCount > 0) {
                 Recyclingservice.LOGGER.info("Frozen chunk at ({}, {}) by removing {} tickets", 
-                    chunkPos.x, chunkPos.z, removedCount);
+                    chunkPos.x*16, chunkPos.z*16, removedCount);
             }
             
             return removedCount;
@@ -193,28 +191,6 @@ public class ChunkFreezer {
         });
     }
     
-    /**
-     * 获取区块持有者映射（供外部调用）
-     * 主要用于获取区块的ticketLevel信息
-     */
-    public static Long2ObjectLinkedOpenHashMap<ChunkHolder> getChunkHolderMap(ServerLevel level) {
-        try {
-            ServerChunkCache chunkSource = level.getChunkSource();
-            ChunkMap chunkMap = chunkSource.chunkMap;
-            
-            Field visibleChunkMapField = ChunkMap.class.getDeclaredField("visibleChunkMap");
-            visibleChunkMapField.setAccessible(true);
-            
-            @SuppressWarnings("unchecked")
-            Long2ObjectLinkedOpenHashMap<ChunkHolder> visibleChunkMap = 
-                (Long2ObjectLinkedOpenHashMap<ChunkHolder>) visibleChunkMapField.get(chunkMap);
-                
-            return visibleChunkMap;
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            Recyclingservice.LOGGER.error("Failed to access chunk holder map via reflection: {}", e.getMessage());
-            return null;
-        }
-    }
     
     /**
      * 冻结结果记录类

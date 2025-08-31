@@ -1,6 +1,5 @@
 package com.klnon.recyclingservice.util.cleanup;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -17,8 +16,6 @@ import com.klnon.recyclingservice.util.management.ChunkFreezer;
 import net.minecraft.network.chat.Component;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.server.level.ChunkHolder;
-import net.minecraft.server.level.ChunkMap;
-import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -72,7 +69,8 @@ public class ChunkScanner {
         EntityBatch currentBatch = new EntityBatch();
         //这里用不了errorhandler
         try {
-            Long2ObjectLinkedOpenHashMap<ChunkHolder> visibleChunkMap = getChunkHolder(level);
+            // 直接访问公开的visibleChunkMap字段（通过AccessTransformer）
+            Long2ObjectLinkedOpenHashMap<ChunkHolder> visibleChunkMap = level.getChunkSource().chunkMap.visibleChunkMap;
 
             for (ChunkHolder chunkHolder : visibleChunkMap.values()) {
                 int ticketLevel = chunkHolder.getTicketLevel();
@@ -99,19 +97,6 @@ public class ChunkScanner {
         }
     }
 
-    private static Long2ObjectLinkedOpenHashMap<ChunkHolder> getChunkHolder(ServerLevel level) throws NoSuchFieldException, IllegalAccessException {
-        ServerChunkCache chunkSource = level.getChunkSource();
-        ChunkMap chunkMap = chunkSource.chunkMap;
-
-        // 使用反射访问 visibleChunkMap
-        Field visibleChunkMapField = ChunkMap.class.getDeclaredField("visibleChunkMap");
-        visibleChunkMapField.setAccessible(true);
-
-        @SuppressWarnings("unchecked")
-        Long2ObjectLinkedOpenHashMap<ChunkHolder> visibleChunkMap =
-            (Long2ObjectLinkedOpenHashMap<ChunkHolder>) visibleChunkMapField.get(chunkMap);
-        return visibleChunkMap;
-    }
 
     /**
      * 在指定边界内处理实体（增量添加到现有批次）
@@ -171,17 +156,15 @@ public class ChunkScanner {
             
             // 发送警告消息（如果启用）
             if (Config.isChunkWarningEnabled()) {
-                // 获取区块的ticketLevel用于显示
-                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkHolderMap = ChunkFreezer.getChunkHolderMap(level);
+                // 获取区块的ticketLevel用于显示（直接访问通过AccessTransformer公开的字段）
+                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkHolderMap = level.getChunkSource().chunkMap.visibleChunkMap;
                 int ticketLevel = 33; // 默认值：未加载
-                if (chunkHolderMap != null) {
-                    long chunkKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
-                    ChunkHolder holder = chunkHolderMap.get(chunkKey);
-                    if (holder != null) {
-                        ticketLevel = holder.getTicketLevel();
-                    }
+                long chunkKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
+                ChunkHolder holder = chunkHolderMap.get(chunkKey);
+                if (holder != null) {
+                    ticketLevel = holder.getTicketLevel();
                 }
-                
+
                 Component warningMessage = Config.getItemWarningMessage(itemCount[0], worldX, worldZ, ticketLevel);
                 MessageSender.sendChatMessage(level.getServer(), warningMessage);
             }
