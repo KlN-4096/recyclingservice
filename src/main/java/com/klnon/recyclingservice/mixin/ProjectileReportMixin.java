@@ -20,7 +20,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
     "net.minecraft.world.entity.projectile.Projectile"
 })
 public class ProjectileReportMixin {
-    @Unique private boolean recyclingservice$reported = false;
     
     @Inject(method = "tick", at = @At("TAIL"))
     private void checkAndReport(CallbackInfo ci) {
@@ -32,10 +31,14 @@ public class ProjectileReportMixin {
                 return;
             }
             
+            // 检查是否已在缓存中
+            boolean alreadyReported = SimpleReportCache.isEntityReported(self);
+            
+            // 检查是否应该上报
             boolean shouldReport = recyclingservice$shouldReport(self);
             
-            if (shouldReport && !recyclingservice$reported && !self.level().isClientSide()) {
-                recyclingservice$reported = true;
+            if (shouldReport && !alreadyReported && !self.level().isClientSide()) {
+                // 应该上报且未上报 -> 上报
                 SimpleReportCache.report(self);
             }
         } catch (Exception e) {
@@ -46,7 +49,7 @@ public class ProjectileReportMixin {
     @Unique
     private boolean recyclingservice$shouldReport(Entity self) {
         try {
-            return self.tickCount >= 30 * 20 && // 30秒后考虑清理
+            return self.tickCount >= 10 * 20 && // 30秒后考虑清理
                    Config.CLEAN_PROJECTILES.get() &&
                    Config.projectileTypesCache.contains(
                        BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());

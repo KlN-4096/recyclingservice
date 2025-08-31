@@ -7,180 +7,198 @@ import net.minecraft.world.level.ChunkPos;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
+import java.util.function.Supplier;
 
 /**
- * 主动上报缓存系统 - 新清理架构的核心组件
- * 
- * 工作流程：实体自检 -> 满足条件时上报 -> CleanupService获取 -> 清理后清空缓存
- * 优化：UUID去重避免重复收集
+ * 主动上报缓存系统 - UUID统一操作的简化版本
+ * 核心理念：所有操作都基于UUID，提供Entity便捷方法
+ * 优化：统一异常处理、减少代码重复、清晰的API设计
  */
 public class SimpleReportCache {
     
-    // 简单的维度->实体报告列表映射
     private static final ConcurrentHashMap<ResourceLocation, ConcurrentLinkedQueue<EntityReport>> cache 
         = new ConcurrentHashMap<>();
     
-    // UUID去重集合：维度 -> 已上报实体UUID集合
     private static final ConcurrentHashMap<ResourceLocation, Set<UUID>> reportedUuids = new ConcurrentHashMap<>();
     
+    // === 核心辅助方法 ===
+    
     /**
-     * 上报实体需要清理 - 使用UUID去重避免重复收集
-     * @param entity 需要清理的实体
+     * 提取实体信息
      */
-    public static void report(Entity entity) {
+    private static EntityInfo extractEntityInfo(Entity entity) {
+        return new EntityInfo(entity.getUUID(), entity.level().dimension().location(), entity);
+    }
+    
+    /**
+     * 统一异常处理包装器
+     */
+    private static <T> T safeOperation(Supplier<T> operation, T defaultValue) {
         try {
-            UUID entityUuid = entity.getUUID();
-            ResourceLocation dimension = entity.level().dimension().location();
-            
-            // UUID去重检查：只有首次上报才会添加到缓存
+            return operation.get();
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * 核心UUID添加操作
+     */
+    private static void addToCache(ResourceLocation dimension, UUID uuid, Entity entity) {
+        safeOperation(() -> {
             Set<UUID> reported = reportedUuids.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet());
-            if (reported.add(entityUuid)) {
-                // 首次上报成功，添加到实体缓存
+            if (reported.add(uuid)) {
                 ChunkPos chunkPos = new ChunkPos(entity.blockPosition());
                 EntityReport report = new EntityReport(entity, chunkPos, dimension);
                 cache.computeIfAbsent(dimension, k -> new ConcurrentLinkedQueue<>()).add(report);
+                return true;
             }
-            // 如果UUID已存在，reported.add()返回false，直接跳过不重复添加
-        } catch (Exception e) {
-            // 出错就跳过，什么都不做
-        }
+            return false;
+        }, false);
     }
     
     /**
-     * 取消上报 - 同时从缓存和UUID记录中移除
-     * @param entity 不再需要清理的实体
+     * 核心UUID移除操作
      */
-    public static void cancel(Entity entity) {
-        try {
-            UUID entityUuid = entity.getUUID();
-            ResourceLocation dimension = entity.level().dimension().location();
-            
-            // 从实体缓存中移除
-            ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
-            if (queue != null) {
-                queue.removeIf(report -> report.entity().equals(entity));
-            }
-            
+    private static void removeFromCache(ResourceLocation dimension, UUID uuid) {
+        safeOperation(() -> {
+            boolean removed = false;
+
             // 从UUID记录中移除
             Set<UUID> reported = reportedUuids.get(dimension);
             if (reported != null) {
-                reported.remove(entityUuid);
+                removed = reported.remove(uuid);
             }
-        } catch (Exception e) {
-            // 出错就跳过，什么都不做
-        }
+
+            // 从实体缓存中移除
+            ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
+            if (queue != null) {
+                queue.removeIf(report -> report.entity().getUUID().equals(uuid));
+            }
+
+            return removed;
+        }, false);
+    }
+    
+    // === 公共API方法 ===
+    
+    /**
+     * 上报实体 (Entity便捷方法)
+     */
+    public static void report(Entity entity) {
+        EntityInfo info = extractEntityInfo(entity);
+        addToCache(info.dimension(), info.uuid(), info.entity());
     }
     
     /**
-     * 获取维度的所有上报实体
-     * @param dimension 维度ID
-     * @return 该维度所有上报的实体列表
+     * 检查UUID是否已上报 (核心方法)
      */
-    public static List<Entity> getReported(ResourceLocation dimension) {
-        try {
+    public static boolean isReported(ResourceLocation dimension, UUID uuid) {
+        return safeOperation(() -> {
+            Set<UUID> reported = reportedUuids.get(dimension);
+            return reported != null && reported.contains(uuid);
+        }, false);
+    }
+    
+    /**
+     * 检查实体是否已上报 (Entity便捷方法)
+     */
+    public static boolean isEntityReported(Entity entity) {
+        EntityInfo info = extractEntityInfo(entity);
+        return isReported(info.dimension(), info.uuid());
+    }
+    
+    /**
+     * 移除UUID (核心方法)
+     */
+    public static void remove(ResourceLocation dimension, UUID uuid) {
+        removeFromCache(dimension, uuid);
+    }
+    
+    /**
+     * 移除实体 (Entity便捷方法)
+     */
+    public static void remove(Entity entity) {
+        EntityInfo info = extractEntityInfo(entity);
+        remove(info.dimension(), info.uuid());
+    }
+    
+    /**
+     * 清理无效实体，返回清理数量
+     */
+    public static int removeInvalidEntities(ResourceLocation dimension) {
+        return safeOperation(() -> {
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
-            return queue != null ? 
-                queue.stream().map(EntityReport::entity).toList() : 
-                new ArrayList<>();
-        } catch (Exception e) {
-            return new ArrayList<>(); // 出错返回空列表
-        }
+            if (queue == null) return 0;
+            
+            List<UUID> toRemove = queue.stream()
+                .map(EntityReport::entity)
+                .filter(entity -> entity.isRemoved() || !entity.isAlive())
+                .map(Entity::getUUID)
+                .toList();
+            
+            toRemove.forEach(uuid -> removeFromCache(dimension, uuid));
+            return toRemove.size();
+        }, 0);
     }
     
     /**
      * 获取维度的所有实体报告
-     * @param dimension 维度ID
-     * @return 该维度所有EntityReport列表
      */
     public static List<EntityReport> getReportedEntries(ResourceLocation dimension) {
-        try {
+        return safeOperation(() -> {
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
             return queue != null ? new ArrayList<>(queue) : new ArrayList<>();
-        } catch (Exception e) {
-            return new ArrayList<>(); // 出错返回空列表
-        }
+        }, new ArrayList<>());
     }
     
     /**
-     * 获取指定维度中每个区块的实体数量统计
-     * @param dimension 维度ID
-     * @return 区块位置 -> 实体数量的映射
+     * 获取区块实体数量统计
      */
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
-        try {
-            Map<ChunkPos, Integer> chunkStats = new HashMap<>();
+        return safeOperation(() -> {
+            Map<ChunkPos, Integer> stats = new HashMap<>();
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
             
             if (queue != null) {
-                for (EntityReport report : queue) {
-                    ChunkPos chunkPos = report.chunkPos();
-                    chunkStats.put(chunkPos, chunkStats.getOrDefault(chunkPos, 0) + 1);
-                }
+                queue.forEach(report -> 
+                    stats.merge(report.chunkPos(), 1, Integer::sum));
             }
             
-            return chunkStats;
-        } catch (Exception e) {
-            return new HashMap<>(); // 出错返回空映射
-        }
+            return stats;
+        }, new HashMap<>());
     }
     
     /**
-     * 获取超过指定阈值的区块列表
-     * @param dimension 维度ID
-     * @param threshold 实体数量阈值
-     * @return 超过阈值的区块列表
+     * 获取超过阈值的区块
      */
     public static List<ChunkPos> getChunksExceedingThreshold(ResourceLocation dimension, int threshold) {
-        try {
-            Map<ChunkPos, Integer> chunkStats = getEntityCountByChunk(dimension);
-            return chunkStats.entrySet().stream()
-                .filter(entry -> entry.getValue() >= threshold)
-                .map(Map.Entry::getKey)
-                .toList();
-        } catch (Exception e) {
-            return new ArrayList<>(); // 出错返回空列表
-        }
+        return getEntityCountByChunk(dimension).entrySet().stream()
+            .filter(entry -> entry.getValue() >= threshold)
+            .map(Map.Entry::getKey)
+            .toList();
     }
     
     /**
-     * 清空指定维度的缓存 - 同步清理实体缓存和UUID记录
-     * @param dimension 维度ID
+     * 清空维度缓存
      */
     public static void clear(ResourceLocation dimension) {
-        try {
+        safeOperation(() -> {
             cache.remove(dimension);
-            reportedUuids.remove(dimension); // 同步清理UUID记录
-        } catch (Exception e) {
-            // 出错就跳过
-        }
+            reportedUuids.remove(dimension);
+            return null;
+        }, null);
     }
+
+    // === 辅助记录类 ===
     
     /**
-     * 获取缓存状态信息（用于调试）- 包含UUID去重统计
-     * @return 缓存统计信息
+     * 实体信息记录
      */
-    public static String getCacheStatus() {
-        try {
-            int dimensionCount = cache.size();
-            int totalEntities = cache.values().stream()
-                .mapToInt(Queue::size)
-                .sum();
-            int totalUuids = reportedUuids.values().stream()
-                .mapToInt(Set::size)
-                .sum();
-            return String.format("Dimensions: %d, Total entities: %d, Total UUIDs: %d", 
-                dimensionCount, totalEntities, totalUuids);
-        } catch (Exception e) {
-            return "Cache status unavailable";
-        }
-    }
+    private record EntityInfo(UUID uuid, ResourceLocation dimension, Entity entity) {}
     
     /**
      * 实体上报记录
-     * @param entity 上报的实体
-     * @param chunkPos 实体所在的区块位置
-     * @param dimension 实体所在的维度
      */
     public record EntityReport(Entity entity, ChunkPos chunkPos, ResourceLocation dimension) {}
 }

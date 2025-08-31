@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.service;
 
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.management.ChunkFreezer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -24,13 +25,11 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * 自动清理服务 - 基于实体主动上报的清理系统
- * 
  * 核心功能：
  * - 收集上报缓存中的待清理实体（零延迟，O(1)访问）
  * - 过滤物品和弹射物
  * - 存储物品到对应维度垃圾箱
  * - 异步删除原始实体（避免TPS下降）
- * 
  * 设计特点：缓存收集同步，实体删除异步，错误隔离
  */
 public class CleanupService {
@@ -79,24 +78,35 @@ public class CleanupService {
     }
     
     /**
-     * 清空已处理的缓存
+     * 精确清理已处理的缓存 - 只移除无效实体
      * @param result 清理结果
      */
     private static void clearProcessedCache(CleanupResult result) {
         try {
-            // 简单粗暴：清空所有维度的缓存
+            int totalCleanedEntities = 0;
+            
+            // 对每个维度进行精确清理
             for (ResourceLocation dimension : result.dimensionStats().keySet()) {
-                SimpleReportCache.clear(dimension);
+                // 清理无效实体（已删除、不存活的）
+                int cleanedInDimension = SimpleReportCache.removeInvalidEntities(dimension);
+                totalCleanedEntities += cleanedInDimension;
+                
+                if (Config.ENABLE_DEBUG_LOGS.get() && cleanedInDimension > 0) {
+                    Recyclingservice.LOGGER.debug(
+                        "Cleaned {} invalid entities from cache in dimension {}", 
+                        cleanedInDimension, dimension);
+                }
             }
             
             // 记录缓存清理信息
-            if (!result.dimensionStats().isEmpty()) {
-                com.klnon.recyclingservice.Recyclingservice.LOGGER.debug(
-                    "Cleared report cache for {} dimensions", result.dimensionStats().size());
+            if (totalCleanedEntities > 0) {
+                Recyclingservice.LOGGER.debug(
+                    "Cleaned {} invalid entities from report cache across {} dimensions", 
+                    totalCleanedEntities, result.dimensionStats().size());
             }
         } catch (Exception e) {
             // 出错跳过，不影响主流程
-            com.klnon.recyclingservice.Recyclingservice.LOGGER.debug("Failed to clear cache", e);
+            Recyclingservice.LOGGER.debug("Failed to clean processed cache", e);
         }
     }
     

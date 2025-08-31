@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.klnon.recyclingservice.util.core.ErrorHandler;
 import java.util.HashSet;
 
 public class Config {
@@ -498,18 +497,28 @@ public class Config {
     private static void parseDimensionMultipliers() {
         dimensionMultiplierCache.clear();
         
-        DIMENSION_MULTIPLIERS.get().forEach(entry -> {
-            try {
-                String[] parts = entry.split(":");
-                if (parts.length == 3) {
-                    String dimensionId = parts[0] + ":" + parts[1];
-                    double multiplier = Double.parseDouble(parts[2]);
-                    dimensionMultiplierCache.put(dimensionId, multiplier);
+        try {
+            DIMENSION_MULTIPLIERS.get().forEach(entry -> {
+                try {
+                    String[] parts = entry.split(":");
+                    if (parts.length == 3) {
+                        String dimensionId = parts[0] + ":" + parts[1];
+                        double multiplier = Double.parseDouble(parts[2]);
+                        dimensionMultiplierCache.put(dimensionId, multiplier);
+                    }
+                } catch (NumberFormatException e) {
+                    // 记录具体的错误配置项，但继续处理其他项
+                    Recyclingservice.LOGGER.warn("Invalid dimension multiplier format: '{}', skipping", entry);
                 }
-            } catch (NumberFormatException e) {
-                ErrorHandler.handleVoidOperation("parseDimensionMultiplier", () -> {});
-            }
-        });
+            });
+        } catch (Exception e) {
+            // 如果整个解析过程出错，记录错误但不抛出异常
+            Recyclingservice.LOGGER.error("Failed to parse dimension multipliers, using defaults", e);
+            // 设置默认值，避免配置状态不一致
+            dimensionMultiplierCache.put("minecraft:overworld", 1.0);
+            dimensionMultiplierCache.put("minecraft:the_nether", 1.0);
+            dimensionMultiplierCache.put("minecraft:the_end", 2.0);
+        }
     }
     
     /**
@@ -690,16 +699,28 @@ public class Config {
      * 更新HashSet缓存（配置重载时调用）
      */
     public static void updateCaches() {
-        // 更新过滤物品缓存
-        whitelistCache = new HashSet<>(WHITELIST.get());
-        blacklistCache = new HashSet<>(BLACKLIST.get());
-        projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
-        
-        // 解析维度倍数配置
-        parseDimensionMultipliers();
-        
-        // 更新允许放入物品的维度缓存
-        allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());
+        try {
+            // 更新过滤物品缓存
+            whitelistCache = new HashSet<>(WHITELIST.get());
+            blacklistCache = new HashSet<>(BLACKLIST.get());
+            projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
+            
+            // 更新允许放入物品的维度缓存
+            allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());
+            
+            // 解析维度倍数配置
+            parseDimensionMultipliers();
+            
+        } catch (Exception e) {
+            // 如果缓存更新失败，记录错误但不抛出异常，避免配置文件损坏
+            Recyclingservice.LOGGER.error("Failed to update config caches, some features may not work correctly", e);
+            
+            // 设置最小可用的默认缓存，确保基本功能可用
+            if (whitelistCache == null) whitelistCache = new HashSet<>();
+            if (blacklistCache == null) blacklistCache = new HashSet<>();
+            if (projectileTypesCache == null) projectileTypesCache = new HashSet<>();
+            if (allowPutInDimensionsCache == null) allowPutInDimensionsCache = new HashSet<>();
+        }
     }
     
     /**
