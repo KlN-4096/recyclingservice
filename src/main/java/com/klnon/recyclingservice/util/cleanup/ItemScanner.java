@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.util.cleanup;
 
+import com.klnon.recyclingservice.Recyclingservice;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -66,6 +67,21 @@ public class ItemScanner {
      * @return CompletableFuture包装的维度ID -> 扫描结果映射
      */
     public static CompletableFuture<Map<ResourceLocation, ScanResult>> scanAllDimensionsAsync(MinecraftServer server) {
+        // 激进模式检查和触发（仅在扫描开始时检查一次）
+        if (Config.shouldUseAggressiveMode(server)) {
+            // 批量冻结所有非白名单区块
+            int frozenChunks = com.klnon.recyclingservice.util.management.ChunkFreezer.freezeAllNonWhitelistChunks(server);
+            
+            if (frozenChunks > 0) {
+                // 记录激进模式激活信息
+                double avgTickTime = server.getAverageTickTimeNanos();
+                double tps = Math.min(20.0, 1000.0 / avgTickTime);
+                
+                Recyclingservice.LOGGER.warn("Aggressive mode activated! Server performance: TPS={}, MSPT={} - Frozen {} chunks",
+                    tps, avgTickTime, frozenChunks);
+            }
+        }
+        
         List<CompletableFuture<Map.Entry<ResourceLocation, ScanResult>>> futures = new ArrayList<>();
         
         // 并行扫描所有维度

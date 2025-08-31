@@ -72,6 +72,11 @@ public class Config {
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
     public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS;
     
+    // === 激进模式 ===
+    public static final ModConfigSpec.BooleanValue ENABLE_AGGRESSIVE_MODE;
+    public static final ModConfigSpec.IntValue AGGRESSIVE_TPS_THRESHOLD;
+    public static final ModConfigSpec.IntValue AGGRESSIVE_MSPT_THRESHOLD;
+    
     // === 扫描优化设置 ===
     public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
     public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
@@ -163,13 +168,6 @@ public class Config {
                 .translation("recycle.config.item_stack_multiplier")
                 .defineInRange("item_stack_multiplier", 100, 1, 1000);
         
-        ITEM_COUNT_DISPLAY_FORMAT = BUILDER
-                .comment("Format for item count display / 物品数量显示格式",
-                        "Available placeholders: {current} = current count, {max} = maximum stack size / 可用占位符：{current} = 当前数量，{max} = 最大堆叠数",
-                        "Default: §7Available: §a{current} / §b{max}")
-                .translation("recycle.config.item_count_display_format")
-                .define("item_count_display_format", "§7Available: §a{current} / §b{max}");
-        
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
                 .comment("Dimensions that allow players to put items into trash boxes / 允许玩家主动将物品放入垃圾箱的维度",
                         "Default: Main 3 dimensions / 默认：主要3个维度")
@@ -233,13 +231,13 @@ public class Config {
         DIMENSION_MULTIPLIERS = BUILDER
                 .comment("Cost multipliers for each dimension / 各维度邮费倍数",
                         "Format: \"dimension_id:multiplier\" / 格式：\"维度ID:倍数\"",
-                        "Example: minecraft:overworld:1.0,minecraft:the_nether:1.5,minecraft:the_end:2.0",
+                        "Example: minecraft:overworld:1.0,minecraft:the_nether:1.0,minecraft:the_end:2.0",
                         "If dimension not configured, uses default 1.0 / 未配置的维度使用默认值1.0",
                         "NOTE: Multiplier only applies when player is in DIFFERENT dimension / 注意：倍数仅在玩家位于不同维度时生效")
                 .translation("recycle.config.dimension_multipliers")
                 .defineListAllowEmpty("dimension_multipliers", 
-                        List.of("minecraft:overworld:1.5", "minecraft:the_nether:1.5", "minecraft:the_end:2.0"), 
-                        () -> "minecraft:overworld:1.5",
+                        List.of("minecraft:overworld:1.0", "minecraft:the_nether:1.0", "minecraft:the_end:2.0"),
+                        () -> "minecraft:overworld:1.0",
                         obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+(\\.[0-9]+)?$"));
         
         BUILDER.pop();
@@ -354,6 +352,35 @@ public class Config {
                 .translation("recycle.config.chunk_freezing_search_radius")
                 .defineInRange("chunk_freezing_search_radius", 8, 2, 16);
         
+        // === 激进模式设置 ===
+        BUILDER.comment("Aggressive mode settings for server performance / 激进模式设置，用于服务器性能优化").push("aggressive_mode");
+        
+        ENABLE_AGGRESSIVE_MODE = BUILDER
+                .comment("Enable aggressive mode to freeze all non-whitelisted chunks when server performance is poor / 启用激进模式，在服务器性能不佳时冻结所有非白名单区块",
+                        "When enabled, the system will monitor TPS and MSPT and activate aggressive chunk freezing when thresholds are exceeded",
+                        "启用后，系统会监控TPS和MSPT，当超过阈值时激活激进区块冻结",
+                        "Default: false")
+                .translation("recycle.config.enable_aggressive_mode")
+                .define("enable_aggressive_mode", false);
+        
+        AGGRESSIVE_TPS_THRESHOLD = BUILDER
+                .comment("TPS threshold for triggering aggressive mode / 触发激进模式的TPS阈值",
+                        "When TPS drops below this value, aggressive mode will be activated",
+                        "当TPS低于此值时，将激活激进模式",
+                        "Default: 15, Min: 5, Max: 20")
+                .translation("recycle.config.aggressive_tps_threshold")
+                .defineInRange("aggressive_tps_threshold", 15, 5, 20);
+        
+        AGGRESSIVE_MSPT_THRESHOLD = BUILDER
+                .comment("MSPT threshold for triggering aggressive mode / 触发激进模式的MSPT阈值",
+                        "When MSPT (milliseconds per tick) exceeds this value, aggressive mode will be activated",
+                        "当MSPT（每tick毫秒数）超过此值时，将激活激进模式",
+                        "Default: 60, Min: 30, Max: 100")
+                .translation("recycle.config.aggressive_mspt_threshold")
+                .defineInRange("aggressive_mspt_threshold", 60, 30, 100);
+        
+        BUILDER.pop();
+        
         BUILDER.pop();
         
         // 扫描优化设置
@@ -404,6 +431,13 @@ public class Config {
         
         // 消息模板
         BUILDER.comment("Message templates / 消息模板").push("messages");
+
+        ITEM_COUNT_DISPLAY_FORMAT = BUILDER
+                .comment("Format for item count display / 物品数量显示格式",
+                        "Available placeholders: {current} = current count, {max} = maximum stack size / 可用占位符：{current} = 当前数量，{max} = 最大堆叠数",
+                        "Default: §7Available: §a{current} / §b{max}")
+                .translation("recycle.config.item_count_display_format")
+                .define("item_count_display_format", "§7Available: §a{current} / §b{max}");
         
         // === 清理结果消息 ===
         CLEANUP_RESULT_HEADER = BUILDER
@@ -1074,5 +1108,50 @@ public class Config {
      */
     public static boolean isDebugLogsEnabled() {
         return ENABLE_DEBUG_LOGS.get();
+    }
+    
+    // === 激进模式便捷方法 ===
+    
+    /**
+     * 检查是否启用激进模式
+     */
+    public static boolean isAggressiveModeEnabled() {
+        return ENABLE_AGGRESSIVE_MODE.get();
+    }
+    
+    /**
+     * 获取TPS阈值
+     */
+    public static int getAggressiveTpsThreshold() {
+        return AGGRESSIVE_TPS_THRESHOLD.get();
+    }
+    
+    /**
+     * 获取MSPT阈值
+     */
+    public static int getAggressiveMsptThreshold() {
+        return AGGRESSIVE_MSPT_THRESHOLD.get();
+    }
+    
+    /**
+     * 检查是否应该使用激进模式（基于当前服务器性能）
+     * @param server 服务器实例
+     * @return true=启用激进模式，false=正常模式
+     */
+    public static boolean shouldUseAggressiveMode(net.minecraft.server.MinecraftServer server) {
+        if (!isAggressiveModeEnabled()) {
+            return false;
+        }
+        
+        // 获取平均tick时间（MSPT）
+        double avgTickTime = server.getAverageTickTimeNanos();
+        // 计算TPS：限制在20以下
+        double tps = Math.min(20.0, 1000.0 / avgTickTime);
+        
+        // 检查是否超过阈值
+        boolean lowTps = tps < getAggressiveTpsThreshold();
+        boolean highMspt = avgTickTime > getAggressiveMsptThreshold();
+        
+        return lowTps || highMspt;
     }
 }

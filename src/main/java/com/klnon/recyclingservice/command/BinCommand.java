@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -21,6 +22,7 @@ import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.ui.TrashBoxUI;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.event.AutoCleanupEvent;
+import com.klnon.recyclingservice.util.management.ChunkFreezer;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.DistanceManager;
@@ -59,6 +61,10 @@ public class BinCommand {
                 .then(Commands.literal("test")
                         .requires(source -> source.hasPermission(2)) // 仅管理员可用
                         .executes(BinCommand::openTestTrashBox))
+                .then(Commands.literal("aggressive")
+                        .requires(source -> source.hasPermission(2)) // 仅管理员可用
+                        .then(Commands.argument("enable", BoolArgumentType.bool())
+                                .executes(BinCommand::toggleAggressiveMode)))
                 .executes(BinCommand::showHelp));
     }
     
@@ -250,6 +256,28 @@ public class BinCommand {
             return 0;
         } catch (Exception e) {
             source.sendFailure(Component.literal("§cAn error occurred while retrieving chunk tickets: " + e.getMessage()));
+            return 0;
+        }
+    }
+    
+    /**
+     * 手动切换激进模式
+     */
+    private static int toggleAggressiveMode(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        boolean enable = BoolArgumentType.getBool(context, "enable");
+        
+        try {
+            if (enable) {
+                // 强制激活激进模式
+                int frozenChunks = ChunkFreezer.freezeAllNonWhitelistChunks(source.getServer());
+                source.sendSuccess(() -> Component.literal("§a[Aggressive Mode] Activated! Frozen " + frozenChunks + " chunks across all dimensions."), true);
+            } else {
+                source.sendSuccess(() -> Component.literal("§e[Aggressive Mode] Deactivated. Note: Already frozen chunks remain frozen until server restart or manual unfreezing."), true);
+            }
+            return 1;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("§cFailed to toggle aggressive mode: " + e.getMessage()));
             return 0;
         }
     }
