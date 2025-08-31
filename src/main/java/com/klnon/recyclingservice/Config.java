@@ -37,14 +37,7 @@ public class Config {
     // === 基础清理设置 ===
     public static final ModConfigSpec.IntValue AUTO_CLEAN_TIME;
     public static final ModConfigSpec.BooleanValue SHOW_CLEANUP_WARNINGS;
-    
-    // === 警告消息设置 ===
-    public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE;
     public static final ModConfigSpec.IntValue WARNING_COUNTDOWN_START;
-    
-    // === 详细清理消息模板 ===
-    public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER;
-    public static final ModConfigSpec.ConfigValue<String> DIMENSION_ENTRY_FORMAT;
     
     // === 垃圾箱设置 ===
     public static final ModConfigSpec.IntValue TRASH_BOX_ROWS;
@@ -60,8 +53,6 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> PAYMENT_MODE;
     public static final ModConfigSpec.BooleanValue SAME_DIMENSION_PAYMENT_ENABLED;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS;
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ERROR_MESSAGE;
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_SUCCESS_MESSAGE;
     
     // === 物品过滤 ===
     public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE;
@@ -79,7 +70,6 @@ public class Config {
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING;
     public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING;
     public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING;
-    public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
     public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS;
     
     // === 扫描优化设置 ===
@@ -94,18 +84,31 @@ public class Config {
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
     
-    // === 调试设置 ===
-    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS;
-    
-    
     // === 消息模板 ===
+    
+    // === 清理结果消息 ===
+    public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER;
+    public static final ModConfigSpec.ConfigValue<String> DIMENSION_ENTRY_FORMAT;
     public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
     public static final ModConfigSpec.ConfigValue<String> MANUAL_CLEANUP_START;
+    
+    // === 邮费系统消息 ===
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ERROR_MESSAGE;
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_SUCCESS_MESSAGE;
+    
+    // === 警告消息 ===
+    public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE;
+    public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE;
+    
+    // === 命令系统消息 ===
     public static final ModConfigSpec.ConfigValue<List<? extends String>> CMD_HELP_MESSAGES;
     
-    // === 垃圾箱UI设置 ===
+    // === UI界面消息 ===
     public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_TEXT;
     public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_HOVER;
+    
+    // === 调试设置 ===
+    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS;
 
     // === 性能优化缓存 ===
     // HashSet缓存，将O(n)查找优化为O(1)
@@ -388,14 +391,9 @@ public class Config {
         BUILDER.pop();
         
         // 消息模板
-        BUILDER.comment("Message templates for UI text / UI文本消息模板").push("messages");
+        BUILDER.comment("Message templates / 消息模板").push("messages");
         
-        WARNING_MESSAGE = BUILDER
-                .comment("Warning message template (use {time} for remaining seconds) / 警告消息模板（使用{time}显示剩余秒数）",
-                        "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
-                .translation("recycle.config.warning_message")
-                .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
-
+        // === 清理结果消息 ===
         CLEANUP_RESULT_HEADER = BUILDER
                 .comment("Header text for detailed cleanup results / 详细清理结果的标题文本",
                         "Default: > §a§lCleanup results:")
@@ -412,6 +410,19 @@ public class Config {
                 .translation("recycle.config.dimension_entry_format")
                 .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
         
+        ERROR_CLEANUP_FAILED = BUILDER
+                .comment("Message shown when cleanup fails / 清理失败时显示的消息",
+                        "Default: §cCleanup failed")
+                .translation("recycle.config.error_cleanup_failed")
+                .define("error_cleanup_failed", "§cCleanup failed");
+        
+        MANUAL_CLEANUP_START = BUILDER
+                .comment("Message shown when manual cleanup starts / 手动清理开始时显示的消息",
+                        "Default: §6[Manual Cleanup] Starting cleanup...")
+                .translation("recycle.config.manual_cleanup_start")
+                .define("manual_cleanup_start", "§6[Manual Cleanup] Starting cleanup...");
+        
+        // === 邮费系统消息 ===
         PAYMENT_ERROR_MESSAGE = BUILDER
                 .comment("Message shown when player doesn't have enough payment items / 玩家邮费物品不足时显示的消息",
                         "Placeholders: {cost} = required amount, {item} = item name / 占位符：{cost} = 需要数量，{item} = 物品名称",
@@ -426,24 +437,20 @@ public class Config {
                 .translation("recycle.config.payment_success_message")
                 .define("payment_success_message", "§aDeducted {cost} {item} as postage");
 
+        // === 警告消息 ===
+        WARNING_MESSAGE = BUILDER
+                .comment("Warning message template (use {time} for remaining seconds) / 警告消息模板（使用{time}显示剩余秒数）",
+                        "Default: §e[Auto Clean] Items will be cleaned up in {time} seconds!")
+                .translation("recycle.config.warning_message")
+                .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
+
         TOO_MANY_ITEMS_WARNING_MESSAGE = BUILDER
                 .comment("Warning message for too many items (use {count} for item count, {x} {z} for world coordinates, {ticket} for ticket level) / 物品过多警告消息（使用{count}显示物品数量，{x} {z}显示世界坐标，{ticket}显示票据级别）",
                         "Default: §e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}")
                 .translation("recycle.config.too_many_items_warning_message")
                 .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}");
         
-        ERROR_CLEANUP_FAILED = BUILDER
-                .comment("Message shown when cleanup fails / 清理失败时显示的消息",
-                        "Default: §cCleanup failed")
-                .translation("recycle.config.error_cleanup_failed")
-                .define("error_cleanup_failed", "§cCleanup failed");
-        
-        MANUAL_CLEANUP_START = BUILDER
-                .comment("Message shown when manual cleanup starts / 手动清理开始时显示的消息",
-                        "Default: §6[Manual Cleanup] Starting cleanup...")
-                .translation("recycle.config.manual_cleanup_start")
-                .define("manual_cleanup_start", "§6[Manual Cleanup] Starting cleanup...");
-        
+        // === 命令系统消息 ===
         CMD_HELP_MESSAGES = BUILDER
                 .comment("Command help messages / 命令帮助消息",
                         "Format: One message per line / 格式：每行一条消息",
@@ -462,6 +469,7 @@ public class Config {
                     () -> "",
                     obj -> obj instanceof String);
         
+        // === UI界面消息 ===
         TRASH_BOX_BUTTON_TEXT = BUILDER
                 .comment("Text for trash box button / 垃圾箱按钮文本",
                         "Available placeholders: {name} for dimension name / 可用占位符：{name} 表示维度名称",
