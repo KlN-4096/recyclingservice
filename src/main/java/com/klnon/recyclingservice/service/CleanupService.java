@@ -46,6 +46,20 @@ public class CleanupService {
     private static final DimensionTrashManager trashManager = new DimensionTrashManager();
     
     /**
+     * 通用异常处理：创建失败的维度清理统计
+     */
+    private static DimensionCleanupStats createFailedStats(String errorMessage) {
+        return new DimensionCleanupStats(0, 0, "Processing failed: " + errorMessage);
+    }
+
+    /**
+     * 通用异常处理：创建失败的清理结果
+     */
+    private static CleanupResult createFailedResult(String errorMessage) {
+        return new CleanupResult(0, 0, Collections.emptyMap(), errorMessage);
+    }
+    
+    /**
      * 执行自动清理 - 基于主动上报系统的主入口方法
      * @param server 服务器实例
      * @return CompletableFuture包装的清理结果
@@ -64,15 +78,11 @@ public class CleanupService {
                         clearProcessedCache(result);
                         return result;
                     })
-                    .exceptionally(throwable -> {
-                        String errorMessage = "Cleanup failed: " + throwable.getMessage();
-                        return new CleanupResult(0, 0, Collections.emptyMap(), errorMessage);
-                    });
+                    .exceptionally(throwable -> createFailedResult("Cleanup failed: " + throwable.getMessage()));
         } catch (Exception e) {
             // 缓存收集阶段出错，返回失败结果
-            String errorMessage = "Cache collection failed: " + e.getMessage();
             return CompletableFuture.completedFuture(
-                new CleanupResult(0, 0, Collections.emptyMap(), errorMessage));
+                createFailedResult("Cache collection failed: " + e.getMessage()));
         }
     }
     
@@ -122,7 +132,7 @@ public class CleanupService {
                     return processDimensionCleanupAsync(entry.getKey(), level, entry.getValue())
                         .thenApply(stats -> Map.entry(entry.getKey(), stats))
                         .exceptionally(throwable -> Map.entry(entry.getKey(), 
-                            new DimensionCleanupStats(0, 0, "Processing failed: " + throwable.getMessage())));
+                            createFailedStats(throwable.getMessage())));
                 })
                 .toList();
         

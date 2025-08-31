@@ -38,6 +38,10 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
  * /bin tickets <x> <z> - 查看指定区块坐标的所有tickets
  */
 public class BinCommand {
+    
+    // 管理员权限检查谓词
+    private static final java.util.function.Predicate<CommandSourceStack> ADMIN_PERMISSION = 
+        source -> source.hasPermission(2);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("bin")
@@ -49,15 +53,15 @@ public class BinCommand {
                                         .suggests(BinCommand::suggestBoxNumbers)
                                         .executes(BinCommand::openSpecificTrashBox))))
                 .then(Commands.literal("cleanup")
-                        .requires(source -> source.hasPermission(2)) // 仅管理员可用
+                        .requires(ADMIN_PERMISSION) // 使用常量
                         .executes(BinCommand::manualCleanup))
                 .then(Commands.literal("tickets")
-                        .requires(source -> source.hasPermission(2)) // 仅管理员可用
+                        .requires(ADMIN_PERMISSION) // 使用常量
                         .then(Commands.argument("x", IntegerArgumentType.integer())
                                 .then(Commands.argument("z", IntegerArgumentType.integer())
                                         .executes(BinCommand::showChunkTickets))))
                 .then(Commands.literal("test")
-                        .requires(source -> source.hasPermission(2)) // 仅管理员可用
+                        .requires(ADMIN_PERMISSION) // 使用常量
                         .executes(BinCommand::openTestTrashBox))
                 .executes(BinCommand::showHelp));
     }

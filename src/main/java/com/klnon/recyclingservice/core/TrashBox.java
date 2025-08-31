@@ -43,11 +43,18 @@ public class TrashBox implements Container {
     }
     
     /**
+     * 验证slot索引是否有效
+     */
+    private boolean isValidSlot(int slot) {
+        return slot >= 0 && slot < capacity;
+    }
+
+    /**
      * 获取指定位置的物品（不移除）- Container接口方法
      */
     @Override
     public @Nonnull ItemStack getItem(int slot) {
-        if (slot < 0 || slot >= capacity) {
+        if (!isValidSlot(slot)) {
             return ItemStack.EMPTY;
         }
         return items.get(slot);
@@ -58,7 +65,7 @@ public class TrashBox implements Container {
      */
     @Override
     public @Nonnull ItemStack removeItem(int slot, int amount) {
-        if (slot < 0 || slot >= capacity) {
+        if (!isValidSlot(slot)) {
             return ItemStack.EMPTY;
         }
 
@@ -86,7 +93,7 @@ public class TrashBox implements Container {
      */
     @Override
     public @Nonnull ItemStack removeItemNoUpdate(int slot) {
-        if (slot < 0 || slot >= capacity) {
+        if (!isValidSlot(slot)) {
             return ItemStack.EMPTY;
         }
 
@@ -105,16 +112,18 @@ public class TrashBox implements Container {
      */
     @Override
     public void setItem(int slot,@Nonnull ItemStack stack) {
-        if (slot >= 0 && slot < capacity) {
-            if (stack.isEmpty()) {
-                items.set(slot, ItemStack.EMPTY);
-            } else {
-                ItemStack itemCopy = stack.copy();
-                UiUtils.updateTooltip(itemCopy);
-                items.set(slot, itemCopy);
-            }
-            setChanged();
+        if (!isValidSlot(slot)) {
+            return;
         }
+        
+        if (stack.isEmpty()) {
+            items.set(slot, ItemStack.EMPTY);
+        } else {
+            ItemStack itemCopy = stack.copy();
+            UiUtils.updateTooltip(itemCopy);
+            items.set(slot, itemCopy);
+        }
+        setChanged();
     }
     
     /**

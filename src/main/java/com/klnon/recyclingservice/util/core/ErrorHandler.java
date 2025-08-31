@@ -13,59 +13,41 @@ public class ErrorHandler {
     private static final Logger LOGGER = Recyclingservice.LOGGER;
 
     /**
-     * 核心错误处理方法 - 统一的异常处理逻辑
+     * 简化的通用错误处理方法
      */
-    private static <T> T executeWithErrorHandling(String operationName, ServerPlayer player, Supplier<T> operation,
-                                                  T successResult, T failureResult,
-                                                  Runnable onSuccess, Runnable onFailure) {
+    public static <T> T handleOperation(ServerPlayer player, String operationName, Supplier<T> operation, T defaultValue) {
         String playerName = player != null ? player.getName().getString() : "System";
         
         try {
             T result = operation.get();
-            // 使用三元运算符优化DEBUG日志
-            Runnable debugLogger = Config.isDebugLogsEnabled() ? 
-                () -> LOGGER.debug("Operation {} succeeded for {}", operationName, playerName) : null;
-            if (debugLogger != null) debugLogger.run();
-            
-            if (onSuccess != null) onSuccess.run();
-            return result != null ? result : successResult;
+            if (Config.isDebugLogsEnabled()) {
+                LOGGER.debug("Operation {} succeeded for {}", operationName, playerName);
+            }
+            return result;
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for {}: {}", operationName, playerName, e.getMessage());
             if (player != null) {
                 MessageSender.sendTranslatableMessage(player, "operation.error.general", MessageSender.MessageType.ERROR);
             }
-            if (onFailure != null) onFailure.run();
-            return failureResult;
+            return defaultValue;
         }
     }
 
     /**
-     * 通用错误处理方法 - 支持泛型返回值
-     */
-    public static <T> T handleOperation(ServerPlayer player, String operationName, Supplier<T> operation, T defaultValue) {
-        return executeWithErrorHandling(operationName, player, operation, null, defaultValue, null, null);
-    }
-
-    /**
-     * 命令操作错误处理 - 专门用于命令执行
+     * 命令操作错误处理 - 返回int用于命令结果
      */
     public static int handleCommandOperation(ServerPlayer player, String operationName, Supplier<Boolean> operation) {
-        return executeWithErrorHandling(
-            operationName, player, 
-            () -> operation.get() ? 1 : 0,1, 0,null,null);
+        Boolean result = handleOperation(player, operationName, operation, false);
+        return result ? 1 : 0;
     }
 
     /**
      * 处理void操作（不需要返回值）
      */
     public static void handleVoidOperation(String operationName, Runnable operation) {
-        executeWithErrorHandling(
-            operationName, null,
-            () -> { operation.run(); return null; },
-            null, null,
-            Config.isDebugLogsEnabled() ? 
-                () -> LOGGER.debug("Void operation {} completed successfully", operationName) : null,
-            Config.isDebugLogsEnabled() ?
-                () -> LOGGER.debug("Void operation {} completed failure", operationName) : null);
+        handleOperation(null, operationName, () -> {
+            operation.run();
+            return null;
+        }, null);
     }
-  }
+}

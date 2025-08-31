@@ -501,12 +501,8 @@ public class Config {
 
     // === 便捷访问方法 ===
 
-    public static int getMaxBoxes(){
-        return MAX_BOXES_PER_DIMENSION.get();
-    }
-
     public static MenuType<ChestMenu> getMenuTypeForRows() {
-        return switch(getTrashBoxRows()) {
+        return switch(TRASH_BOX_ROWS.get()) {
             case 1 -> MenuType.GENERIC_9x1;
             case 2 -> MenuType.GENERIC_9x2;
             case 3 -> MenuType.GENERIC_9x3;
@@ -514,11 +510,6 @@ public class Config {
             case 5 -> MenuType.GENERIC_9x5;
             default -> MenuType.GENERIC_9x6;
         };
-    }
-
-
-    public static int getTrashBoxRows(){
-        return TRASH_BOX_ROWS.get();
     }
     
     /**

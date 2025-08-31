@@ -24,9 +24,9 @@ public class TrashBoxMenu extends ChestMenu {
     private final int trashSlots;
 
     public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
-        super(Config.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.getTrashBoxRows());
+        super(Config.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.TRASH_BOX_ROWS.get());
         this.trashBox = trashBox;
-        this.trashSlots = Config.getTrashBoxRows() * 9;
+        this.trashSlots = Config.TRASH_BOX_ROWS.get() * 9;
     }
 
     @Override

@@ -11,55 +11,45 @@ import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.ui.UiUtils;
 
 public class ItemMerge {
-    /**
-     * 合并信息辅助类,由于是同种物品,所以只需要合并数量
-     */
-    private static class MergeInfo {
-        ItemStack template;
-        int totalCount = 0;
-        
-        void addStack(ItemStack stack) {
-            if (template == null) {
-                template = stack; // 保存引用，不拷贝
-            }
-            totalCount += stack.getCount();
-        }
-    }
     
     /**
-     * 零拷贝合并：统计相同物品但延迟创建ItemStack
-     * @param stacks 输入的ItemStack引用列表
-     * @return 合并计划（延迟到真正需要时才创建ItemStack对象）
+     * 简化的零拷贝合并：使用Map统计，延迟创建ItemStack
+     * @param stacks 输入的ItemStack列表
+     * @return 合并后的ItemStack列表
      */
     public static List<ItemStack> combine(List<ItemStack> stacks) {
-        Map<String, MergeInfo> mergeMap = new HashMap<>();
+        // 使用Map统计：键 -> (模板ItemStack, 总数量)
+        Map<String, ItemStack> templates = new HashMap<>();
+        Map<String, Integer> counts = new HashMap<>();
         
-        // 统计相同物品数量，但不创建新对象
+        // 统计相同物品数量
         for (ItemStack stack : stacks) {
             if (stack.isEmpty()) continue;
             
-            // 根据物品类型选择合适的键生成策略
             String key = ItemFilter.isComplexItem(stack) ? 
                 generateComplexItemKey(stack) : 
                 stack.getItem().toString();
-            mergeMap.computeIfAbsent(key, k -> new MergeInfo()).addStack(stack);
+            
+            templates.putIfAbsent(key, stack);
+            counts.merge(key, stack.getCount(), Integer::sum);
         }
         
         List<ItemStack> result = new ArrayList<>();
         
-        // 只在最终需要时创建ItemStack对象
-        for (MergeInfo info : mergeMap.values()) {
-            // 所有物品都按自定义上限分组（无论是否复杂物品）
-            int remaining = info.totalCount;
-            int mergeLimit = Config.getItemStackMultiplier(info.template);
+        // 创建最终的ItemStack列表
+        for (String key : templates.keySet()) {
+            ItemStack template = templates.get(key);
+            int totalCount = counts.get(key);
+            int mergeLimit = Config.getItemStackMultiplier(template);
             
-            while (remaining > 0) {
-                ItemStack newStack = info.template.copy();
-                int count = Math.min(remaining, mergeLimit);
+            // 按限制分组创建ItemStack
+            while (totalCount > 0) {
+                int count = Math.min(totalCount, mergeLimit);
+                ItemStack newStack = template.copy();
                 newStack.setCount(count);
                 UiUtils.updateTooltip(newStack);
                 result.add(newStack);
-                remaining -= count;
+                totalCount -= count;
             }
         }
         
@@ -72,7 +62,6 @@ public class ItemMerge {
 
     /**
      * 为复杂物品生成唯一键，用于区分不同的复杂物品
-     * 完全一致的复杂物品（包括所有NBT数据）会生成相同的键
      */
     public static String generateComplexItemKey(ItemStack stack) {
         StringBuilder keyBuilder = new StringBuilder();
