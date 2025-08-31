@@ -113,7 +113,7 @@ public class CleanupService {
         entitiesToDelete.addAll(projectilesToClean);
         
         // 计算实际清理的物品总数
-        int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
+        // int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
         
         // 分片删除实体
         return entitiesToDelete.isEmpty() && itemsToClean.isEmpty()
@@ -121,7 +121,7 @@ public class CleanupService {
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                totalItemCount, projectilesToClean.size(), "Cleaned successfully"));
+                entitiesToDelete.size(), projectilesToClean.size(), "Cleaned successfully"));
     }
 
 

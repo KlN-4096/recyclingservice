@@ -83,6 +83,7 @@ public class Config {
     
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
+    public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY_FORMAT;
     
     // === 消息模板 ===
     
@@ -161,6 +162,13 @@ public class Config {
                         "Default: 100 (means 64*100=6400), Min: 1, Max: 1000")
                 .translation("recycle.config.item_stack_multiplier")
                 .defineInRange("item_stack_multiplier", 100, 1, 1000);
+        
+        ITEM_COUNT_DISPLAY_FORMAT = BUILDER
+                .comment("Format for item count display / 物品数量显示格式",
+                        "Available placeholders: {current} = current count, {max} = maximum stack size / 可用占位符：{current} = 当前数量，{max} = 最大堆叠数",
+                        "Default: §7Available: §a{current} / §b{max}")
+                .translation("recycle.config.item_count_display_format")
+                .define("item_count_display_format", "§7Available: §a{current} / §b{max}");
         
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
                 .comment("Dimensions that allow players to put items into trash boxes / 允许玩家主动将物品放入垃圾箱的维度",
@@ -884,7 +892,9 @@ public class Config {
      * 获取格式化的物品数量显示
      */
     public static String getItemCountDisplay(int count,ItemStack itemStack) {
-        return "§7Available: §a" + count + " / §b" + getItemStackMultiplier(itemStack);
+        return ITEM_COUNT_DISPLAY_FORMAT.get()
+                .replace("{current}", String.valueOf(count))
+                .replace("{max}", String.valueOf(getItemStackMultiplier(itemStack)));
     }
     
     /**
