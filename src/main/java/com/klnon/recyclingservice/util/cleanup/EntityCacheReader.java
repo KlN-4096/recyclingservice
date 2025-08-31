@@ -33,7 +33,7 @@ public class EntityCacheReader {
                     Entity entity = report.entity();
                     
                     // 验证实体仍然有效
-                    if (entity.isRemoved() || !entity.isAlive() || entity.level().isClientSide()) {
+                    if (entity.isRemoved() || !entity.isAlive()) {
                         continue; // 无效实体跳过
                     }
                     

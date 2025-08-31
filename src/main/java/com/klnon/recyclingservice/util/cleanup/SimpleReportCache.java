@@ -24,31 +24,51 @@ public class SimpleReportCache {
     private static final ConcurrentHashMap<ResourceLocation, ConcurrentLinkedQueue<EntityReport>> cache 
         = new ConcurrentHashMap<>();
     
+    // UUID去重集合：维度 -> 已上报实体UUID集合
+    private static final ConcurrentHashMap<ResourceLocation, Set<UUID>> reportedUuids = new ConcurrentHashMap<>();
+    
     /**
-     * 上报实体需要清理
+     * 上报实体需要清理 - 使用UUID去重避免重复收集
      * @param entity 需要清理的实体
      */
     public static void report(Entity entity) {
         try {
+            UUID entityUuid = entity.getUUID();
             ResourceLocation dimension = entity.level().dimension().location();
-            ChunkPos chunkPos = new ChunkPos(entity.blockPosition());
-            EntityReport report = new EntityReport(entity, chunkPos, dimension);
-            cache.computeIfAbsent(dimension, k -> new ConcurrentLinkedQueue<>()).add(report);
+            
+            // UUID去重检查：只有首次上报才会添加到缓存
+            Set<UUID> reported = reportedUuids.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet());
+            if (reported.add(entityUuid)) {
+                // 首次上报成功，添加到实体缓存
+                ChunkPos chunkPos = new ChunkPos(entity.blockPosition());
+                EntityReport report = new EntityReport(entity, chunkPos, dimension);
+                cache.computeIfAbsent(dimension, k -> new ConcurrentLinkedQueue<>()).add(report);
+            }
+            // 如果UUID已存在，reported.add()返回false，直接跳过不重复添加
         } catch (Exception e) {
             // 出错就跳过，什么都不做
         }
     }
     
     /**
-     * 取消上报
+     * 取消上报 - 同时从缓存和UUID记录中移除
      * @param entity 不再需要清理的实体
      */
     public static void cancel(Entity entity) {
         try {
+            UUID entityUuid = entity.getUUID();
             ResourceLocation dimension = entity.level().dimension().location();
+            
+            // 从实体缓存中移除
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
             if (queue != null) {
                 queue.removeIf(report -> report.entity().equals(entity));
+            }
+            
+            // 从UUID记录中移除
+            Set<UUID> reported = reportedUuids.get(dimension);
+            if (reported != null) {
+                reported.remove(entityUuid);
             }
         } catch (Exception e) {
             // 出错就跳过，什么都不做
@@ -127,19 +147,20 @@ public class SimpleReportCache {
     }
     
     /**
-     * 清空指定维度的缓存
+     * 清空指定维度的缓存 - 同步清理实体缓存和UUID记录
      * @param dimension 维度ID
      */
     public static void clear(ResourceLocation dimension) {
         try {
             cache.remove(dimension);
+            reportedUuids.remove(dimension); // 同步清理UUID记录
         } catch (Exception e) {
             // 出错就跳过
         }
     }
     
     /**
-     * 获取缓存状态信息（用于调试）
+     * 获取缓存状态信息（用于调试）- 包含UUID去重统计
      * @return 缓存统计信息
      */
     public static String getCacheStatus() {
@@ -148,7 +169,11 @@ public class SimpleReportCache {
             int totalEntities = cache.values().stream()
                 .mapToInt(Queue::size)
                 .sum();
-            return String.format("Dimensions: %d, Total entities: %d", dimensionCount, totalEntities);
+            int totalUuids = reportedUuids.values().stream()
+                .mapToInt(Set::size)
+                .sum();
+            return String.format("Dimensions: %d, Total entities: %d, Total UUIDs: %d", 
+                dimensionCount, totalEntities, totalUuids);
         } catch (Exception e) {
             return "Cache status unavailable";
         }

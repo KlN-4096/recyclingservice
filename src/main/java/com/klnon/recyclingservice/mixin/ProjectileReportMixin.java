@@ -32,7 +32,7 @@ public class ProjectileReportMixin {
                 return;
             }
             
-            boolean shouldReport = shouldReport(self);
+            boolean shouldReport = recyclingservice$shouldReport(self);
             
             if (shouldReport && !recyclingservice$reported && !self.level().isClientSide()) {
                 recyclingservice$reported = true;
@@ -44,7 +44,7 @@ public class ProjectileReportMixin {
     }
     
     @Unique
-    private boolean shouldReport(Entity self) {
+    private boolean recyclingservice$shouldReport(Entity self) {
         try {
             return self.tickCount >= 30 * 20 && // 30秒后考虑清理
                    Config.shouldCleanProjectiles() &&

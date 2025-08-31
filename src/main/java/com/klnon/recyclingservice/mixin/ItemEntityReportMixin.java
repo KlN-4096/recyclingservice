@@ -15,26 +15,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ItemEntity.class)
 public class ItemEntityReportMixin {
-    @Unique private boolean reported = false;
+    @Unique private boolean recyclingservice$reported = false;
     
     @Inject(method = "tick", at = @At("TAIL"))
     private void checkAndReport(CallbackInfo ci) {
         try {
             ItemEntity self = (ItemEntity)(Object)this;
             
-            // 30秒检查一次，分散检查时间避免同时计算
-            if (self.tickCount % (20 * 30) != (self.getId() % 20)) {
+            // 10秒检查一次，分散检查时间避免同时计算
+            if (self.tickCount % (20 * 10) != (self.getId() % 20)) {
                 return;
             }
             
-            boolean shouldReport = shouldReport(self);
+            boolean shouldReport = recyclingservice$shouldReport(self);
             
-            if (shouldReport && !reported) {
+            if (shouldReport && !recyclingservice$reported) {
+                recyclingservice$reported = true;
                 SimpleReportCache.report(self);
-                reported = true;
-            } else if (!shouldReport && reported && !self.level().isClientSide()) {
+            } else if (!shouldReport && recyclingservice$reported && !self.level().isClientSide()) {
                 SimpleReportCache.cancel(self);
-                reported = false;
+                recyclingservice$reported = false;
             }
         } catch (Exception e) {
             // 出错跳过，什么都不做
@@ -42,7 +42,7 @@ public class ItemEntityReportMixin {
     }
     
     @Unique
-    private boolean shouldReport(ItemEntity self) {
+    private boolean recyclingservice$shouldReport(ItemEntity self) {
         try {
             // 简单的条件检查，出错就返回false
             return self.getAge() >= 60 * 20 && // 60秒后才考虑清理

@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.service;
 
+import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.management.ChunkFreezer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -148,7 +149,7 @@ public class CleanupService {
             EntityCacheReader.ScanResult scanResult) {
         
         // 1. 区块冻结检查 - 在清理前检查每个区块的实体数量
-        if (level != null && com.klnon.recyclingservice.Config.isChunkFreezingEnabled()) {
+        if (level != null && Config.isChunkFreezingEnabled()) {
             ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
         }
         
@@ -165,6 +166,7 @@ public class CleanupService {
         // 添加需要清理的弹射物
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
         entitiesToDelete.addAll(projectilesToClean);
+        entitiesToDelete.addAll(itemFilterResult.entities());
         
         // 计算实际清理的物品总数
         // int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
@@ -175,7 +177,7 @@ public class CleanupService {
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                entitiesToDelete.size(), projectilesToClean.size(), "Cleaned successfully"));
+                itemFilterResult.itemStacks().size(), projectilesToClean.size(), "Cleaned successfully"));
     }
 
 
