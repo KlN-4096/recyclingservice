@@ -102,6 +102,10 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED;
     public static final ModConfigSpec.ConfigValue<String> MANUAL_CLEANUP_START;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> CMD_HELP_MESSAGES;
+    
+    // === 垃圾箱UI设置 ===
+    public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_TEXT;
+    public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_HOVER;
 
     // === 性能优化缓存 ===
     // HashSet缓存，将O(n)查找优化为O(1)
@@ -458,6 +462,19 @@ public class Config {
                     () -> "",
                     obj -> obj instanceof String);
         
+        TRASH_BOX_BUTTON_TEXT = BUILDER
+                .comment("Text for trash box button / 垃圾箱按钮文本",
+                        "Available placeholders: {name} for dimension name / 可用占位符：{name} 表示维度名称",
+                        "Default: [Open Trash Box]")
+                .translation("recycle.config.trash_box_button_text")
+                .define("trash_box_button_text", "[Open Trash Box]");
+        
+        TRASH_BOX_BUTTON_HOVER = BUILDER
+                .comment("Hover text for trash box button / 垃圾箱按钮悬停文本",
+                        "Available placeholders: {name} for dimension name / 可用占位符：{name} 表示维度名称",
+                        "Default: Click to open trash box #1 in {name}")
+                .translation("recycle.config.trash_box_button_hover")
+                .define("trash_box_button_hover", "Click to open trash box #1 in {name}");
         
         BUILDER.pop();
 
@@ -852,6 +869,20 @@ public class Config {
         return messages.toArray(new String[0]);
     }
     
+    /**
+     * 获取垃圾箱按钮文本
+     */
+    public static String getTrashBoxButtonText() {
+        return TRASH_BOX_BUTTON_TEXT.get();
+    }
+    
+    /**
+     * 获取垃圾箱按钮悬停文本
+     */
+    public static String getTrashBoxButtonHover() {
+        return TRASH_BOX_BUTTON_HOVER.get();
+    }
+    
     // === 维度相关便捷方法 ===
     
     
@@ -935,15 +966,23 @@ public class Config {
                         .replace("{items}", String.valueOf(dimensionStats.itemsCleaned()))
                         .replace("{entities}", String.valueOf(dimensionStats.projectilesCleaned()));
                 
+                // 获取按钮文本并替换占位符
+                String buttonText = getTrashBoxButtonText()
+                        .replace("{name}", getDimensionDisplayName(dimensionId));
+                
+                // 获取悬停文本并替换占位符
+                String hoverText = getTrashBoxButtonHover()
+                        .replace("{name}", getDimensionDisplayName(dimensionId));
+                
                 // 创建可点击的按钮
-                MutableComponent button = Component.literal("[打开垃圾箱]")
+                MutableComponent button = Component.literal(buttonText)
                         .withStyle(Style.EMPTY
                                 .withColor(ChatFormatting.GREEN)
                                 .withUnderlined(true)
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
                                         "/bin open " + dimensionId + " 1"))
                                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                        Component.literal("点击打开 " + getDimensionDisplayName(dimensionId) + " 的1号垃圾箱")
+                                        Component.literal(hoverText)
                                                 .withStyle(ChatFormatting.YELLOW))));
                 
                 // 组合文本和按钮
