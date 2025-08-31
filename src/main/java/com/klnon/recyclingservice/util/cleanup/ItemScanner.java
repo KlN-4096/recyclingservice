@@ -4,97 +4,100 @@ import com.klnon.recyclingservice.Recyclingservice;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.util.core.ErrorHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
 
 /**
- * 物品扫描器 - 异步扫描维度中的掉落物和弹射物
- * 使用CompletableFuture避免阻塞主线程，提升性能
+ * 基于缓存的扫描器 - 直接从 SimpleReportCache 获取上报的实体
+ * 替代原有的区块遍历扫描方式，实现零延迟扫描
  */
 public class ItemScanner {
+    
     /**
-     * 异步扫描单个维度的所有掉落物和弹射物
+     * 从缓存获取单个维度的实体
      * @param level 服务器维度
      * @return CompletableFuture包装的扫描结果
      */
     public static CompletableFuture<ScanResult> scanDimensionAsync(ServerLevel level) {
-        return CompletableFuture.supplyAsync(() -> ErrorHandler.handleOperation(
-            null, // 无玩家上下文
-            "scanDimension_" + level.dimension().location(),
-            () -> {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                ResourceLocation dimension = level.dimension().location();
+                List<Entity> reportedEntities = SimpleReportCache.getReported(dimension);
+                
+                // 简单分类
                 List<ItemEntity> items = new ArrayList<>();
                 List<Entity> projectiles = new ArrayList<>();
-                int batchSize = Config.getBatchSize();
-                int scanRadius = Config.getPlayerScanRadius();
-
-                // 构建所有需要扫描的实体类型集合
-                Set<EntityType<?>> allEntityTypes = new HashSet<>(Config.getProjectileTypes());
-                allEntityTypes.add(EntityType.ITEM);
-
-                if("chunk".equals(Config.getScanMode())){
-                    // 1. 流式扫描强制加载的区块的物品和弹射物
-                    ChunkScanner.findInForcedChunksStream(level, allEntityTypes, batch -> {
-                        items.addAll(batch.getItems());
-                        projectiles.addAll(batch.getProjectiles());
-                    }, batchSize);
-                }else{
-                    // 2. 流式扫描所有在线玩家周围的区块的物品和弹射物
-                    for (ServerPlayer player : level.players()) {
-                        ChunkScanner.findAroundPlayerStream(level, player, scanRadius, allEntityTypes, batch -> {
-                            items.addAll(batch.getItems());
-                            projectiles.addAll(batch.getProjectiles());
-                        }, batchSize);
+                
+                for (Entity entity : reportedEntities) {
+                    try {
+                        // 验证实体仍然有效
+                        if (entity.isRemoved() || !entity.isAlive()) {
+                            continue; // 无效实体跳过
+                        }
+                        
+                        if (entity instanceof ItemEntity itemEntity) {
+                            items.add(itemEntity);
+                        } else {
+                            projectiles.add(entity);
+                        }
+                    } catch (Exception e) {
+                        // 单个实体出错就跳过
                     }
                 }
+                
                 return new ScanResult(items, projectiles);
-            },
-            ScanResult.EMPTY
-        ), ForkJoinPool.commonPool());
+                
+            } catch (Exception e) {
+                // 整个扫描出错返回空结果
+                return ScanResult.EMPTY;
+            }
+        }, ForkJoinPool.commonPool());
     }
 
     /**
-     * 异步扫描所有维度的掉落物和弹射物，按维度分类返回
+     * 扫描所有维度的上报实体，按维度分类返回
      * @param server 服务器实例
      * @return CompletableFuture包装的维度ID -> 扫描结果映射
      */
     public static CompletableFuture<Map<ResourceLocation, ScanResult>> scanAllDimensionsAsync(MinecraftServer server) {
-        List<CompletableFuture<Map.Entry<ResourceLocation, ScanResult>>> futures = new ArrayList<>();
-        
-        // 并行扫描所有维度
-        for (ServerLevel level : server.getAllLevels()) {
-            futures.add(
-                scanDimensionAsync(level)
-                    .thenApply(result -> result.isEmpty() ? null : 
-                        Map.entry(level.dimension().location(), result))
-            );
-        }
-        
-        // CompletableFuture.allOf等待所有扫描完成并根据futures收集结果
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-            .thenApply(v -> futures.stream()
-                .map(CompletableFuture::join)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+        return CompletableFuture.supplyAsync(() -> {
+            Map<ResourceLocation, ScanResult> results = new HashMap<>();
+            
+            try {
+                // 为所有维度执行扫描
+                for (ServerLevel level : server.getAllLevels()) {
+                    try {
+                        ScanResult result = scanDimensionAsync(level).get();
+                        if (!result.isEmpty()) {
+                            results.put(level.dimension().location(), result);
+                        }
+                    } catch (Exception e) {
+                        // 单个维度出错就跳过
+                        Recyclingservice.LOGGER.debug("Failed to scan dimension: {}, skipping", 
+                            level.dimension().location(), e);
+                    }
+                }
+            } catch (Exception e) {
+                // 出错返回空结果
+                Recyclingservice.LOGGER.error("Failed to scan all dimensions", e);
+            }
+            
+            return results;
+        }, ForkJoinPool.commonPool());
     }
 
-
     /**
-         * 扫描结果类 - 包含物品和弹射物
-         */
-        public record ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
-            public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
+     * 扫描结果类 - 包含物品和弹射物
+     */
+    public record ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
+        public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
 
         public boolean isEmpty() {
-                return items.isEmpty() && projectiles.isEmpty();
-            }
+            return items.isEmpty() && projectiles.isEmpty();
         }
+    }
 }

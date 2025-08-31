@@ -2,7 +2,10 @@
   "required": true,
   "package": "com.klnon.recyclingservice.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "ItemEntityReportMixin",
+    "ProjectileReportMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },

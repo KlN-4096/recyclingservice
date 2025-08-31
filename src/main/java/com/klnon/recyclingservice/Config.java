@@ -79,15 +79,10 @@ public class Config {
     
     // 手动强制激进模式（运行时动态控制）
     private static volatile boolean forceAggressiveMode = false;
-    
-    // === 扫描优化设置 ===
-    public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
-    public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
-    public static final ModConfigSpec.IntValue BATCH_SIZE;
-    public static final ModConfigSpec.ConfigValue<String> CHUNK_LOADING_MODE;
-    
+
     // === 主线程调度优化设置 ===
     public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS;
+    public static final ModConfigSpec.IntValue BATCH_SIZE;
     
     // === UI界面设置 ===
     public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER;
@@ -381,46 +376,9 @@ public class Config {
                         "Default: 60, Min: 30, Max: 100")
                 .translation("recycle.config.aggressive_mspt_threshold")
                 .defineInRange("aggressive_mspt_threshold", 60, 30, 100);
-        
-        BUILDER.pop();
-        
-        BUILDER.pop();
-        
-        // 扫描优化设置
-        BUILDER.comment("Scanning optimization settings / 扫描优化设置").push("scanning_optimization");
-        
-        SCAN_MODE = BUILDER
-                .comment("Scan Mode / 扫描模式:",
-                        "  - 'chunk': loaded Chunk Scan / 加载区块扫描",
-                        "  - 'player': Player Surrounding Scan / 玩家周围扫描",
-                        "Default: chunk")
-                .translation("recycle.config.scan_mode")
-                .defineInList("scan_mode", "chunk", Arrays.asList("chunk", "player"));
 
-        // 区块加载级别模式
-        CHUNK_LOADING_MODE = BUILDER
-                .comment("Chunk loading level for scanning / 加载区块扫描级别:",
-                        "  - 'force': Only force-loaded chunks (ticket level <= 31) / 仅强加载区块（票据级别 <= 31）",
-                        "  - 'lazy': Include force-loaded and player chunks (ticket level <= 32) / 包含强加载和弱加载区块（票据级别 <= 32）",
-                        "Default: lazy")
-                .translation("recycle.config.chunk_loading_mode")
-                .defineInList("chunk_loading_mode", "lazy", Arrays.asList("force", "lazy"));
-        
-        PLAYER_SCAN_RADIUS = BUILDER
-                .comment("Chunk radius around players for optimized scanning / 玩家周围的区块扫描半径",
-                        "Default: 8, Min: 2, Max: 32")
-                .translation("recycle.config.player_scan_radius")
-                .defineInRange("player_scan_radius", 8, 2, 32);
-        
-        BATCH_SIZE = BUILDER
-                .comment("Batch size for processing (scanning, entity deletion, etc.) / 批处理大小（扫描、实体删除等通用）",
-                        "Default: 100, Min: 50, Max: 500")
-                .translation("recycle.config.batch_size")
-                .defineInRange("batch_size", 100, 50, 500);
-
-        
         BUILDER.pop();
-        
+
         // 主线程调度优化设置
         BUILDER.comment("Main thread scheduling optimization / 主线程调度优化设置").push("main_thread_scheduling");
         
@@ -429,7 +387,13 @@ public class Config {
                         "Default: 2, Min: 1, Max: 10")
                 .translation("recycle.config.max_processing_time_ms")
                 .defineInRange("max_processing_time_ms", 2, 1, 10);
-        
+
+        BATCH_SIZE = BUILDER
+                .comment("Batch size for processing (entity deletion, etc.) / 批处理大小（实体删除等）",
+                        "Default: 100, Min: 50, Max: 500")
+                .translation("recycle.config.batch_size")
+                .defineInRange("batch_size", 100, 50, 500);
+
         BUILDER.pop();
         
         // 消息模板
@@ -799,37 +763,13 @@ public class Config {
         return PROTECT_CREATE_PROCESSING_ITEMS.get();
     }
 
-    // === 扫描优化便捷方法 ===
-    
     /**
-     * 获取扫描模式
-     */
-    public static String getScanMode() {
-        return SCAN_MODE.get();
-    }
-
-    /**
-     * 获取玩家扫描半径
-     */
-    public static int getPlayerScanRadius() {
-        return PLAYER_SCAN_RADIUS.get();
-    }
-    
-    /**
-     * 获取批处理大小（适用于扫描、实体删除等所有批处理操作）
+     * 获取批处理大小（适用于实体删除等批处理操作）
      */
     public static int getBatchSize() {
         return BATCH_SIZE.get();
     }
-    
-    /**
-     * 根据配置获取票据级别阈值
-     * @return 31 (仅强制加载) 或 32 (包含弱加载)
-     */
-    public static int getTicketLevelThreshold() {
-        return "force".equals(CHUNK_LOADING_MODE.get()) ? 31 : 32;
-    }
-    
+
     /**
      * 获取主线程最大处理时间（纳秒）
      */
