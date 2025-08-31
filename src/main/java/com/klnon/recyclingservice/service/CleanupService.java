@@ -38,16 +38,16 @@ public class CleanupService {
     private static final DimensionTrashManager trashManager = new DimensionTrashManager();
     
     /**
-     * 通用异常处理：创建失败的维度清理统计
+     * 创建失败结果的通用方法
      */
-    private static DimensionCleanupStats createFailedStats(String errorMessage) {
+    private static DimensionCleanupStats createFailedDimensionStats(String errorMessage) {
         return new DimensionCleanupStats(0, 0, "Processing failed: " + errorMessage);
     }
 
     /**
-     * 通用异常处理：创建失败的清理结果
+     * 创建失败的清理结果
      */
-    private static CleanupResult createFailedResult(String errorMessage) {
+    private static CleanupResult createFailedCleanupResult(String errorMessage) {
         return new CleanupResult(0, 0, Collections.emptyMap(), errorMessage);
     }
     
@@ -70,11 +70,11 @@ public class CleanupService {
                         clearProcessedCache(result);
                         return result;
                     })
-                    .exceptionally(throwable -> createFailedResult("Cleanup failed: " + throwable.getMessage()));
+                    .exceptionally(throwable -> createFailedCleanupResult("Cleanup failed: " + throwable.getMessage()));
         } catch (Exception e) {
             // 缓存收集阶段出错，返回失败结果
             return CompletableFuture.completedFuture(
-                createFailedResult("Cache collection failed: " + e.getMessage()));
+                createFailedCleanupResult("Cache collection failed: " + e.getMessage()));
         }
     }
     
@@ -121,7 +121,7 @@ public class CleanupService {
                     return processDimensionCleanupAsync(entry.getKey(), level, entry.getValue())
                         .thenApply(stats -> Map.entry(entry.getKey(), stats))
                         .exceptionally(throwable -> Map.entry(entry.getKey(), 
-                            createFailedStats(throwable.getMessage())));
+                            createFailedDimensionStats(throwable.getMessage())));
                 })
                 .toList();
         

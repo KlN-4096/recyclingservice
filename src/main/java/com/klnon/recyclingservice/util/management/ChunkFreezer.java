@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.util.management;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
@@ -85,6 +86,16 @@ public class ChunkFreezer {
     }
     
     /**
+     * 过滤有效的tickets
+     */
+    private static List<Ticket<?>> filterValidTickets(SortedArraySet<Ticket<?>> tickets) {
+        return tickets.stream()
+            .filter(ticket -> !WHITELIST_TICKET_TYPES.contains(ticket.getType()))
+            .filter(ticket -> ticket.getTicketLevel() <= 32)
+            .collect(Collectors.toList());
+    }
+    
+    /**
      * 批量冻结影响目标区块的所有加载器
      * @param targetChunk 物品过多的目标区块
      * @param level 服务器世界
@@ -103,31 +114,26 @@ public class ChunkFreezer {
             Recyclingservice.LOGGER.debug("Chunk freezing search parameters: radius={}, maxTickets={}, searchArea={}", 
                 searchRadius, maxTicketsToCheck, (2 * searchRadius + 1) * (2 * searchRadius + 1));
             
-            // 预处理：一次性收集所有相关tickets
-            Map<ChunkPos, List<Ticket<?>>> candidateChunks = new HashMap<>();
-            int checkedTickets = 0;
-            
-            for (var entry : tickets.long2ObjectEntrySet()) {
-                if (checkedTickets >= maxTicketsToCheck) break;
-                
-                ChunkPos chunkPos = new ChunkPos(entry.getLongKey());
-                
-                // 预筛选：只考虑搜索范围内的区块
-                if (getChebysevDistance(chunkPos, targetChunk) > searchRadius) {
-                    continue;
-                }
-                
-                // 过滤有效tickets
-                List<Ticket<?>> validTickets = entry.getValue().stream()
-                    .filter(ticket -> !WHITELIST_TICKET_TYPES.contains(ticket.getType()))
-                    .filter(ticket -> ticket.getTicketLevel() <= 32)
-                    .collect(Collectors.toList());
-                
-                if (!validTickets.isEmpty()) {
-                    candidateChunks.put(chunkPos, validTickets);
-                    checkedTickets += validTickets.size();
-                }
-            }
+            // 使用Stream API简化候选区块收集
+            Map<ChunkPos, List<Ticket<?>>> candidateChunks = tickets.long2ObjectEntrySet()
+                .stream()
+                .limit(maxTicketsToCheck)
+                .map(entry -> Map.entry(new ChunkPos(entry.getLongKey()), entry.getValue()))
+                .filter(entry -> getChebysevDistance(entry.getKey(), targetChunk) <= searchRadius)
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> filterValidTickets(entry.getValue()),
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new
+                ))
+                .entrySet().stream()
+                .filter(entry -> !entry.getValue().isEmpty())
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey, 
+                    Map.Entry::getValue,
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new
+                ));
             
             // 批量冻结所有影响目标区块的加载器
             List<ChunkPos> frozenChunks = new ArrayList<>();

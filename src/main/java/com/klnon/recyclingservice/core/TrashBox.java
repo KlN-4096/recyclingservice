@@ -54,10 +54,7 @@ public class TrashBox implements Container {
      */
     @Override
     public @Nonnull ItemStack getItem(int slot) {
-        if (!isValidSlot(slot)) {
-            return ItemStack.EMPTY;
-        }
-        return items.get(slot);
+        return isValidSlot(slot) ? items.get(slot) : ItemStack.EMPTY;
     }
 
     /**
@@ -65,16 +62,13 @@ public class TrashBox implements Container {
      */
     @Override
     public @Nonnull ItemStack removeItem(int slot, int amount) {
-        if (!isValidSlot(slot)) {
+        if (!isValidSlot(slot) || items.get(slot).isEmpty()) {
             return ItemStack.EMPTY;
         }
 
         ItemStack stackInSlot = items.get(slot);
-        if (stackInSlot.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-
         ItemStack result;
+        
         if (amount >= stackInSlot.getCount()) {
             // 移除整个物品堆
             result = stackInSlot;
@@ -93,16 +87,12 @@ public class TrashBox implements Container {
      */
     @Override
     public @Nonnull ItemStack removeItemNoUpdate(int slot) {
-        if (!isValidSlot(slot)) {
-            return ItemStack.EMPTY;
-        }
-
-        ItemStack stackInSlot = items.get(slot);
-        if (stackInSlot.isEmpty()) {
+        if (!isValidSlot(slot) || items.get(slot).isEmpty()) {
             return ItemStack.EMPTY;
         }
 
         // 移除整个物品堆，不触发变更事件
+        ItemStack stackInSlot = items.get(slot);
         items.set(slot, ItemStack.EMPTY);
         return stackInSlot;
     }

@@ -22,17 +22,15 @@ public class ItemMerge {
         Map<String, ItemStack> templates = new HashMap<>();
         Map<String, Integer> counts = new HashMap<>();
         
-        // 统计相同物品数量
-        for (ItemStack stack : stacks) {
-            if (stack.isEmpty()) continue;
-            
-            String key = ItemFilter.isComplexItem(stack) ? 
-                generateComplexItemKey(stack) : 
-                stack.getItem().toString();
-            
-            templates.putIfAbsent(key, stack);
-            counts.merge(key, stack.getCount(), Integer::sum);
-        }
+        // 使用Stream API统计相同物品数量
+        stacks.stream()
+            .filter(stack -> !stack.isEmpty())
+            .forEach(stack -> {
+                String key = ItemFilter.isComplexItem(stack) ? 
+                    generateComplexItemKey(stack) : stack.getItem().toString();
+                templates.putIfAbsent(key, stack);
+                counts.merge(key, stack.getCount(), Integer::sum);
+            });
         
         List<ItemStack> result = new ArrayList<>();
         

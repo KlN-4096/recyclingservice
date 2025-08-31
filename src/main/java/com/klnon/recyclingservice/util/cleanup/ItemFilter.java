@@ -15,6 +15,25 @@ import java.util.stream.Collectors;
  * 物品和实体过滤器 - 专注于清理判断
  */
 public class ItemFilter {
+    
+    // 特殊组件类型常量 - 避免每次调用重新创建数组
+    private static final net.minecraft.core.component.DataComponentType<?>[] SPECIAL_COMPONENTS = {
+        DataComponents.CUSTOM_NAME,
+        DataComponents.CUSTOM_DATA,
+        DataComponents.WRITTEN_BOOK_CONTENT,
+        DataComponents.WRITABLE_BOOK_CONTENT,
+        DataComponents.POTION_CONTENTS,
+        DataComponents.FIREWORK_EXPLOSION,
+        DataComponents.FIREWORKS,
+        DataComponents.CONTAINER,
+        DataComponents.STORED_ENCHANTMENTS,
+        DataComponents.SUSPICIOUS_STEW_EFFECTS,
+        DataComponents.TRIM,
+        DataComponents.DYED_COLOR,
+        DataComponents.BANNER_PATTERNS,
+        DataComponents.MAP_ID
+    };
+    
     /**
      * 检查ItemEntity是否应该被清理（支持Create模组处理检测）
      * @param entity 掉落物实体
@@ -103,26 +122,8 @@ public class ItemFilter {
      * @return 是否有特殊组件
      */
     private static boolean hasAnySpecialComponent(ItemStack itemStack) {
-        // 定义需要检查的特殊组件类型
-        net.minecraft.core.component.DataComponentType<?>[] specialComponents = {
-            DataComponents.CUSTOM_NAME,
-            DataComponents.CUSTOM_DATA,
-            DataComponents.WRITTEN_BOOK_CONTENT,
-            DataComponents.WRITABLE_BOOK_CONTENT,
-            DataComponents.POTION_CONTENTS,
-            DataComponents.FIREWORK_EXPLOSION,
-            DataComponents.FIREWORKS,
-            DataComponents.CONTAINER,
-            DataComponents.STORED_ENCHANTMENTS,
-            DataComponents.SUSPICIOUS_STEW_EFFECTS,
-            DataComponents.TRIM,
-            DataComponents.DYED_COLOR,
-            DataComponents.BANNER_PATTERNS,
-            DataComponents.MAP_ID
-        };
-        
-        // 使用流式操作检查是否包含任何特殊组件
-        return java.util.Arrays.stream(specialComponents)
+        // 使用预定义的特殊组件常量
+        return java.util.Arrays.stream(SPECIAL_COMPONENTS)
                 .anyMatch(itemStack::has);
     }
 

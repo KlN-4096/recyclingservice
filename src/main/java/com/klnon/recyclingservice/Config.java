@@ -498,22 +498,18 @@ public class Config {
     private static void parseDimensionMultipliers() {
         dimensionMultiplierCache.clear();
         
-        List<? extends String> configList = DIMENSION_MULTIPLIERS.get();
-        for (String entry : configList) {
+        DIMENSION_MULTIPLIERS.get().forEach(entry -> {
             try {
                 String[] parts = entry.split(":");
                 if (parts.length == 3) {
-                    String namespace = parts[0];
-                    String path = parts[1];
+                    String dimensionId = parts[0] + ":" + parts[1];
                     double multiplier = Double.parseDouble(parts[2]);
-                    String dimensionId = namespace + ":" + path;
                     dimensionMultiplierCache.put(dimensionId, multiplier);
                 }
             } catch (NumberFormatException e) {
-                ErrorHandler.handleVoidOperation("parseDimensionMultiplier", 
-                    () -> {}); // 处理解析错误
+                ErrorHandler.handleVoidOperation("parseDimensionMultiplier", () -> {});
             }
-        }
+        });
     }
     
     /**
