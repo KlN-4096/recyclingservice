@@ -9,7 +9,6 @@ import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
 import net.minecraft.resources.ResourceLocation;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.server.level.*;
 import net.minecraft.world.level.ChunkPos;
@@ -193,45 +192,6 @@ public class ChunkFreezer {
             int influenceRadius = calculateInfluenceRadius(ticket.getTicketLevel());
             return distance <= influenceRadius;
         });
-    }
-    
-    /**
-     * 激进模式：批量冻结所有维度的非白名单区块
-     * 用于服务器性能紧急情况下的大规模区块冻结
-     * @param server 服务器实例
-     * @return 总共冻结的区块数量
-     */
-    public static int freezeAllNonWhitelistChunks(net.minecraft.server.MinecraftServer server) {
-        return ErrorHandler.handleOperation(null, "freezeAllNonWhitelistChunks", () -> {
-            int totalFrozenChunks = 0;
-            
-            for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
-                // 获取该维度的所有可见区块
-                Long2ObjectLinkedOpenHashMap<ChunkHolder> chunkMap = level.getChunkSource().chunkMap.visibleChunkMap;
-                
-                // 并行处理区块冻结（提升性能）
-                int frozenInThisDimension = chunkMap.values().parallelStream()
-                    .filter(holder -> holder.getTicketLevel() <= 32) // 只处理加载的区块
-                    .mapToInt(holder -> {
-                        ChunkPos pos = holder.getPos();
-                        return freezeChunk(pos, level);
-                    })
-                    .sum();
-                    
-                totalFrozenChunks += frozenInThisDimension;
-                
-                if (frozenInThisDimension > 0) {
-                    Recyclingservice.LOGGER.info("Aggressive mode: Frozen {} chunks in dimension {}", 
-                        frozenInThisDimension, level.dimension().location());
-                }
-            }
-            
-            Recyclingservice.LOGGER.info("Aggressive mode: Total {} chunks frozen across all dimensions", 
-                totalFrozenChunks);
-                
-            return totalFrozenChunks;
-            
-        }, 0);
     }
     
     /**
