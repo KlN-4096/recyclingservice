@@ -4,9 +4,7 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.HoverEvent;
@@ -14,7 +12,6 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.ChatFormatting;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -109,9 +106,9 @@ public class Config {
 
     // === 性能优化缓存 ===
     // HashSet缓存，将O(n)查找优化为O(1)
-    private static volatile Set<String> whitelistCache = new HashSet<>();
-    private static volatile Set<String> blacklistCache = new HashSet<>();
-    private static volatile Set<String> projectileTypesCache = new HashSet<>();
+    public static volatile Set<String> whitelistCache = new HashSet<>();
+    public static volatile Set<String> blacklistCache = new HashSet<>();
+    public static volatile Set<String> projectileTypesCache = new HashSet<>();
     
     
     // 允许放入物品的维度缓存
@@ -122,22 +119,17 @@ public class Config {
         BUILDER.comment("Auto cleanup settings / 自动清理设置").push("auto_cleanup");
         
         AUTO_CLEAN_TIME = BUILDER
-                .comment("How often to automatically clean up items (in seconds) / 自动清理掉落物品的间隔时间（秒）",
-                        "Default: 600, Min: 30, Max: 7200")
+                .comment("Auto cleanup interval in seconds (Default: 600, Min: 30, Max: 7200)")
                 .translation("recycle.config.auto_clean_time")
                 .defineInRange("auto_clean_time_seconds", 600, 30, 7200);
         
         SHOW_CLEANUP_WARNINGS = BUILDER
-                .comment("Show warning messages before cleaning up / 是否在清理前显示警告消息",
-                        "Default: true")
+                .comment("Show warning messages before cleanup (Default: true)")
                 .translation("recycle.config.show_cleanup_warnings")
                 .define("show_cleanup_warnings", true);
 
-        
         WARNING_COUNTDOWN_START = BUILDER
-                .comment("Start countdown warnings when remaining time reaches this many seconds / 剩余时间达到多少秒时开始倒计时警告",
-                        "Set to 0 to completely disable countdown warnings / 设为0完全禁用倒计时警告",
-                        "Default: 15, Min: 0, Max: 300")
+                .comment("Start countdown warnings at remaining seconds (Default: 15, 0=disabled)")
                 .translation("recycle.config.warning_countdown_start")
                 .defineInRange("warning_countdown_start", 15, 0, 300);
         
@@ -148,20 +140,17 @@ public class Config {
         BUILDER.comment("Trash box settings / 垃圾箱系统设置").push("trash_box");
 
         TRASH_BOX_ROWS = BUILDER
-                .comment("Number of rows in each trash box / 每个垃圾箱的行数",
-                        "Default: 6, Min: 1, Max: 6")
+                .comment("Number of rows in each trash box (Default: 6, Min: 1, Max: 6)")
                 .translation("recycle.config.trash_box_rows")
                 .defineInRange("trash_box_rows", 6, 1, 6);
 
         ITEM_STACK_MULTIPLIER = BUILDER
-                .comment("Stack size multiplier for items / 物品堆叠倍数",
-                        "Default: 100 (means 64*100=6400), Min: 1, Max: 1000")
+                .comment("Stack size multiplier (Default: 100 = 64*100=6400, Min: 1, Max: 1000)")
                 .translation("recycle.config.item_stack_multiplier")
                 .defineInRange("item_stack_multiplier", 100, 1, 1000);
         
         DIMENSION_TRASH_ALLOW_PUT_IN = BUILDER
-                .comment("Dimensions that allow players to put items into trash boxes / 允许玩家主动将物品放入垃圾箱的维度",
-                        "Default: Main 3 dimensions / 默认：主要3个维度")
+                .comment("Dimensions that allow players to put items into trash boxes")
                 .translation("recycle.config.dimension_trash_allow_put_in")
                 .defineListAllowEmpty("dimension_trash_allow_put_in",
                     List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
@@ -169,15 +158,12 @@ public class Config {
                     Config::validateResourceLocation);
         
         DIMENSION_TRASH_CROSS_ACCESS = BUILDER
-                .comment("Allow players to access trash boxes from other dimensions / 允许玩家跨维度访问垃圾箱",
-                        "When false, players can only access trash boxes in their current dimension, ignoring DIMENSION_TRASH_ALLOW_PUT_IN / 为false时，玩家只能访问当前维度的垃圾箱，忽略DIMENSION_TRASH_ALLOW_PUT_IN配置",
-                        "Default: true / 默认：true")
+                .comment("Allow cross-dimension trash box access. When false, ignores DIMENSION_TRASH_ALLOW_PUT_IN (Default: true)")
                 .translation("recycle.config.dimension_trash_cross_access")
                 .define("dimension_trash_cross_access", true);
 
         MAX_BOXES_PER_DIMENSION = BUILDER
-                .comment("Maximum number of trash boxes per dimension / 每个维度最大垃圾箱数量",
-                        "Default: 3, Min: 1, Max: 5")
+                .comment("Maximum trash boxes per dimension (Default: 3, Min: 1, Max: 5)")
                 .translation("recycle.config.max_boxes_per_dimension")
                 .defineInRange("max_boxes_per_dimension", 3, 1, 5);
 
@@ -188,43 +174,29 @@ public class Config {
         BUILDER.comment("Payment system for cross-dimension access / 跨维度访问邮费系统").push("payment");
         
         INSERT_PAYMENT_MODE = BUILDER
-                .comment("Insert payment mode / 放入邮费模式",
-                        "  - 'all_dimensions_pay': Insert to any dimension requires payment / 放入任何维度都需要邮费",
-                        "  - 'current_dimension_free': Insert to current dimension is free, other dimensions require payment / 当前维度放入免费，其他维度需要邮费",
-                        "  - 'all_free': Insert to any dimension is free / 放入任何维度都免费",
-                        "Default: current_dimension_free")
+                .comment("Insert payment mode: all_dimensions_pay (always pay), current_dimension_free (free for same dim), all_free (never pay)")
                 .translation("recycle.config.insert_payment_mode")
                 .defineInList("insert_payment_mode", "current_dimension_free", 
                         Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
 
         PAYMENT_ITEM_TYPE = BUILDER
-                .comment("What item to use as payment (example: minecraft:emerald) / 用作邮费的物品类型（例如：minecraft:emerald）",
-                        "Default: minecraft:emerald")
+                .comment("Payment item type (Default: minecraft:emerald)")
                 .translation("recycle.config.payment_item_type")
                 .define("payment_item_type", "minecraft:emerald");
         
         CROSS_DIMENSION_ACCESS_COST = BUILDER
-                .comment("Payment required to access the dimension trash boxes / 访问维度垃圾箱需要的邮费数量",
-                        "Default: 1, Min: 1, Max: 64")
+                .comment("Payment cost for dimension access (Default: 1, Min: 1, Max: 64)")
                 .translation("recycle.config.cross_dimension_access_cost")
                 .defineInRange("cross_dimension_access_cost", 1, 1, 64);
         
         EXTRACT_PAYMENT_MODE = BUILDER
-                .comment("Extract payment mode / 取出邮费模式",
-                        "  - 'all_dimensions_pay': Extract from any dimension requires payment / 从任何维度取出都需要邮费",
-                        "  - 'current_dimension_free': Extract from current dimension is free, other dimensions require payment / 当前维度取出免费，其他维度需要邮费",  
-                        "  - 'all_free': Extract from any dimension is free / 从任何维度取出都免费",
-                        "Default: current_dimension_free")
+                .comment("Extract payment mode: all_dimensions_pay (always pay), current_dimension_free (free for same dim), all_free (never pay)")
                 .translation("recycle.config.extract_payment_mode")
                 .defineInList("extract_payment_mode", "current_dimension_free", 
                         Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
         
         DIMENSION_MULTIPLIERS = BUILDER
-                .comment("Cost multipliers for each dimension / 各维度邮费倍数",
-                        "Format: \"dimension_id:multiplier\" / 格式：\"维度ID:倍数\"",
-                        "Example: minecraft:overworld:1.0,minecraft:the_nether:1.0,minecraft:the_end:2.0",
-                        "If dimension not configured, uses default 1.0 / 未配置的维度使用默认值1.0",
-                        "NOTE: Multiplier only applies when player is in DIFFERENT dimension / 注意：倍数仅在玩家位于不同维度时生效")
+                .comment("Cost multipliers per dimension. Format: dimension_id:multiplier. Only applies when player in different dimension")
                 .translation("recycle.config.dimension_multipliers")
                 .defineListAllowEmpty("dimension_multipliers", 
                         List.of("minecraft:overworld:1.0", "minecraft:the_nether:1.0", "minecraft:the_end:2.0"),
@@ -237,16 +209,12 @@ public class Config {
         BUILDER.comment("Item filtering settings / 物品过滤设置").push("item_filter");
         
         CLEAN_MODE = BUILDER
-                .comment("Item cleaning mode / 物品清理模式:",
-                        "  - 'whitelist': Keep only items in whitelist, clean everything else / 白名单模式：仅保留白名单中的物品，清理其它所有物品",
-                        "  - 'blacklist': Clean only items in blacklist, keep everything else / 黑名单模式：仅清理黑名单中的物品，保留其它所有物品",
-                        "Default: whitelist")
+                .comment("Item cleaning mode: whitelist (keep only listed items), blacklist (clean only listed items)")
                 .translation("recycle.config.clean_mode")
                 .defineInList("clean_mode", "whitelist", Arrays.asList("whitelist", "blacklist"));
         
         WHITELIST = BUILDER
-                .comment("Items that will be kept (protected from cleaning) / 白名单：永远保留的物品",
-                        "Default: [minecraft:netherite_ingot, minecraft:elytra]")
+                .comment("Items that will be kept (protected from cleaning)")
                 .translation("recycle.config.whitelist")
                 .defineListAllowEmpty("whitelist",
                     List.of("minecraft:netherite_ingot", "minecraft:elytra"),
@@ -254,8 +222,7 @@ public class Config {
                     Config::validateResourceLocation);
         
         BLACKLIST = BUILDER
-                .comment("Items that will be cleaned up / 黑名单：永远清理的物品",
-                        "Default: [minecraft:cobblestone, minecraft:dirt, minecraft:gravel]")
+                .comment("Items that will be cleaned up")
                 .translation("recycle.config.blacklist")
                 .defineListAllowEmpty("blacklist", 
                     List.of("minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel"),
@@ -268,29 +235,22 @@ public class Config {
         BUILDER.comment("Projectile cleanup settings / 弹射物清理设置").push("projectile_cleanup");
         
         CLEAN_PROJECTILES = BUILDER
-                .comment("Enable cleaning up projectiles that can cause lag / 是否清理可能造成卡顿的弹射物",
-                        "Default: true")
+                .comment("Enable cleaning up projectiles (Default: true)")
                 .translation("recycle.config.clean_projectiles")
                 .define("clean_projectiles", true);
 
         PROJECTILE_TYPES_TO_CLEAN = BUILDER
-                .comment("Types of projectiles to clean up (all projectiles that can cause lag) / 要清理的弹射物类型（所有可能造成卡顿的弹射物）",
-                        "Default: arrows, fireballs, potions, etc. that can accumulate and cause performance issues",
-                        "默认：箭矢、火球等可能大量堆积造成性能问题的弹射物")
+                .comment("Types of projectiles to clean up")
                 .translation("recycle.config.projectile_types_to_clean")
                 .defineListAllowEmpty("projectile_types_to_clean",
                     List.of(
-                        // 箭矢类
                         "minecraft:arrow", 
                         "minecraft:spectral_arrow",
-                        // 火球类  
                         "minecraft:dragon_fireball", 
                         "minecraft:wither_skull", 
                         "minecraft:fireball", 
                         "minecraft:small_fireball",
-                        // 投掷物类
                         "minecraft:snowball",
-                        // 其他弹射物
                         "minecraft:shulker_bullet",
                         "minecraft:llama_spit"
                     ),
@@ -431,14 +391,11 @@ public class Config {
         
         // === 命令系统消息 ===
         CMD_HELP_MESSAGES = BUILDER
-                .comment("Command help messages / 命令帮助消息",
-                        "Format: One message per line / 格式：每行一条消息",
-                        "Default help messages / 默认帮助消息")
+                .comment("Command help messages")
                 .translation("recycle.config.cmd_help_messages")
                 .defineListAllowEmpty("cmd_help_messages",
                     List.of(
                         "§6=== Trash Box Command Help ===",
-                        "§e/bin test §7- Open test trash box",
                         "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
                         "§e/bin current <box> §7- Open current dimension trash box",
                         "§e/bin cleanup §7- Manually trigger cleanup",
@@ -527,27 +484,6 @@ public class Config {
     }
     
     /**
-     * 获取跨维度访问付费数量
-     */
-    public static int getCrossDimensionCost() {
-        return CROSS_DIMENSION_ACCESS_COST.get();
-    }
-    
-    /**
-     * 获取放入邮费模式
-     */
-    public static String getInsertPaymentMode() {
-        return INSERT_PAYMENT_MODE.get();
-    }
-    
-    /**
-     * 获取取出邮费模式
-     */
-    public static String getExtractPaymentMode() {
-        return EXTRACT_PAYMENT_MODE.get();
-    }
-    
-    /**
      * 获取指定维度的邮费倍数
      * @param dimensionId 维度ID（如 "minecraft:overworld"）
      * @return 该维度的邮费倍数，未配置则返回1.0
@@ -581,20 +517,6 @@ public class Config {
     }
     
     /**
-     * 获取邮费不足错误消息模板
-     */
-    public static String getPaymentErrorMessage() {
-        return PAYMENT_ERROR_MESSAGE.get();
-    }
-    
-    /**
-     * 获取邮费扣除成功消息模板
-     */
-    public static String getPaymentSuccessMessage() {
-        return PAYMENT_SUCCESS_MESSAGE.get();
-    }
-    
-    /**
      * 计算邮费数量（支持insert和extract操作）
      * @param playerDim 玩家所在维度
      * @param trashDim 垃圾箱所在维度
@@ -603,11 +525,11 @@ public class Config {
      */
     public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
         boolean isSameDimension = playerDim.equals(trashDim);
-        String paymentMode = "insert".equals(operation) ? getInsertPaymentMode() : getExtractPaymentMode();
+        String paymentMode = "insert".equals(operation) ? INSERT_PAYMENT_MODE.get() : EXTRACT_PAYMENT_MODE.get();
         
         return switch (paymentMode) {
             case "current_dimension_free" -> isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
-            case "all_dimensions_pay" -> isSameDimension ? getCrossDimensionCost() : calculateCrossDimensionCost(trashDim);
+            case "all_dimensions_pay" -> isSameDimension ? CROSS_DIMENSION_ACCESS_COST.get() : calculateCrossDimensionCost(trashDim);
             default -> 0;
         };
     }
@@ -618,7 +540,7 @@ public class Config {
      * @return 计算后的邮费数量
      */
     private static int calculateCrossDimensionCost(ResourceLocation trashDim) {
-        int baseCost = getCrossDimensionCost();
+        int baseCost = CROSS_DIMENSION_ACCESS_COST.get();
         double multiplier = getDimensionMultiplier(trashDim.toString());
         return (int) Math.ceil(baseCost * multiplier);
     }
@@ -634,125 +556,28 @@ public class Config {
      * 获取格式化的警告消息
      */
     public static String getWarningMessage(int remainingSeconds) {
-        return WARNING_MESSAGE.get().replace("{time}", String.valueOf(remainingSeconds));
-    }
-    
-    /**
-     * 获取倒计时开始时间
-     */
-    public static int getCountdownStartTime() {
-        return WARNING_COUNTDOWN_START.get();
-    }
-
-    /**
-     * 检查是否应该显示倒计时
-     * @param remainingSeconds 剩余秒数
-     * @return 是否显示倒计时
-     */
-    public static boolean shouldShowCountdown(int remainingSeconds) {
-        int startTime = getCountdownStartTime();
-        return remainingSeconds <= startTime && remainingSeconds > 0;
+        return formatTemplate(WARNING_MESSAGE.get(), Map.of("time", String.valueOf(remainingSeconds)));
     }
 
     // === 物品过滤便捷方法 ===
     
     /**
-     * 获取清理模式
-     */
-    public static String getCleanMode() {
-        return CLEAN_MODE.get();
-    }
-    
-    /**
      * 检查是否为白名单模式,反之则是黑名单
      */
     public static boolean isWhitelistMode() {
-        return "whitelist".equals(getCleanMode());
-    }
-
-    /**
-     * 检查物品是否在白名单中（用于保留）
-     */
-    public static boolean isInWhitelist(String itemId) {
-        return whitelistCache.contains(itemId);
-    }
-    
-    /**
-     * 检查物品是否在黑名单中（用于清理）
-     */
-    public static boolean isInBlacklist(String itemId) {
-        return blacklistCache.contains(itemId);
-    }
-
-    // === 弹射物清理便捷方法 ===
-    
-    /**
-     * 检查是否应该清理弹射物
-     */
-    public static boolean shouldCleanProjectiles() {
-        return CLEAN_PROJECTILES.get();
-    }
-    
-    /**
-     * 检查弹射物类型是否应该清理
-     */
-    public static boolean isProjectileTypeToClean(String entityTypeId) {
-        return projectileTypesCache.contains(entityTypeId);
-    }
-
-    // === Create模组兼容性便捷方法 ===
-    
-    /**
-     * 检查是否保护正在被Create模组处理的物品
-     */
-    public static boolean shouldProtectCreateProcessingItems() {
-        return PROTECT_CREATE_PROCESSING_ITEMS.get();
-    }
-
-    /**
-     * 获取批处理大小（适用于实体删除等批处理操作）
-     */
-    public static int getBatchSize() {
-        return BATCH_SIZE.get();
-    }
-
-    /**
-     * 获取主线程最大处理时间（纳秒）
-     */
-    public static long getMaxProcessingTimeNs() {
-        return MAX_PROCESSING_TIME_MS.get() * 1_000_000L;
-    }
-    
-    /**
-     * 检查是否启用区块物品警告
-     */
-    public static boolean isChunkWarningEnabled() {
-        return ENABLE_CHUNK_ITEM_WARNING.get();
-    }
-    
-    /**
-     * 检查是否启用区块冻结功能
-     */
-    public static boolean isChunkFreezingEnabled() {
-        return ENABLE_CHUNK_FREEZING.get();
-    }
-    
-    /**
-     * 获取区块冻结搜索半径
-     */
-    public static int getChunkFreezingSearchRadius() {
-        return CHUNK_FREEZING_SEARCH_RADIUS.get();
+        return "whitelist".equals(CLEAN_MODE.get());
     }
     
     /**
      * 获取格式化的物品过多警告消息（支持点击传送）
      */
     public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ, int ticketLevel) {
-        String message = TOO_MANY_ITEMS_WARNING_MESSAGE.get()
-                .replace("{count}", String.valueOf(itemCount))
-                .replace("{x}", String.valueOf(worldX))
-                .replace("{z}", String.valueOf(worldZ))
-                .replace("{ticket}", String.valueOf(ticketLevel));
+        String message = formatTemplate(TOO_MANY_ITEMS_WARNING_MESSAGE.get(), Map.of(
+            "count", String.valueOf(itemCount),
+            "x", String.valueOf(worldX),
+            "z", String.valueOf(worldZ),
+            "ticket", String.valueOf(ticketLevel)
+        ));
         
         return Component.literal(message)
                 .withStyle(style -> style
@@ -775,72 +600,25 @@ public class Config {
         return ITEM_STACK_MULTIPLIER.get()*itemStack.getMaxStackSize();
     }
     
-    // === 消息格式化方法 ===
+    // === 通用字符串模板工具 ===
     
     /**
-     * 获取清理失败消息
+     * 统一的字符串模板处理工具
+     * @param template 模板字符串，使用{key}格式的占位符
+     * @param params 替换参数映射
+     * @return 替换后的字符串
      */
-    public static String getCleanupFailedMessage() {
-        return ERROR_CLEANUP_FAILED.get();
+    public static String formatTemplate(String template, Map<String, String> params) {
+        String result = template;
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            result = result.replace("{" + entry.getKey() + "}", entry.getValue());
+        }
+        return result;
     }
     
-    /**
-     * 获取手动清理开始消息
-     */
-    public static String getManualCleanupStartMessage() {
-        return MANUAL_CLEANUP_START.get();
-    }
-    
-    /**
-     * 获取格式化的测试垃圾箱标题
-     */
-    public static String getTestBoxTitle(String uiType) {
-        return "§6Test Trash Box §7(UI Type: " + uiType + ")";
-    }
-    
-    /**
-     * 获取格式化的测试垃圾箱打开消息
-     */
-    public static String getTestBoxOpenedMessage(String uiType) {
-        return "§aTest trash box opened §7| UI Type: §b" + uiType;
-    }
-    
-    /**
-     * 获取格式化的物品数量显示
-     */
-    public static String getItemCountDisplay(int count,ItemStack itemStack) {
-        return ITEM_COUNT_DISPLAY_FORMAT.get()
-                .replace("{current}", String.valueOf(count))
-                .replace("{max}", String.valueOf(getItemStackMultiplier(itemStack)));
-    }
-    
-    /**
-     * 获取命令帮助消息组
-     */
-    public static String[] getCommandHelpMessages() {
-        List<? extends String> messages = CMD_HELP_MESSAGES.get();
-        return messages.toArray(new String[0]);
-    }
-    
-    /**
-     * 获取垃圾箱按钮文本
-     */
-    public static String getTrashBoxButtonText() {
-        return TRASH_BOX_BUTTON_TEXT.get();
-    }
-    
-    /**
-     * 获取垃圾箱按钮悬停文本
-     */
-    public static String getTrashBoxButtonHover() {
-        return TRASH_BOX_BUTTON_HOVER.get();
-    }
+    // === 消息格式化方法 - 已简化直接访问 ===
     
     // === 维度相关便捷方法 ===
-    
-    
-    
-    
     /**
      * 获取维度的显示名称 - 简化版，直接去前缀
      * @param dimensionId 维度ID
@@ -852,100 +630,62 @@ public class Config {
             dimString.substring(dimString.indexOf(':') + 1) : dimString;
     }
     
-    
-    
     /**
-     * 构建详细清理完成消息（带tooltip和可点击按钮的Component格式）
+     * 构建详细清理完成消息（简化版）
      * @param dimensionStats 各维度清理统计信息
-     * @return 带悬停详情和可点击按钮的聊天组件
+     * @return 清理结果的聊天组件
      */
     public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
         MutableComponent mainComponent = Component.literal(CLEANUP_RESULT_HEADER.get());
-        List<Component> tooltipComponents = new ArrayList<>();
         
-        // 主要维度集合
-        Set<String> mainDimensions = Set.of(
-            "minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"
-        );
-        
-        // 统一处理所有维度
-        for (Map.Entry<ResourceLocation, ?> entry : dimensionStats.entrySet()) {
-            Component dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
-            if (dimensionEntry != null) {
-                if (mainDimensions.contains(entry.getKey().toString())) {
-                    // 主要维度显示在主消息中（添加换行）
-                    mainComponent = mainComponent.append(Component.literal("\n")).append(dimensionEntry);
-                } else {
-                    // 其他维度显示在tooltip中
-                    tooltipComponents.add(dimensionEntry);
+        // 简化：所有维度统一处理，按字典序排序
+        dimensionStats.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(ResourceLocation::compareTo))
+            .forEach(entry -> {
+                Component dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
+                if (dimensionEntry != null) {
+                    mainComponent.append(Component.literal("\n")).append(dimensionEntry);
                 }
-            }
-        }
-        
-        // 添加tooltip悬停事件
-        if (!tooltipComponents.isEmpty()) {
-            // 构建tooltip内容，每个组件用换行分隔
-            MutableComponent tooltipContent = Component.empty();
-            for (int i = 0; i < tooltipComponents.size(); i++) {
-                if (i > 0) {
-                    tooltipContent = tooltipContent.append(Component.literal("\n"));
-                }
-                tooltipContent = tooltipContent.append(tooltipComponents.get(i));
-            }
-            
-            // 使用final变量避免lambda问题
-            final MutableComponent finalTooltipContent = tooltipContent;
-            mainComponent = mainComponent.withStyle(style -> 
-                style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, finalTooltipContent))
-            );
-        }
+            });
         
         return mainComponent;
     }
     
     /**
-     * 格式化单个维度的清理条目，包含可点击的打开垃圾箱按钮
+     * 格式化单个维度的清理条目
      * @param dimensionId 维度ID
      * @param stats 统计数据对象
      * @return 格式化后的条目Component，如果获取失败返回null
      */
     private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
-        try {
-            // 直接转换为DimensionCleanupStats记录类
-            if (stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats) {
-                // 创建基础文本
-                String baseText = DIMENSION_ENTRY_FORMAT.get()
-                        .replace("{name}", getDimensionDisplayName(dimensionId))
-                        .replace("{items}", String.valueOf(dimensionStats.itemsCleaned()))
-                        .replace("{entities}", String.valueOf(dimensionStats.projectilesCleaned()));
-                
-                // 获取按钮文本并替换占位符
-                String buttonText = getTrashBoxButtonText()
-                        .replace("{name}", getDimensionDisplayName(dimensionId));
-                
-                // 获取悬停文本并替换占位符
-                String hoverText = getTrashBoxButtonHover()
-                        .replace("{name}", getDimensionDisplayName(dimensionId));
-                
-                // 创建可点击的按钮
-                MutableComponent button = Component.literal(buttonText)
-                        .withStyle(Style.EMPTY
-                                .withColor(ChatFormatting.GREEN)
-                                .withUnderlined(true)
-                                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
-                                        "/bin open " + dimensionId + " 1"))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                        Component.literal(hoverText)
-                                                .withStyle(ChatFormatting.YELLOW))));
-                
-                // 组合文本和按钮
-                return Component.literal(baseText).append(button);
-            }
-            return null;
-        } catch (Exception e) {
-            // 静默处理转换异常
+        if (!(stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats)) {
             return null;
         }
+        
+        // 创建基础文本
+        String baseText = formatTemplate(DIMENSION_ENTRY_FORMAT.get(), Map.of(
+            "name", getDimensionDisplayName(dimensionId),
+            "items", String.valueOf(dimensionStats.itemsCleaned()),
+            "entities", String.valueOf(dimensionStats.projectilesCleaned())
+        ));
+        
+        // 创建可点击的按钮
+        String buttonText = formatTemplate(TRASH_BOX_BUTTON_TEXT.get(), 
+            Map.of("name", getDimensionDisplayName(dimensionId)));
+        String hoverText = formatTemplate(TRASH_BOX_BUTTON_HOVER.get(), 
+            Map.of("name", getDimensionDisplayName(dimensionId)));
+            
+        MutableComponent button = Component.literal(buttonText)
+                .withStyle(Style.EMPTY
+                        .withColor(ChatFormatting.GREEN)
+                        .withUnderlined(true)
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
+                                "/bin open " + dimensionId + " 1"))
+                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                Component.literal(hoverText).withStyle(ChatFormatting.YELLOW))));
+        
+        // 组合文本和按钮
+        return Component.literal(baseText).append(button);
     }
     
     // === 性能优化方法 ===

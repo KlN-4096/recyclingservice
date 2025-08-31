@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 /**
  * 物品和实体过滤器 - 专注于清理判断
- * 遵循KISS原则：简单的过滤逻辑，统一所有过滤方法
  */
 public class ItemFilter {
     /**
@@ -23,7 +22,7 @@ public class ItemFilter {
      */
     public static boolean shouldCleanItem(ItemEntity entity) {
         // 检查是否启用了Create模组保护且物品正在被处理
-        if (Config.shouldProtectCreateProcessingItems() && isBeingProcessedByCreate(entity)) {
+        if (Config.PROTECT_CREATE_PROCESSING_ITEMS.get() && isBeingProcessedByCreate(entity)) {
             return false; // 保护正在处理中的物品
         }
         
@@ -33,8 +32,8 @@ public class ItemFilter {
         
         String itemId = BuiltInRegistries.ITEM.getKey(entity.getItem().getItem()).toString();
         return Config.isWhitelistMode() 
-            ? !Config.isInWhitelist(itemId)  // 白名单模式：不在保留列表中的都清理
-            : Config.isInBlacklist(itemId);  // 黑名单模式：只清理黑名单中的
+            ? !Config.whitelistCache.contains(itemId)  // 白名单模式：不在保留列表中的都清理
+            : Config.blacklistCache.contains(itemId);  // 黑名单模式：只清理黑名单中的
     }
 
     /**
@@ -73,8 +72,8 @@ public class ItemFilter {
      * @return 是否应该清理
      */
     public static boolean shouldCleanProjectile(Entity entity) {
-        return Config.shouldCleanProjectiles() && 
-               Config.isProjectileTypeToClean(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+        return Config.CLEAN_PROJECTILES.get() && 
+               Config.projectileTypesCache.contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
     
     /**

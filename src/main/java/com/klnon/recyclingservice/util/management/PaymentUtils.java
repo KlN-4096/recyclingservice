@@ -5,6 +5,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.Map;
+
 import com.klnon.recyclingservice.Config;
 
 /**
@@ -82,10 +85,10 @@ public class PaymentUtils {
      */
     public static void sendPaymentErrorMessage(Player player, int requiredCost) {
         String itemName = getPaymentItemDisplayName();
-        String messageTemplate = Config.getPaymentErrorMessage();
-        String formattedMessage = messageTemplate
-                .replace("{cost}", String.valueOf(requiredCost))
-                .replace("{item}", itemName);
+        String formattedMessage = Config.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
+            "cost", String.valueOf(requiredCost),
+            "item", itemName
+        ));
         Component message = Component.literal(formattedMessage);
         player.displayClientMessage(message, true);
     }
@@ -97,10 +100,10 @@ public class PaymentUtils {
      */
     public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
         String itemName = getPaymentItemDisplayName();
-        String messageTemplate = Config.getPaymentSuccessMessage();
-        String formattedMessage = messageTemplate
-                .replace("{cost}", String.valueOf(deductedCost))
-                .replace("{item}", itemName);
+        String formattedMessage = Config.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
+            "cost", String.valueOf(deductedCost),
+            "item", itemName
+        ));
         Component message = Component.literal(formattedMessage);
         player.displayClientMessage(message, true);
     }

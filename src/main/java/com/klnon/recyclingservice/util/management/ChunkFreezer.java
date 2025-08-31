@@ -17,10 +17,8 @@ import net.minecraft.util.SortedArraySet;
 import javax.annotation.Nonnull;
 
 /**
- * 区块冻结工具类
- * 通过DistanceManager.removeTicket()移除区块的tickets来实现"冻结"效果
- * 保留白名单ticket类型：POST_TELEPORT, PLAYER, START, UNKNOWN, PORTAL
- * 使用AccessTransformer简化访问
+ * 区块冻结工具 - 通过移除tickets来"冻结"过载区块
+ * 保留白名单tickets：POST_TELEPORT, PLAYER, START, UNKNOWN, PORTAL
  */
 public class ChunkFreezer {
     
@@ -36,7 +34,7 @@ public class ChunkFreezer {
      * 根据搜索半径动态计算最大检查ticket数量
      */
     private static int getMaxTicketsToCheck() {
-        int radius = Config.getChunkFreezingSearchRadius();
+        int radius = Config.CHUNK_FREEZING_SEARCH_RADIUS.get();
         int searchArea = (2 * radius + 1) * (2 * radius + 1);  // 方形区域
         return (int)(searchArea * 1.5);  // 1.5倍安全系数
     }
@@ -87,9 +85,7 @@ public class ChunkFreezer {
     }
     
     /**
-     * 批量冻结所有影响目标区块的加载器
-     * 找到所有影响目标区块的加载器位置并冻结它们
-     * 
+     * 批量冻结影响目标区块的所有加载器
      * @param targetChunk 物品过多的目标区块
      * @param level 服务器世界
      * @return 冻结结果信息
@@ -100,7 +96,7 @@ public class ChunkFreezer {
             Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
             
             // 动态获取搜索参数
-            int searchRadius = Config.getChunkFreezingSearchRadius();
+            int searchRadius = Config.CHUNK_FREEZING_SEARCH_RADIUS.get();
             int maxTicketsToCheck = getMaxTicketsToCheck();
             
             // 调试日志：显示动态参数
@@ -195,8 +191,7 @@ public class ChunkFreezer {
     }
     
     /**
-     * 执行区块冻结检查 - 检查维度中每个区块的实体数量，冻结超过阈值的区块
-     * 职责：根据实体上报缓存，检测超载区块并执行智能冻结策略
+     * 执行区块冻结检查 - 检测超载区块并冻结影响它们的加载器
      * @param dimensionId 维度ID
      * @param level 服务器维度实例
      */
@@ -235,7 +230,7 @@ public class ChunkFreezer {
                 }
                 
                 // 发送警告消息（如果启用）
-                if (Config.isChunkWarningEnabled()) {
+                if (Config.ENABLE_CHUNK_ITEM_WARNING.get()) {
                     int entityCount = SimpleReportCache.getEntityCountByChunk(dimensionId).getOrDefault(chunkPos, 0);
                     int worldX = chunkPos.x * 16 + 8;
                     int worldZ = chunkPos.z * 16 + 8;

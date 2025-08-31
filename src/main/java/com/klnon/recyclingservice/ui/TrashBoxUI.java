@@ -6,20 +6,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
-import com.klnon.recyclingservice.util.core.MessageSender;
-import com.klnon.recyclingservice.util.ui.UiUtils;
 import com.klnon.recyclingservice.core.DimensionTrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.Config;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 /**
  * UI工具类 - 提供垃圾箱UI访问的便捷方法
  * 功能：
  * - 简化UI打开流程
  * - 统一错误处理
- * - 提供调试和测试接口
  */
 public class TrashBoxUI {
     
@@ -50,56 +44,6 @@ public class TrashBoxUI {
             // 记录日志（调试用）
             Recyclingservice.LOGGER.debug("Player {} opened trash box {}-{}",
                 player.getName().getString(), dimensionId, boxNumber);
-
-            return true;
-        }, false);
-    }
-    
-    
-    /**
-     * 测试接口：创建一个测试垃圾箱并打开UI
-     * 仅用于开发测试
-     * 
-     * @param player 玩家
-     * @return 是否成功
-     */
-    public static boolean openTestTrashBox(ServerPlayer player) {
-        return ErrorHandler.handleOperation(player, "openTestTrashBox", () -> {
-            // 创建测试垃圾箱 - 使用测试维度ID
-            TrashBox testBox = new TrashBox(54, 999, ResourceLocation.parse("minecraft:overworld"));
-
-            // 添加测试物品 - 简化后的代码
-            net.minecraft.world.item.Item[] testItems = {
-                Items.COBBLESTONE,      // 方块类
-                Items.COAL,            // 原材料类
-                Items.DIAMOND_PICKAXE, // 工具类
-                Items.DIAMOND_SWORD,   // 武器类
-                Items.DIAMOND_HELMET,  // 防具类
-                Items.BREAD,           // 食物类
-                Items.POTION,          // 药水类
-                Items.REDSTONE,        // 红石类
-                Items.FLOWER_POT,      // 装饰类
-                Items.MINECART,        // 运输类
-                Items.MUSIC_DISC_CAT,  // 音乐类
-                Items.COW_SPAWN_EGG,   // 生物蛋类
-                Items.BOOK             // 杂项类
-            };
-            
-            for (net.minecraft.world.item.Item item : testItems) {
-                ItemStack itemStack = new ItemStack(item);
-                testBox.addItem(new ItemStack(item, Config.getItemStackMultiplier(itemStack)));
-            }
-
-            // 为垃圾箱起标题
-            Component title = Component.literal(Config.getTestBoxTitle(
-                UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla"));
-            MenuProvider provider = new DynamicContainerProvider(testBox, title);
-
-            player.openMenu(provider);
-
-            // 发送测试信息
-            MessageSender.sendMessage(player, Config.getTestBoxOpenedMessage(
-                UiUtils.hasModInstalled(player) ? "Enhanced" : "Vanilla"), MessageSender.MessageType.DEFAULT);
 
             return true;
         }, false);

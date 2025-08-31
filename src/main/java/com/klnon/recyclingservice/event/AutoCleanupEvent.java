@@ -9,8 +9,7 @@ import com.klnon.recyclingservice.util.core.MessageSender;
 import com.klnon.recyclingservice.Config;
 
 /**
- * 优化的自动清理处理器 - 遵循KISS原则
- * 性能友好的实时警告系统
+ * 自动清理事件处理器 - 定时触发清理并显示警告
  */
 public class AutoCleanupEvent {
     
@@ -42,7 +41,7 @@ public class AutoCleanupEvent {
         int remainingSeconds = getRemainingSeconds();
         
         // 使用配置的倒计时开始时间
-        if (Config.shouldShowCountdown(remainingSeconds)) {
+        if (remainingSeconds <= Config.WARNING_COUNTDOWN_START.get() && remainingSeconds > 0) {
             String message = Config.getWarningMessage(remainingSeconds);
             MessageSender.showActionBar(server, message, MessageSender.MessageType.WARNING.getColor());
         }
@@ -63,7 +62,7 @@ public class AutoCleanupEvent {
                 cleaning = false;
             })
             .exceptionally(e -> {
-                MessageSender.showActionBar(server, Config.getCleanupFailedMessage(), MessageSender.MessageType.ERROR.getColor());
+                MessageSender.showActionBar(server, Config.ERROR_CLEANUP_FAILED.get(), MessageSender.MessageType.ERROR.getColor());
                 cleaning = false;
                 return null;
             });

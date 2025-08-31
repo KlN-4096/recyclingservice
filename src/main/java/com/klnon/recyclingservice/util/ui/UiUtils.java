@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.util.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
@@ -67,7 +68,12 @@ public class UiUtils {
         
         // 添加真实数量信息
         loreLines.add(Component.empty()); // 空行分隔
-        loreLines.add(Component.literal(Config.getItemCountDisplay(stack.getCount(),stack))
+        loreLines.add(Component.literal(
+            Config.formatTemplate(Config.ITEM_COUNT_DISPLAY_FORMAT.get(), Map.of(
+                "current", String.valueOf(stack.getCount()),
+                "max", String.valueOf(Config.getItemStackMultiplier(stack))
+            ))
+        )
             .withStyle(style -> style.withItalic(false)));
         
         // 应用新的lore

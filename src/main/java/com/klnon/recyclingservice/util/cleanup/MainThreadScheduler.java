@@ -12,11 +12,7 @@ import java.util.List;
 
 /**
  * 主线程任务调度器 - 分片处理避免TPS下降
- * 设计原则：
- * - 每tick处理数量通过Config.getStreamBatchSize()动态配置
- * - 时间限制：通过Config.getMaxProcessingTimeNs()动态配置
- * - 非阻塞：异步完成通知
- * - 保证TPS稳定性
+ * 每tick限制处理数量和时间，异步完成通知
  */
 public class MainThreadScheduler {
     
@@ -60,8 +56,8 @@ public class MainThreadScheduler {
         int processedCount = 0;
         
         // 从配置获取动态值
-        int maxEntitiesPerTick = Config.getBatchSize();
-        long maxProcessingTimeNs = Config.getMaxProcessingTimeNs();
+        int maxEntitiesPerTick = Config.BATCH_SIZE.get();
+        long maxProcessingTimeNs = Config.MAX_PROCESSING_TIME_MS.get() * 1_000_000L;
         
         while (!deletionQueue.isEmpty() && 
                processedCount < maxEntitiesPerTick && 

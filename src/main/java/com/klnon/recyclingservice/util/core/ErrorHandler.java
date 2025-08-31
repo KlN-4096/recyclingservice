@@ -20,7 +20,7 @@ public class ErrorHandler {
         
         try {
             T result = operation.get();
-            if (Config.isDebugLogsEnabled()) {
+            if (Config.ENABLE_DEBUG_LOGS.get()) {
                 LOGGER.debug("Operation {} succeeded for {}", operationName, playerName);
             }
             return result;

@@ -23,23 +23,15 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 自动清理服务 - 基于主动上报系统的核心清理功能
- * 新架构特性：
- * - 零延迟清理：实体主动上报，无需扫描遍历
- * - 缓存消费：同步从SimpleReportCache获取待清理实体（轻量级操作）
- * - 性能优化：从O(n)扫描复杂度降为O(1)缓存访问
- * - 实时响应：实体状态变化立即反映到清理系统
- * 功能：
- * - 同步收集上报缓存中所有维度的待清理实体
- * - 根据配置过滤需要清理的物品和弹射物
- * - 将清理的物品存储到对应维度的垃圾箱
- * - 异步删除原始实体，通过主线程调度避免TPS下降
- * - 清理完成后自动清空缓存
- * 设计原则：
- * - 混合处理：缓存收集同步，实体删除异步（避免阻塞主线程）
- * - 错误隔离：单个维度清理失败不影响其他维度
- * - 容错性强：任何异常都跳过，不影响游戏运行
- * - 统一管理：通过DimensionTrashManager管理所有垃圾箱
+ * 自动清理服务 - 基于实体主动上报的清理系统
+ * 
+ * 核心功能：
+ * - 收集上报缓存中的待清理实体（零延迟，O(1)访问）
+ * - 过滤物品和弹射物
+ * - 存储物品到对应维度垃圾箱
+ * - 异步删除原始实体（避免TPS下降）
+ * 
+ * 设计特点：缓存收集同步，实体删除异步，错误隔离
  */
 public class CleanupService {
     // 全局垃圾箱管理器实例
@@ -110,9 +102,6 @@ public class CleanupService {
     
     /**
      * 异步处理清理任务 - 并行处理所有维度
-     * 注意：这里的scanResults实际上是从缓存直接获取的结果，
-     * 不是传统意义上的"扫描"结果
-     * 
      * @param server 服务器实例
      * @param scanResults 从上报缓存获取的结果映射 (维度ID -> 缓存结果)
      * @return CompletableFuture包装的清理结果
@@ -143,11 +132,7 @@ public class CleanupService {
     
     /**
      * 处理单个维度的清理任务
-     * 清理步骤：
-     * 1. 检查区块实体数量，触发区块冻结（如果需要）
-     * 2. 过滤物品和弹射物
-     * 3. 将物品存储到垃圾箱
-     * 4. 删除实体
+     * 步骤：区块冻结检查 -> 过滤物品弹射物 -> 存储到垃圾箱 -> 删除实体
      * @param dimensionId 维度ID
      * @param level 服务器维度实例
      * @param scanResult 该维度的扫描结果
@@ -159,7 +144,7 @@ public class CleanupService {
             EntityCacheReader.ScanResult scanResult) {
         
         // 1. 区块冻结检查 - 在清理前检查每个区块的实体数量
-        if (level != null && Config.isChunkFreezingEnabled()) {
+        if (level != null && Config.ENABLE_CHUNK_FREEZING.get()) {
             ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
         }
         

@@ -30,12 +30,7 @@ import net.minecraft.util.SortedArraySet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 /**
- * 垃圾箱和清理命令 - /bin
- * 用法：
- * /bin test - 打开测试垃圾箱
- * /bin open <dimension> <box_number> - 打开指定维度的垃圾箱（支持Tab补全）
- * /bin cleanup - 手动触发清理
- * /bin tickets <x> <z> - 查看指定区块坐标的所有tickets
+ * 垃圾箱命令处理器 - /bin
  */
 public class BinCommand {
     
@@ -60,9 +55,6 @@ public class BinCommand {
                         .then(Commands.argument("x", IntegerArgumentType.integer())
                                 .then(Commands.argument("z", IntegerArgumentType.integer())
                                         .executes(BinCommand::showChunkTickets))))
-                .then(Commands.literal("test")
-                        .requires(ADMIN_PERMISSION) // 使用常量
-                        .executes(BinCommand::openTestTrashBox))
                 .executes(BinCommand::showHelp));
     }
     
@@ -72,23 +64,12 @@ public class BinCommand {
     private static int showHelp(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         
-        String[] helpMessages = Config.getCommandHelpMessages();
+        String[] helpMessages = Config.CMD_HELP_MESSAGES.get().toArray(new String[0]);
         for (String message : helpMessages) {
             source.sendSuccess(() -> Component.literal(message), false);
         }
         
         return 1;
-    }
-    
-    /**
-     * 打开测试垃圾箱
-     */
-    private static int openTestTrashBox(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        // require中isPlayer()已经检测过,确保是玩家
-        ServerPlayer player = (ServerPlayer) source.getEntity();
-        return ErrorHandler.handleCommandOperation(player, "打开测试垃圾箱",
-          () -> TrashBoxUI.openTestTrashBox(player));
     }
     
     /**
@@ -192,7 +173,7 @@ public class BinCommand {
         
         return ErrorHandler.handleCommandOperation(player, "手动清理",
             () -> {
-                source.sendSuccess(() -> Component.literal(Config.getManualCleanupStartMessage()), true);
+                source.sendSuccess(() -> Component.literal(Config.MANUAL_CLEANUP_START.get()), true);
                 
                 // 触发手动清理
                 if (player != null) {

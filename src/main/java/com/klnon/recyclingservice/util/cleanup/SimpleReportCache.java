@@ -11,12 +11,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * 主动上报缓存系统 - 新清理架构的核心组件
- * 工作流程：
- * 1. ItemEntity/Projectile通过Mixin检查自身状态
- * 2. 满足清理条件时调用report()上报自己
- * 3. 实体被删除时调用cancel()取消上报
- * 4. CleanupService调用getReported()获取待清理实体
- * 5. 清理完成后调用clear()清空缓存
+ * 
+ * 工作流程：实体自检 -> 满足条件时上报 -> CleanupService获取 -> 清理后清空缓存
+ * 优化：UUID去重避免重复收集
  */
 public class SimpleReportCache {
     

@@ -47,8 +47,8 @@ public class ProjectileReportMixin {
     private boolean recyclingservice$shouldReport(Entity self) {
         try {
             return self.tickCount >= 30 * 20 && // 30秒后考虑清理
-                   Config.shouldCleanProjectiles() &&
-                   Config.isProjectileTypeToClean(
+                   Config.CLEAN_PROJECTILES.get() &&
+                   Config.projectileTypesCache.contains(
                        BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());
         } catch (Exception e) {
             return false;
