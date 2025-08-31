@@ -132,9 +132,23 @@ public class SimpleReportCache {
             if (queue == null) return 0;
             
             List<UUID> toRemove = queue.stream()
-                .map(EntityReport::entity)
-                .filter(entity -> entity.isRemoved() || !entity.isAlive())
-                .map(Entity::getUUID)
+                .filter(report -> {
+                    try {
+                        Entity entity = report.entity();
+                        return entity == null || entity.isRemoved() || !entity.isAlive();
+                    } catch (Exception e) {
+                        return true; // 异常就移除
+                    }
+                })
+                .map(report -> {
+                    try {
+                        Entity entity = report.entity();
+                        return entity != null ? entity.getUUID() : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
                 .toList();
             
             toRemove.forEach(uuid -> removeFromCache(dimension, uuid));
