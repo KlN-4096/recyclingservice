@@ -829,12 +829,6 @@ public class Config {
         return ITEM_STACK_MULTIPLIER.get()*itemStack.getMaxStackSize();
     }
     
-    
-    
-    
-    
-    
-    
     // === 消息格式化方法 ===
     
     /**

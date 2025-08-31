@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
+import net.minecraft.resources.ResourceLocation;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -230,6 +232,84 @@ public class ChunkFreezer {
             return totalFrozenChunks;
             
         }, 0);
+    }
+    
+    /**
+     * 执行区块冻结检查 - 检查维度中每个区块的实体数量，冻结超过阈值的区块
+     * 职责：根据实体上报缓存，检测超载区块并执行智能冻结策略
+     * @param dimensionId 维度ID
+     * @param level 服务器维度实例
+     */
+    public static void performChunkFreezingCheck(ResourceLocation dimensionId, ServerLevel level) {
+        try {
+            // 获取区块实体数量统计
+            List<ChunkPos> overloadedChunks = SimpleReportCache.getChunksExceedingThreshold(
+                dimensionId, 
+                Config.TOO_MANY_ITEMS_WARNING.get()
+            );
+            
+            // 对每个超载区块执行冻结
+            for (ChunkPos chunkPos : overloadedChunks) {
+                // 批量冻结所有影响目标区块的加载器
+                FreezeResult freezeResult = freezeAllAffectingChunkLoaders(chunkPos, level);
+                
+                if (!freezeResult.isEmpty()) {
+                    Recyclingservice.LOGGER.info(
+                        "Chunk freezing triggered during cleanup: Frozen {} chunk loaders affecting chunk ({}, {}) in {}: {} tickets removed", 
+                        freezeResult.getFrozenChunkCount(), chunkPos.x, chunkPos.z, dimensionId, freezeResult.totalFrozenTickets());
+                    
+                    // 详细记录每个被冻结的区块
+                    for (ChunkPos frozenChunk : freezeResult.frozenChunks()) {
+                        Recyclingservice.LOGGER.debug(
+                            "  → Frozen chunk loader at ({}, {}) in dimension {}", 
+                            frozenChunk.x, frozenChunk.z, dimensionId);
+                    }
+                } else {
+                    // 如果找不到任何加载器，冻结当前区块（回退逻辑）
+                    int frozenTickets = freezeChunk(chunkPos, level);
+                    if (frozenTickets > 0) {
+                        Recyclingservice.LOGGER.info(
+                            "No affecting chunk loaders found during cleanup, frozen current chunk ({}, {}) in {} with {} tickets", 
+                            chunkPos.x, chunkPos.z, dimensionId, frozenTickets);
+                    }
+                }
+                
+                // 发送警告消息（如果启用）
+                if (Config.isChunkWarningEnabled()) {
+                    int entityCount = SimpleReportCache.getEntityCountByChunk(dimensionId).getOrDefault(chunkPos, 0);
+                    int worldX = chunkPos.x * 16 + 8;
+                    int worldZ = chunkPos.z * 16 + 8;
+                    
+                    // 获取ticketLevel（通过直接访问chunkMap）
+                    int ticketLevel = 33; // 默认值：未加载
+                    try {
+                        var chunkHolderMap = level.getChunkSource().chunkMap.visibleChunkMap;
+                        long chunkKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
+                        var holder = chunkHolderMap.get(chunkKey);
+                        if (holder != null) {
+                            ticketLevel = holder.getTicketLevel();
+                        }
+                    } catch (Exception e) {
+                        // 获取ticketLevel失败，使用默认值
+                    }
+                    
+                    net.minecraft.network.chat.Component warningMessage = 
+                        Config.getItemWarningMessage(entityCount, worldX, worldZ, ticketLevel);
+                    com.klnon.recyclingservice.util.core.MessageSender.sendChatMessage(level.getServer(), warningMessage);
+                }
+            }
+            
+            if (!overloadedChunks.isEmpty()) {
+                Recyclingservice.LOGGER.info(
+                    "Chunk freezing check completed for dimension {}: {} overloaded chunks processed", 
+                    dimensionId, overloadedChunks.size());
+            }
+            
+        } catch (Exception e) {
+            // 出错跳过，不影响清理流程
+            Recyclingservice.LOGGER.debug(
+                "Failed to perform chunk freezing check for dimension {}", dimensionId, e);
+        }
     }
     
     /**

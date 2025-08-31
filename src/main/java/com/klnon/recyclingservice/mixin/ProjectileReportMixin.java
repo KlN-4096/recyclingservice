@@ -2,6 +2,8 @@ package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
+
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
     "net.minecraft.world.entity.projectile.Projectile"
 })
 public class ProjectileReportMixin {
-    @Unique private boolean reported = false;
+    @Unique private boolean recyclingservice$reported = false;
     
     @Inject(method = "tick", at = @At("TAIL"))
     private void checkAndReport(CallbackInfo ci) {
@@ -32,9 +34,9 @@ public class ProjectileReportMixin {
             
             boolean shouldReport = shouldReport(self);
             
-            if (shouldReport && !reported) {
+            if (shouldReport && !recyclingservice$reported && !self.level().isClientSide()) {
+                recyclingservice$reported = true;
                 SimpleReportCache.report(self);
-                reported = true;
             }
         } catch (Exception e) {
             // 出错跳过
@@ -46,7 +48,8 @@ public class ProjectileReportMixin {
         try {
             return self.tickCount >= 30 * 20 && // 30秒后考虑清理
                    Config.shouldCleanProjectiles() &&
-                   Config.isProjectileTypeToClean(self.getType().toString());
+                   Config.isProjectileTypeToClean(
+                       BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());
         } catch (Exception e) {
             return false;
         }

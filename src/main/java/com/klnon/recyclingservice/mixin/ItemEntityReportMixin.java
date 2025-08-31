@@ -32,7 +32,7 @@ public class ItemEntityReportMixin {
             if (shouldReport && !reported) {
                 SimpleReportCache.report(self);
                 reported = true;
-            } else if (!shouldReport && reported) {
+            } else if (!shouldReport && reported && !self.level().isClientSide()) {
                 SimpleReportCache.cancel(self);
                 reported = false;
             }
