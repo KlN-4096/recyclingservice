@@ -269,11 +269,17 @@ public class BinCommand {
         
         try {
             if (enable) {
-                // 强制激活激进模式
+                // 设置强制激进模式
+                Config.setForceAggressiveMode(true);
+                
+                // 立即执行一次冻结作为确认
                 int frozenChunks = ChunkFreezer.freezeAllNonWhitelistChunks(source.getServer());
-                source.sendSuccess(() -> Component.literal("§a[Aggressive Mode] Activated! Frozen " + frozenChunks + " chunks across all dimensions."), true);
+                
+                source.sendSuccess(() -> Component.literal("§a[Aggressive Mode] Force enabled! Will activate on every cleanup regardless of TPS/MSPT. Frozen " + frozenChunks + " chunks immediately."), true);
             } else {
-                source.sendSuccess(() -> Component.literal("§e[Aggressive Mode] Deactivated. Note: Already frozen chunks remain frozen until server restart or manual unfreezing."), true);
+                // 恢复自动检测模式
+                Config.setForceAggressiveMode(false);
+                source.sendSuccess(() -> Component.literal("§e[Aggressive Mode] Restored to auto-detection. Will only activate when TPS < " + Config.getAggressiveTpsThreshold() + " or MSPT > " + Config.getAggressiveMsptThreshold() + "ms."), true);
             }
             return 1;
         } catch (Exception e) {

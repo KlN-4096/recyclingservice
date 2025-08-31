@@ -77,6 +77,9 @@ public class Config {
     public static final ModConfigSpec.IntValue AGGRESSIVE_TPS_THRESHOLD;
     public static final ModConfigSpec.IntValue AGGRESSIVE_MSPT_THRESHOLD;
     
+    // 手动强制激进模式（运行时动态控制）
+    private static volatile boolean forceAggressiveMode = false;
+    
     // === 扫描优化设置 ===
     public static final ModConfigSpec.ConfigValue<String> SCAN_MODE;
     public static final ModConfigSpec.IntValue PLAYER_SCAN_RADIUS;
@@ -1139,12 +1142,17 @@ public class Config {
      * @return true=启用激进模式，false=正常模式
      */
     public static boolean shouldUseAggressiveMode(net.minecraft.server.MinecraftServer server) {
+        // 手动强制模式优先级最高
+        if (forceAggressiveMode) {
+            return true;
+        }
+        
         if (!isAggressiveModeEnabled()) {
             return false;
         }
         
         // 获取平均tick时间（MSPT）
-        double avgTickTime = server.getAverageTickTimeNanos();
+        double avgTickTime = server.getAverageTickTimeNanos() / 1_000_000.0; // 转换为毫秒
         // 计算TPS：限制在20以下
         double tps = Math.min(20.0, 1000.0 / avgTickTime);
         
@@ -1153,5 +1161,21 @@ public class Config {
         boolean highMspt = avgTickTime > getAggressiveMsptThreshold();
         
         return lowTps || highMspt;
+    }
+    
+    /**
+     * 设置手动强制激进模式状态
+     * @param force true=强制启用，false=恢复自动检测
+     */
+    public static void setForceAggressiveMode(boolean force) {
+        forceAggressiveMode = force;
+    }
+    
+    /**
+     * 获取是否处于手动强制激进模式
+     * @return true=手动强制中，false=正常自动检测
+     */
+    public static boolean isForceAggressiveMode() {
+        return forceAggressiveMode;
     }
 }

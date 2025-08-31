@@ -34,14 +34,31 @@ public class CleanupService {
     /**
      * 执行自动清理 - 主入口方法
      * 清理流程：
-     * 1. 异步扫描所有维度的掉落物和弹射物
-     * 2. 并行处理每个维度的清理任务
-     * 3. 返回详细的清理结果统计
+     * 1. 检查激进模式并执行区块冻结
+     * 2. 异步扫描所有维度的掉落物和弹射物
+     * 3. 并行处理每个维度的清理任务
+     * 4. 返回详细的清理结果统计
      * 
      * @param server 服务器实例
      * @return CompletableFuture包装的清理结果
      */
     public static CompletableFuture<CleanupResult> performAutoCleanup(MinecraftServer server) {
+        // 激进模式检查和触发（在清理开始时执行）
+        if (com.klnon.recyclingservice.Config.shouldUseAggressiveMode(server)) {
+            // 批量冻结所有非白名单区块
+            int frozenChunks = com.klnon.recyclingservice.util.management.ChunkFreezer.freezeAllNonWhitelistChunks(server);
+            
+            if (frozenChunks > 0) {
+                // 记录激进模式激活信息
+                double avgTickTime = server.getAverageTickTimeNanos();
+                double tps = Math.min(20.0, 1000.0 / avgTickTime);
+                
+                com.klnon.recyclingservice.Recyclingservice.LOGGER.warn(
+                    "Aggressive mode activated during cleanup! Server performance: TPS={:.2f}, MSPT={:.2f}ms - Frozen {} chunks",
+                    tps, avgTickTime / 1_000_000.0, frozenChunks);
+            }
+        }
+        
         return ItemScanner.scanAllDimensionsAsync(server)
                 .thenCompose(CleanupService::processCleanupAsync)
                 .exceptionally(throwable -> {
