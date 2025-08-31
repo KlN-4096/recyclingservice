@@ -49,6 +49,7 @@ public class BinCommand {
                                         .suggests(BinCommand::suggestBoxNumbers)
                                         .executes(BinCommand::openSpecificTrashBox))))
                 .then(Commands.literal("cleanup")
+                        .requires(source -> source.hasPermission(2)) // 仅管理员可用
                         .executes(BinCommand::manualCleanup))
                 .then(Commands.literal("tickets")
                         .requires(source -> source.hasPermission(2)) // 仅管理员可用

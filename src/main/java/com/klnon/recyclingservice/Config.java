@@ -936,7 +936,7 @@ public class Config {
                         .replace("{entities}", String.valueOf(dimensionStats.projectilesCleaned()));
                 
                 // 创建可点击的按钮
-                MutableComponent button = Component.literal(" [打开垃圾箱]")
+                MutableComponent button = Component.literal("[打开垃圾箱]")
                         .withStyle(Style.EMPTY
                                 .withColor(ChatFormatting.GREEN)
                                 .withUnderlined(true)
