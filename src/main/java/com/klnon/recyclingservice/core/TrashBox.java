@@ -109,9 +109,8 @@ public class TrashBox implements Container {
         if (stack.isEmpty()) {
             items.set(slot, ItemStack.EMPTY);
         } else {
-            ItemStack itemCopy = stack.copy();
-            UiUtils.updateTooltip(itemCopy);
-            items.set(slot, itemCopy);
+            UiUtils.updateTooltip(stack);
+            items.set(slot, stack);
         }
         setChanged();
     }
