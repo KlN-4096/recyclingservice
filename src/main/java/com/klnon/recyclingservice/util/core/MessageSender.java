@@ -70,19 +70,7 @@ public class MessageSender {
             player.sendSystemMessage(component);
         }
     }
-    
-    /**
-     * 发送消息给单个玩家
-     * @param player 目标玩家
-     * @param message 消息内容
-     * @param messageType 消息类型
-     */
-    public static void sendMessage(ServerPlayer player, String message, MessageType messageType) {
-        Component component = Component.literal(message).withStyle(style ->
-            style.withColor(messageType.getColor()));
-        player.sendSystemMessage(component);
-    }
-    
+
     /**
      * 发送翻译消息给单个玩家
      * @param player 目标玩家

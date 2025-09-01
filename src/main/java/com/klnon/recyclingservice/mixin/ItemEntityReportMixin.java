@@ -47,9 +47,9 @@ public class ItemEntityReportMixin {
     @Unique
     private boolean recyclingservice$shouldReport(ItemEntity self) {
         try {
-            // 简单的条件检查，出错就返回false
+            // 性能优化：预过滤逻辑 - 只上报需要清理的物品实体
             return self.getAge() >= 10 * 20 && // 10秒后才考虑清理
-                   ItemFilter.shouldCleanItem(self);
+                   ItemFilter.shouldCleanItem(self); // 预过滤
         } catch (Exception e) {
             return false;
         }

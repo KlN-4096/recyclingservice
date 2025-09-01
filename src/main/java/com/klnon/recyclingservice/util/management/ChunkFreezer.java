@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
 import com.klnon.recyclingservice.util.core.MessageFormatter;
+import com.klnon.recyclingservice.util.core.MessageSender;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
 import net.minecraft.resources.ResourceLocation;
@@ -204,11 +205,8 @@ public class ChunkFreezer {
      */
     public static void performChunkFreezingCheck(ResourceLocation dimensionId, ServerLevel level) {
         try {
-            // 获取区块实体数量统计
-            List<ChunkPos> overloadedChunks = SimpleReportCache.getChunksExceedingThreshold(
-                dimensionId, 
-                Config.TOO_MANY_ITEMS_WARNING.get()
-            );
+            // 使用O(1)超载区块获取
+            List<ChunkPos> overloadedChunks = SimpleReportCache.getOverloadedChunks(dimensionId);
             
             // 对每个超载区块执行冻结
             for (ChunkPos chunkPos : overloadedChunks) {
@@ -257,7 +255,7 @@ public class ChunkFreezer {
                     
                     net.minecraft.network.chat.Component warningMessage = 
                         MessageFormatter.getItemWarningMessage(entityCount, worldX, worldZ, ticketLevel);
-                    com.klnon.recyclingservice.util.core.MessageSender.sendChatMessage(level.getServer(), warningMessage);
+                    MessageSender.sendChatMessage(level.getServer(), warningMessage);
                 }
             }
             

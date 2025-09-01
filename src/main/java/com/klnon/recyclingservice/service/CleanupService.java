@@ -158,20 +158,21 @@ public class CleanupService {
             ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
         }
         
-        // 2. 优化：一次过滤获得物品和实体，避免重复判断
-        ItemFilter.FilterResult<ItemEntity> itemFilterResult = ItemFilter.filterItemEntities(scanResult.items());
-        List<ItemStack> itemsToClean = ItemMerge.combine(itemFilterResult.itemStacks());
+        // 2. 性能优化：直接处理预过滤的物品实体
+        List<ItemStack> itemStacksToClean = scanResult.items().stream()
+                .map(ItemEntity::getItem)
+                .collect(java.util.stream.Collectors.toList());
+        List<ItemStack> itemsToClean = ItemMerge.combine(itemStacksToClean);
         
         // 将物品存储到对应维度的垃圾箱
         trashManager.addItemsToDimension(dimensionId, itemsToClean);
         
         // 准备待删除实体列表
-        List<Entity> entitiesToDelete = new ArrayList<>(itemFilterResult.entities());
+        List<Entity> entitiesToDelete = new ArrayList<>(scanResult.items());
         
         // 添加需要清理的弹射物
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
         entitiesToDelete.addAll(projectilesToClean);
-        entitiesToDelete.addAll(itemFilterResult.entities());
         
         // 计算实际清理的物品总数
         // int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
@@ -182,7 +183,7 @@ public class CleanupService {
             // 主线程任务调度器,分片删除
             : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
             .thenApply(v -> new DimensionCleanupStats(
-                itemFilterResult.itemStacks().size(), projectilesToClean.size(), "Cleaned successfully"));
+                itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully"));
     }
 
 

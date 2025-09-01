@@ -12,7 +12,6 @@ import java.util.function.Supplier;
 /**
  * 主动上报缓存系统 - UUID统一操作的简化版本
  * 核心理念：所有操作都基于UUID，提供Entity便捷方法
- * 优化：统一异常处理、减少代码重复、清晰的API设计
  */
 public class SimpleReportCache {
     
@@ -20,6 +19,14 @@ public class SimpleReportCache {
         = new ConcurrentHashMap<>();
     
     private static final ConcurrentHashMap<ResourceLocation, Set<UUID>> reportedUuids = new ConcurrentHashMap<>();
+    
+    // 区块实体计数器 - 实时维护每个区块的实体数量
+    private static final ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<ChunkPos, Integer>> chunkCounters 
+        = new ConcurrentHashMap<>();
+    
+    // 超载区块集合 - 超过阈值的区块，O(1)访问
+    private static final ConcurrentHashMap<ResourceLocation, Set<ChunkPos>> overloadedChunks 
+        = new ConcurrentHashMap<>();
     
     // === 核心辅助方法 ===
     
@@ -42,6 +49,56 @@ public class SimpleReportCache {
     }
     
     /**
+     * 更新区块计数器并检查是否超载
+     */
+    private static void updateChunkCounter(ResourceLocation dimension, ChunkPos chunkPos, int delta) {
+        safeOperation(() -> {
+            ConcurrentHashMap<ChunkPos, Integer> dimensionCounters = 
+                chunkCounters.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
+            
+            int newCount = dimensionCounters.merge(chunkPos, delta, Integer::sum);
+            
+            // 移除计数为0或负数的条目
+            if (newCount <= 0) {
+                dimensionCounters.remove(chunkPos);
+                // 从超载区块中移除
+                Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
+                if (overloaded != null) {
+                    overloaded.remove(chunkPos);
+                }
+            } else {
+                // 检查是否超载
+                checkAndUpdateOverloadedStatus(dimension, chunkPos, newCount);
+            }
+            return true;
+        }, false);
+    }
+    
+    /**
+     * 检查并更新区块超载状态
+     */
+    private static void checkAndUpdateOverloadedStatus(ResourceLocation dimension, ChunkPos chunkPos, int count) {
+        try {
+            int threshold = com.klnon.recyclingservice.Config.TOO_MANY_ITEMS_WARNING.get();
+            Set<ChunkPos> overloaded = overloadedChunks.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet());
+            
+            if (count >= threshold) {
+                overloaded.add(chunkPos);
+            } else {
+                overloaded.remove(chunkPos);
+            }
+        } catch (Exception e) {
+            // 配置获取失败，使用默认阈值50
+            Set<ChunkPos> overloaded = overloadedChunks.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet());
+            if (count >= 50) {
+                overloaded.add(chunkPos);
+            } else {
+                overloaded.remove(chunkPos);
+            }
+        }
+    }
+    
+    /**
      * 核心UUID添加操作
      */
     private static void addToCache(ResourceLocation dimension, UUID uuid, Entity entity) {
@@ -51,6 +108,8 @@ public class SimpleReportCache {
                 ChunkPos chunkPos = new ChunkPos(entity.blockPosition());
                 EntityReport report = new EntityReport(entity, chunkPos, dimension);
                 cache.computeIfAbsent(dimension, k -> new ConcurrentLinkedQueue<>()).add(report);
+                // 更新区块计数器
+                updateChunkCounter(dimension, chunkPos, 1);
                 return true;
             }
             return false;
@@ -70,10 +129,18 @@ public class SimpleReportCache {
                 removed = reported.remove(uuid);
             }
 
-            // 从实体缓存中移除
+            // 从实体缓存中移除并更新计数器
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
             if (queue != null) {
-                queue.removeIf(report -> report.entity().getUUID().equals(uuid));
+                // 找到对应的报告并移除，同时更新计数器
+                queue.removeIf(report -> {
+                    if (report.entity().getUUID().equals(uuid)) {
+                        // 减少区块计数器
+                        updateChunkCounter(dimension, report.chunkPos(), -1);
+                        return true;
+                    }
+                    return false;
+                });
             }
 
             return removed;
@@ -131,7 +198,7 @@ public class SimpleReportCache {
             ConcurrentLinkedQueue<EntityReport> queue = cache.get(dimension);
             if (queue == null) return 0;
             
-            List<UUID> toRemove = queue.stream()
+            List<EntityReport> toRemove = queue.stream()
                 .filter(report -> {
                     try {
                         Entity entity = report.entity();
@@ -140,18 +207,27 @@ public class SimpleReportCache {
                         return true; // 异常就移除
                     }
                 })
-                .map(report -> {
-                    try {
-                        Entity entity = report.entity();
-                        return entity != null ? entity.getUUID() : null;
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
                 .toList();
             
-            toRemove.forEach(uuid -> removeFromCache(dimension, uuid));
+            // 移除无效实体并更新计数器
+            for (EntityReport report : toRemove) {
+                try {
+                    Entity entity = report.entity();
+                    UUID uuid = entity != null ? entity.getUUID() : null;
+                    if (uuid != null) {
+                        removeFromCache(dimension, uuid);
+                    } else {
+                        // 如果无法获取UUID，直接从队列移除并更新计数器
+                        queue.remove(report);
+                        updateChunkCounter(dimension, report.chunkPos(), -1);
+                    }
+                } catch (Exception e) {
+                    // 单个实体处理失败，直接从队列移除并更新计数器
+                    queue.remove(report);
+                    updateChunkCounter(dimension, report.chunkPos(), -1);
+                }
+            }
+            
             return toRemove.size();
         }, 0);
     }
@@ -185,12 +261,40 @@ public class SimpleReportCache {
     
     /**
      * 获取超过阈值的区块
+     * @param dimension 维度
+     * @param threshold 阈值（会被忽略，因为使用配置中的阈值）
+     * @return 超载区块列表
      */
     public static List<ChunkPos> getChunksExceedingThreshold(ResourceLocation dimension, int threshold) {
-        return getEntityCountByChunk(dimension).entrySet().stream()
-            .filter(entry -> entry.getValue() >= threshold)
-            .map(Map.Entry::getKey)
-            .toList();
+        return safeOperation(() -> {
+            Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
+            return overloaded != null ? new ArrayList<>(overloaded) : new ArrayList<>();
+        }, new ArrayList<>());
+    }
+    
+    /**
+     * 获取实时超载区块列表 - 新的高性能API  
+     * @param dimension 维度
+     * @return 超载区块列表
+     */
+    public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
+        return safeOperation(() -> {
+            Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
+            return overloaded != null ? new ArrayList<>(overloaded) : new ArrayList<>();
+        }, new ArrayList<>());
+    }
+    
+    /**
+     * 检查区块是否超载
+     * @param dimension 维度
+     * @param chunkPos 区块位置
+     * @return 是否超载
+     */
+    public static boolean isChunkOverloaded(ResourceLocation dimension, ChunkPos chunkPos) {
+        return safeOperation(() -> {
+            Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
+            return overloaded != null && overloaded.contains(chunkPos);
+        }, false);
     }
 
     // === 辅助记录类 ===
