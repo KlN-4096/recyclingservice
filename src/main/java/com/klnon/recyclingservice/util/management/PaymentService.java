@@ -9,15 +9,16 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.core.MessageFormatter;
 
 /**
- * 邮费工具类 - 处理垃圾箱邮费相关功能
- * 功能：
- * - 检查玩家是否有足够的邮费
- * - 扣除玩家的邮费
- * - 发送邮费相关消息
+ * 支付服务 - 处理所有支付相关的核心功能
+ * 职责：
+ * - 检查和扣除玩家邮费
+ * - 发送支付相关消息  
+ * - 支付物品验证
  */
-public class PaymentUtils {
+public class PaymentService {
 
     /**
      * 扣除玩家的邮费
@@ -85,7 +86,7 @@ public class PaymentUtils {
      */
     public static void sendPaymentErrorMessage(Player player, int requiredCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = Config.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageFormatter.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
             "cost", String.valueOf(requiredCost),
             "item", itemName
         ));
@@ -100,7 +101,7 @@ public class PaymentUtils {
      */
     public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = Config.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageFormatter.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
             "cost", String.valueOf(deductedCost),
             "item", itemName
         ));

@@ -8,14 +8,18 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 维度垃圾箱管理器
+ * 垃圾箱管理器 - 简化版命名，管理所有维度的垃圾箱
+ * 职责：
+ * - 管理各维度的垃圾箱集合
+ * - 创建和获取指定垃圾箱
+ * - 处理物品分配到垃圾箱
  */
-public class DimensionTrashManager {
+public class TrashManager {
     
     // 维度ID -> 垃圾箱列表
     private final Map<ResourceLocation, List<TrashBox>> dimensionBoxes;
     
-    public DimensionTrashManager() {
+    public TrashManager() {
         this.dimensionBoxes = new ConcurrentHashMap<>();
     }
     

@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.core.ErrorHandler;
-import com.klnon.recyclingservice.core.DimensionTrashManager;
+import com.klnon.recyclingservice.core.TrashManager;
 import com.klnon.recyclingservice.Recyclingservice;
 
 /**
@@ -26,7 +26,7 @@ public class TrashBoxUI {
      * @param trashManager 垃圾箱管理器
      * @return 是否成功打开
      */
-    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber, DimensionTrashManager trashManager) {
+    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber, TrashManager trashManager) {
         return ErrorHandler.handleOperation(player, "openTrashBox", () -> {
             // 获取指定的垃圾箱
             TrashBox trashBox = trashManager.getOrCreateTrashBox(dimensionId, boxNumber);

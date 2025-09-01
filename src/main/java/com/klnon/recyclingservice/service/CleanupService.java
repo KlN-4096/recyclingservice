@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
-import com.klnon.recyclingservice.core.DimensionTrashManager;
+import com.klnon.recyclingservice.core.TrashManager;
 import com.klnon.recyclingservice.util.cleanup.ItemFilter;
 import com.klnon.recyclingservice.util.cleanup.ItemMerge;
 import com.klnon.recyclingservice.util.cleanup.EntityCacheReader;
@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class CleanupService {
     // 全局垃圾箱管理器实例
-    private static final DimensionTrashManager trashManager = new DimensionTrashManager();
+    private static final TrashManager trashManager = new TrashManager();
     
     /**
      * 创建失败结果的通用方法
@@ -218,7 +218,7 @@ public class CleanupService {
      * 
      * @return 垃圾箱管理器实例
      */
-    public static DimensionTrashManager getTrashManager() {
+    public static TrashManager getTrashManager() {
         return trashManager;
     }
 

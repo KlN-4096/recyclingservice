@@ -456,17 +456,6 @@ public class Config {
 
 
     // === 便捷访问方法 ===
-
-    public static MenuType<ChestMenu> getMenuTypeForRows() {
-        return switch(TRASH_BOX_ROWS.get()) {
-            case 1 -> MenuType.GENERIC_9x1;
-            case 2 -> MenuType.GENERIC_9x2;
-            case 3 -> MenuType.GENERIC_9x3;
-            case 4 -> MenuType.GENERIC_9x4;
-            case 5 -> MenuType.GENERIC_9x5;
-            default -> MenuType.GENERIC_9x6;
-        };
-    }
     
     /**
      * 获取清理间隔（tick）
@@ -522,48 +511,12 @@ public class Config {
     }
     
     /**
-     * 计算邮费数量（支持insert和extract操作）
-     * @param playerDim 玩家所在维度
-     * @param trashDim 垃圾箱所在维度
-     * @param operation 操作类型："insert" 或 "extract"
-     * @return 需要支付的邮费数量，0表示免费
-     */
-    public static int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
-        boolean isSameDimension = playerDim.equals(trashDim);
-        String paymentMode = "insert".equals(operation) ? INSERT_PAYMENT_MODE.get() : EXTRACT_PAYMENT_MODE.get();
-        
-        return switch (paymentMode) {
-            case "current_dimension_free" -> isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
-            case "all_dimensions_pay" -> isSameDimension ? CROSS_DIMENSION_ACCESS_COST.get() : calculateCrossDimensionCost(trashDim);
-            default -> 0;
-        };
-    }
-    
-    /**
-     * 计算跨维度邮费
-     * @param trashDim 垃圾箱所在维度
-     * @return 计算后的邮费数量
-     */
-    private static int calculateCrossDimensionCost(ResourceLocation trashDim) {
-        int baseCost = CROSS_DIMENSION_ACCESS_COST.get();
-        double multiplier = getDimensionMultiplier(trashDim.toString());
-        return (int) Math.ceil(baseCost * multiplier);
-    }
-
-    /**
      * 检查维度是否允许玩家主动放入物品到垃圾箱
      */
     public static boolean isDimensionAllowPutIn(String dimensionId) {
         return allowPutInDimensionsCache.contains(dimensionId);
     }
     
-    /**
-     * 获取格式化的警告消息
-     */
-    public static String getWarningMessage(int remainingSeconds) {
-        return formatTemplate(WARNING_MESSAGE.get(), Map.of("time", String.valueOf(remainingSeconds)));
-    }
-
     // === 物品过滤便捷方法 ===
     
     /**
@@ -573,29 +526,6 @@ public class Config {
         return "whitelist".equals(CLEAN_MODE.get());
     }
     
-    /**
-     * 获取格式化的物品过多警告消息（支持点击传送）
-     */
-    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ, int ticketLevel) {
-        String message = formatTemplate(TOO_MANY_ITEMS_WARNING_MESSAGE.get(), Map.of(
-            "count", String.valueOf(itemCount),
-            "x", String.valueOf(worldX),
-            "z", String.valueOf(worldZ),
-            "ticket", String.valueOf(ticketLevel)
-        ));
-        
-        return Component.literal(message)
-                .withStyle(style -> style
-                    .withColor(net.minecraft.ChatFormatting.YELLOW)
-                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
-                        net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND,
-                        "/tp @s " + worldX + " ~ " + worldZ))
-                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
-                        net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7Click to teleport (OP required)\n§7Coordinate: " + worldX + ", " + worldZ + "\n§7Ticket Level: " + ticketLevel)))
-                );
-    }
-    
     // === UI和颜色相关便捷方法 ===
 
     /**
@@ -603,94 +533,6 @@ public class Config {
      */
     public static int getItemStackMultiplier(ItemStack itemStack) {
         return ITEM_STACK_MULTIPLIER.get()*itemStack.getMaxStackSize();
-    }
-    
-    // === 通用字符串模板工具 ===
-    
-    /**
-     * 统一的字符串模板处理工具
-     * @param template 模板字符串，使用{key}格式的占位符
-     * @param params 替换参数映射
-     * @return 替换后的字符串
-     */
-    public static String formatTemplate(String template, Map<String, String> params) {
-        String result = template;
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            result = result.replace("{" + entry.getKey() + "}", entry.getValue());
-        }
-        return result;
-    }
-    
-    // === 消息格式化方法 - 已简化直接访问 ===
-    
-    // === 维度相关便捷方法 ===
-    /**
-     * 获取维度的显示名称 - 简化版，直接去前缀
-     * @param dimensionId 维度ID
-     * @return 去前缀后的维度名称
-     */
-    public static String getDimensionDisplayName(ResourceLocation dimensionId) {
-        String dimString = dimensionId.toString();
-        return dimString.contains(":") ? 
-            dimString.substring(dimString.indexOf(':') + 1) : dimString;
-    }
-    
-    /**
-     * 构建详细清理完成消息（简化版）
-     * @param dimensionStats 各维度清理统计信息
-     * @return 清理结果的聊天组件
-     */
-    public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
-        MutableComponent mainComponent = Component.literal(CLEANUP_RESULT_HEADER.get());
-        
-        // 简化：所有维度统一处理，按字典序排序
-        dimensionStats.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey(ResourceLocation::compareTo))
-            .forEach(entry -> {
-                Component dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
-                if (dimensionEntry != null) {
-                    mainComponent.append(Component.literal("\n")).append(dimensionEntry);
-                }
-            });
-        
-        return mainComponent;
-    }
-    
-    /**
-     * 格式化单个维度的清理条目
-     * @param dimensionId 维度ID
-     * @param stats 统计数据对象
-     * @return 格式化后的条目Component，如果获取失败返回null
-     */
-    private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
-        if (!(stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats)) {
-            return null;
-        }
-        
-        // 创建基础文本
-        String baseText = formatTemplate(DIMENSION_ENTRY_FORMAT.get(), Map.of(
-            "name", getDimensionDisplayName(dimensionId),
-            "items", String.valueOf(dimensionStats.itemsCleaned()),
-            "entities", String.valueOf(dimensionStats.projectilesCleaned())
-        ));
-        
-        // 创建可点击的按钮
-        String buttonText = formatTemplate(TRASH_BOX_BUTTON_TEXT.get(), 
-            Map.of("name", getDimensionDisplayName(dimensionId)));
-        String hoverText = formatTemplate(TRASH_BOX_BUTTON_HOVER.get(), 
-            Map.of("name", getDimensionDisplayName(dimensionId)));
-            
-        MutableComponent button = Component.literal(buttonText)
-                .withStyle(Style.EMPTY
-                        .withColor(ChatFormatting.GREEN)
-                        .withUnderlined(true)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
-                                "/bin open " + dimensionId + " 1"))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                Component.literal(hoverText).withStyle(ChatFormatting.YELLOW))));
-        
-        // 组合文本和按钮
-        return Component.literal(baseText).append(button);
     }
     
     // === 性能优化方法 ===

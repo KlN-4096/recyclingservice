@@ -6,6 +6,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.util.core.MessageSender;
+import com.klnon.recyclingservice.util.core.MessageFormatter;
 import com.klnon.recyclingservice.Config;
 
 /**
@@ -42,7 +43,7 @@ public class AutoCleanupEvent {
         
         // 使用配置的倒计时开始时间
         if (remainingSeconds <= Config.WARNING_COUNTDOWN_START.get() && remainingSeconds > 0) {
-            String message = Config.getWarningMessage(remainingSeconds);
+            String message = MessageFormatter.getWarningMessage(remainingSeconds);
             MessageSender.showActionBar(server, message, MessageSender.MessageType.WARNING.getColor());
         }
     }
@@ -56,7 +57,7 @@ public class AutoCleanupEvent {
             .thenAccept(result -> {
                 // 如果有清理结果才显示消息
                 if (result.totalItemsCleaned() > 0 || result.totalProjectilesCleaned() > 0) {
-                    Component message = Config.getDetailedCleanupMessage(result.dimensionStats());
+                    Component message = MessageFormatter.getDetailedCleanupMessage(result.dimensionStats());
                     MessageSender.sendChatMessage(server, message);
                 }
                 cleaning = false;
