@@ -1,16 +1,8 @@
 package com.klnon.recyclingservice;
 
-import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.ChatFormatting;
 
 import java.util.Arrays;
 import java.util.List;
@@ -563,12 +555,5 @@ public class Config {
             if (projectileTypesCache == null) projectileTypesCache = new HashSet<>();
             if (allowPutInDimensionsCache == null) allowPutInDimensionsCache = new HashSet<>();
         }
-    }
-    
-    /**
-     * 检查是否启用调试日志
-     */
-    public static boolean isDebugLogsEnabled() {
-        return ENABLE_DEBUG_LOGS.get();
     }
 }

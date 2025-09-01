@@ -34,27 +34,10 @@ public class ErrorHandler {
     }
 
     /**
-     * 方法重载 - 无玩家参数的版本
-     */
-    public static <T> T handleOperation(String operationName, Supplier<T> operation, T defaultValue) {
-        return handleOperation(null, operationName, operation, defaultValue);
-    }
-
-    /**
      * 命令操作错误处理 - 返回int用于命令结果
      */
     public static int handleCommandOperation(ServerPlayer player, String operationName, Supplier<Boolean> operation) {
         Boolean result = handleOperation(player, operationName, operation, false);
         return result ? 1 : 0;
-    }
-
-    /**
-     * 处理void操作（不需要返回值）
-     */
-    public static void handleVoidOperation(String operationName, Runnable operation) {
-        handleOperation(operationName, () -> {
-            operation.run();
-            return null;
-        }, null);
     }
 }

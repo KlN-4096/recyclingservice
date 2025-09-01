@@ -192,17 +192,6 @@ public class SimpleReportCache {
             .map(Map.Entry::getKey)
             .toList();
     }
-    
-    /**
-     * 清空维度缓存
-     */
-    public static void clear(ResourceLocation dimension) {
-        safeOperation(() -> {
-            cache.remove(dimension);
-            reportedUuids.remove(dimension);
-            return null;
-        }, null);
-    }
 
     // === 辅助记录类 ===
     

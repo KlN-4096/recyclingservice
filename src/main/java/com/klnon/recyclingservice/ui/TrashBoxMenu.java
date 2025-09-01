@@ -61,7 +61,7 @@ public class TrashBoxMenu extends ChestMenu {
         Slot slot = slots.get(slotId);
         ItemStack carried = getCarried();
         ItemStack slotItem = slot.getItem();
-        ItemStack result = ItemStack.EMPTY;
+        ItemStack result;
         
         if (clickType == ClickType.PICKUP && slotItem.getCount() >= slotItem.getMaxStackSize()) {
             result = ItemHandler.handlePickupClick(slot, slotItem, carried, button == 0, trashBox);

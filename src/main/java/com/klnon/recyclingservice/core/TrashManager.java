@@ -84,17 +84,7 @@ public class TrashManager {
         List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
         return boxes != null ? boxes : new ArrayList<>();
     }
-    
-    /**
-     * 清空指定维度的所有垃圾箱内容
-     */
-    public void clearDimension(ResourceLocation dimensionId) {
-        List<TrashBox> boxes = dimensionBoxes.get(dimensionId);
-        if (boxes != null) {
-            boxes.forEach(TrashBox::clearContent);
-        }
-    }
-    
+
     /**
      * 删除所有垃圾箱
      */
