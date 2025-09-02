@@ -100,7 +100,12 @@ public class MainThreadScheduler {
             
             Entity entity = entities.get(currentIndex++);
             if (entity != null && entity.isAlive()) {
-                entity.discard();
+                // 使用server.execute延迟到安全时机删除，避免ConcurrentModificationException
+                entity.getServer().execute(() -> {
+                    if (entity.isAlive()) {
+                        entity.discard();
+                    }
+                });
             }
             
             return currentIndex < entities.size();

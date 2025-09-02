@@ -49,7 +49,7 @@ public class ProjectileReportMixin {
     @Unique
     private boolean recyclingservice$shouldReport(Entity self) {
         try {
-            return self.tickCount >= 10 * 20 && // 30秒后考虑清理
+            return self.tickCount >= 30 * 20 && // 30秒后考虑清理
                    Config.GAMEPLAY.cleanProjectiles.get() &&
                    Config.projectileTypesCache.contains(
                        BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());

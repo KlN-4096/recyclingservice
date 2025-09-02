@@ -30,7 +30,7 @@ public class TechnicalConfig {
                 .defineInRange("max_time_ms", 2, 1, 10);
         batchSize = builder
                 .comment("Batch size for entity processing")
-                .defineInRange("batch_size", 100, 50, 500);
+                .defineInRange("batch_size", 10, 5, 50);
         builder.pop();
         
         // 区块管理

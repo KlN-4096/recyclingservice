@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
+import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 /**
  * 主动上报缓存系统 - UUID统一操作的简化版本
@@ -269,19 +270,6 @@ public class SimpleReportCache {
             Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
             return overloaded != null ? new ArrayList<>(overloaded) : new ArrayList<>();
         }, new ArrayList<>());
-    }
-    
-    /**
-     * 检查区块是否超载
-     * @param dimension 维度
-     * @param chunkPos 区块位置
-     * @return 是否超载
-     */
-    public static boolean isChunkOverloaded(ResourceLocation dimension, ChunkPos chunkPos) {
-        return safeOperation(() -> {
-            Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
-            return overloaded != null && overloaded.contains(chunkPos);
-        }, false);
     }
 
     // === 辅助记录类 ===
