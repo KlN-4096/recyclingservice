@@ -18,8 +18,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
 
 import com.klnon.recyclingservice.service.CleanupService;
-import com.klnon.recyclingservice.ui.TrashBoxUI;
-import com.klnon.recyclingservice.util.core.ErrorHandler;
+import com.klnon.recyclingservice.ui.TrashBoxMenu;
+import com.klnon.recyclingservice.util.ErrorHandler;
 import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.server.level.ServerLevel;
@@ -86,7 +86,7 @@ public class BinCommand {
                 // 获取垃圾箱管理器
                 var trashManager = CleanupService.getTrashManager();
                 // 打开垃圾箱
-                return TrashBoxUI.openTrashBox(player, dimensionId, boxNumber, trashManager);
+                return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber, trashManager);
             });
     }
     

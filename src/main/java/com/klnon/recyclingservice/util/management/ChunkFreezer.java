@@ -5,9 +5,8 @@ import java.util.stream.Collectors;
 import java.util.LinkedHashMap;
 
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.util.core.ErrorHandler;
-import com.klnon.recyclingservice.util.core.MessageFormatter;
-import com.klnon.recyclingservice.util.core.MessageSender;
+import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.util.MessageUtils;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
 import net.minecraft.resources.ResourceLocation;
@@ -254,8 +253,8 @@ public class ChunkFreezer {
                     }
                     
                     net.minecraft.network.chat.Component warningMessage = 
-                        MessageFormatter.getItemWarningMessage(entityCount, worldX, worldZ, ticketLevel);
-                    MessageSender.sendChatMessage(level.getServer(), warningMessage);
+                        MessageUtils.getItemWarningMessage(entityCount, worldX, worldZ, ticketLevel);
+                    MessageUtils.sendChatMessage(level.getServer(), warningMessage);
                 }
             }
             

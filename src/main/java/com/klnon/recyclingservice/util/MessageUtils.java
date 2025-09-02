@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.util.core;
+package com.klnon.recyclingservice.util;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
@@ -6,21 +6,56 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.ChatFormatting;
-import com.klnon.recyclingservice.Config;
+import net.minecraft.world.entity.player.Player;
 
+import com.klnon.recyclingservice.Config;
 import java.util.Map;
 
 /**
- * 消息格式化工具类 - 处理所有消息模板和格式化逻辑
+ * 消息工具类 - 负责消息格式化和发送
+ * 包含：模板处理、消息构建、多种发送方式
  */
-public class MessageFormatter {
-
+public class MessageUtils {
+    
+    /**
+     * 消息类型枚举 - 定义消息颜色
+     */
+    public enum MessageType {
+        SUCCESS(0x55FF55),      // 绿色
+        ERROR(0xFF5555),        // 红色
+        WARNING(0xFFAA00),      // 黄色
+        DEFAULT(0xFFFFFF);      // 白色
+        
+        private final int color;
+        
+        MessageType(int color) {
+            this.color = color;
+        }
+        
+        public int getColor() {
+            return color;
+        }
+    }
+    
+    /**
+     * 发送目标枚举
+     */
+    public enum Target {
+        ACTION_BAR,    // 发送到ActionBar
+        CHAT          // 发送到聊天框
+    }
+    
+    // === 消息格式化功能 ===
+    
     /**
      * 统一的字符串模板处理工具
-     * @param template 模板字符串，使用{key}格式的占位符
-     * @param params 替换参数映射
-     * @return 替换后的字符串
+     * @param template 模板字符串，包含{key}占位符
+     * @param params 参数映射
+     * @return 格式化后的字符串
      */
     public static String formatTemplate(String template, Map<String, String> params) {
         String result = template;
@@ -34,7 +69,8 @@ public class MessageFormatter {
      * 获取格式化的警告消息
      */
     public static String getWarningMessage(int remainingSeconds) {
-        return formatTemplate(Config.WARNING_MESSAGE.get(), Map.of("time", String.valueOf(remainingSeconds)));
+        return formatTemplate(Config.WARNING_MESSAGE.get(), 
+            Map.of("time", String.valueOf(remainingSeconds)));
     }
 
     /**
@@ -56,14 +92,14 @@ public class MessageFormatter {
                         "/tp @s " + worldX + " ~ " + worldZ))
                     .withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7Click to teleport (OP required)\n§7Coordinate: " + worldX + ", " + worldZ + "\n§7Ticket Level: " + ticketLevel)))
+                        Component.literal("§7Click to teleport (OP required)\n" +
+                                        "§7Coordinate: " + worldX + ", " + worldZ + "\n" +
+                                        "§7Ticket Level: " + ticketLevel)))
                 );
     }
 
     /**
      * 构建详细清理完成消息
-     * @param dimensionStats 各维度清理统计信息
-     * @return 清理结果的聊天组件
      */
     public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
         MutableComponent mainComponent = Component.literal(Config.CLEANUP_RESULT_HEADER.get());
@@ -83,11 +119,9 @@ public class MessageFormatter {
 
     /**
      * 格式化单个维度的清理条目
-     * @param dimensionId 维度ID
-     * @param stats 统计数据对象
-     * @return 格式化后的条目Component，如果获取失败返回null
      */
-    public static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
+    private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
+        // 使用instanceof模式匹配检查类型
         if (!(stats instanceof com.klnon.recyclingservice.service.CleanupService.DimensionCleanupStats dimensionStats)) {
             return null;
         }
@@ -119,13 +153,72 @@ public class MessageFormatter {
     }
 
     /**
-     * 获取维度的显示名称 - 去前缀处理
-     * @param dimensionId 维度ID
-     * @return 去前缀后的维度名称
+     * 获取维度的显示名称
      */
-    public static String getDimensionDisplayName(ResourceLocation dimensionId) {
+    private static String getDimensionDisplayName(ResourceLocation dimensionId) {
         String dimString = dimensionId.toString();
         return dimString.contains(":") ? 
             dimString.substring(dimString.indexOf(':') + 1) : dimString;
+    }
+    
+    // === 消息发送功能 ===
+    
+    /**
+     * 统一消息发送方法 - 发送给所有玩家
+     */
+    public static void sendToAll(MinecraftServer server, String message, 
+                                MessageType messageType, Target target) {
+        Component component = Component.literal(message).withStyle(style -> 
+            style.withColor(messageType.getColor())
+                 .withBold(target == Target.ACTION_BAR));
+        
+        if (target == Target.ACTION_BAR) {
+            ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(component);
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                player.connection.send(packet);
+            }
+        } else {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                player.sendSystemMessage(component);
+            }
+        }
+    }
+    
+    /**
+     * 发送Component消息给所有玩家
+     */
+    public static void sendChatMessage(MinecraftServer server, Component component) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.sendSystemMessage(component);
+        }
+    }
+
+    /**
+     * 发送错误消息给单个玩家
+     */
+    public static void sendErrorMessage(Player player, String translationKey) {
+        Component message = Component.translatable(translationKey)
+            .withStyle(style -> style.withColor(MessageType.ERROR.getColor()));
+        player.sendSystemMessage(message);
+    }
+    
+    /**
+     * 显示ActionBar消息（兼容旧接口）
+     */
+    public static void showActionBar(MinecraftServer server, String message, int color) {
+        MessageType messageType = findMessageTypeByColor(color);
+        sendToAll(server, message, messageType, Target.ACTION_BAR);
+    }
+    
+    /**
+     * 根据颜色值找到对应的MessageType
+     */
+    private static MessageType findMessageTypeByColor(int color) {
+        for (MessageType type : MessageType.values()) {
+            if (type.getColor() == color) {
+                return type;
+            }
+        }
+        return MessageType.DEFAULT;
     }
 }

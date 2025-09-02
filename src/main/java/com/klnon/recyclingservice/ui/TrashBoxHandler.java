@@ -1,31 +1,125 @@
-package com.klnon.recyclingservice.util.ui;
+package com.klnon.recyclingservice.ui;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.core.TrashBox;
 import com.klnon.recyclingservice.util.cleanup.ItemMerge;
+import com.klnon.recyclingservice.util.ui.UiUtils;
+import com.klnon.recyclingservice.util.management.PaymentService;
+
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
 
 /**
- * 物品处理器 - 处理垃圾箱和玩家背包之间的物品移动逻辑
- * 职责：
- * - 处理各种点击操作的物品移动
- * - 管理物品堆叠和合并
- * - 处理物品移动到垃圾箱的逻辑
+ * 垃圾箱物品处理器 - 负责所有物品交互逻辑
+ * 从TrashBoxMenu分离出来，专注于物品处理
  */
-public class ItemHandler {
+public class TrashBoxHandler {
+    
+    private final TrashBox trashBox;
+    private final int trashSlots;
+    
+    public TrashBoxHandler(TrashBox trashBox) {
+        this.trashBox = trashBox;
+        this.trashSlots = Config.TRASH_BOX_ROWS.get() * 9;
+    }
+    
+    // === 支付验证 ===
+    
+    /**
+     * 验证并处理支付
+     */
+    public boolean validateAndProcessPayment(int slotId, int button, ClickType clickType, 
+                                            Player player, List<Slot> slots, ItemStack carried) {
+        String operation = getOperationType(slotId, button, clickType, player, slots, carried);
+        if (operation == null) return true; // 不涉及邮费的操作
+        
+        ResourceLocation playerDim = player.level().dimension().location();
+        ResourceLocation trashDim = trashBox.getDimensionId();
+        
+        int cost = calculatePaymentCost(playerDim, trashDim, operation);
+        if (cost <= 0) return true;
+        
+        return PaymentService.checkAndDeductPayment(player, cost);
+    }
+    
+    /**
+     * 判断操作类型
+     */
+    private String getOperationType(int slotId, int button, ClickType clickType, 
+                                   Player player, List<Slot> slots, ItemStack carriedItem) {
+        if (slotId >= 0 && slotId < trashSlots) {
+            ItemStack slotItem = slots.get(slotId).getItem();
 
+            if (!carriedItem.isEmpty() && clickType == ClickType.PICKUP) {
+                return "insert";
+            }
+            if (!player.getInventory().getItem(button).isEmpty() && clickType == ClickType.SWAP) {
+                return "insert";
+            }
+            if (carriedItem.isEmpty() && !slotItem.isEmpty() && clickType == ClickType.PICKUP) {
+                return "extract";
+            }
+            if (clickType == ClickType.SWAP && !slotItem.isEmpty()) {
+                return "extract";
+            }
+            if (clickType == ClickType.QUICK_MOVE && !slotItem.isEmpty()) {
+                return "extract";
+            }
+            if (clickType == ClickType.PICKUP_ALL) {
+                return "extract";
+            }
+            if (clickType == ClickType.THROW && carriedItem.isEmpty() && !slotItem.isEmpty()) {
+                return "extract";
+            }
+        } else if (slotId >= trashSlots && !slots.get(slotId).getItem().isEmpty() && 
+                   clickType == ClickType.QUICK_MOVE) {
+            return "insert";
+        }
+        return null;
+    }
+    
+    /**
+     * 计算邮费
+     */
+    private int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
+        boolean isSameDimension = playerDim.equals(trashDim);
+        String paymentMode = "insert".equals(operation) ? 
+            Config.INSERT_PAYMENT_MODE.get() : Config.EXTRACT_PAYMENT_MODE.get();
+        
+        return switch (paymentMode) {
+            case "current_dimension_free" -> 
+                isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
+            case "all_dimensions_pay" -> 
+                isSameDimension ? Config.CROSS_DIMENSION_ACCESS_COST.get() : 
+                                  calculateCrossDimensionCost(trashDim);
+            default -> 0;
+        };
+    }
+    
+    private int calculateCrossDimensionCost(ResourceLocation trashDim) {
+        int baseCost = Config.CROSS_DIMENSION_ACCESS_COST.get();
+        double multiplier = Config.getDimensionMultiplier(trashDim.toString());
+        return (int) Math.ceil(baseCost * multiplier);
+    }
+    
+    // === 物品处理方法 ===
+    
     /**
      * 处理拾取点击（左键/右键点击）
      */
-    public static ItemStack handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried, 
-                                           boolean isLeftClick, TrashBox trashBox) {
+    public ItemStack handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried, 
+                                      boolean isLeftClick) {
         if (carried.isEmpty() && !slotItem.isEmpty()) {
-            // 从垃圾箱取物品 -> 返回手上物品
+            // 从垃圾箱取物品
             int maxMove = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             int moveCount = isLeftClick ? maxMove : (slotItem.getCount() == 1 ? 1 : 
-                (slotItem.getCount() >= slotItem.getMaxStackSize() ? slotItem.getMaxStackSize()/2 : (slotItem.getCount() + 1) / 2));
+                (slotItem.getCount() >= slotItem.getMaxStackSize() ? 
+                 slotItem.getMaxStackSize()/2 : (slotItem.getCount() + 1) / 2));
             
             ItemStack result = slotItem.copyWithCount(moveCount);
             UiUtils.updateSlotAfterMove(slot, moveCount);
@@ -33,15 +127,12 @@ public class ItemHandler {
             return result;
             
         } else if (!carried.isEmpty()) {
-            // 放物品到垃圾箱 -> 返回槽位物品
+            // 放物品到垃圾箱
             if (slotItem.isEmpty()) {
-                // 空槽位放入
                 if (isLeftClick) {
-                    // 左键：直接放入全部
                     slot.set(carried.copy());
-                    return ItemStack.EMPTY; // 清空手持
+                    return ItemStack.EMPTY;
                 } else {
-                    // 右键：放入1个
                     ItemStack singleItem = carried.copyWithCount(1);
                     slot.set(singleItem);
                     ItemStack remainingCarried = carried.copy();
@@ -54,19 +145,17 @@ public class ItemHandler {
                 if (slotItem.getCount() < configLimit) {
                     ItemStack remainingCarried = carried.copy();
                     if (isLeftClick) {
-                        // 左键：尽可能合并至上限
                         int canAdd = Math.min(configLimit - slotItem.getCount(), carried.getCount());
                         slotItem.grow(canAdd);
                         remainingCarried.shrink(canAdd);
                     } else {
-                        // 右键：放入1个
                         slotItem.grow(1);
                         remainingCarried.shrink(1);
                     }
                     return remainingCarried.isEmpty() ? ItemStack.EMPTY : remainingCarried;
                 }
             } else {
-                // 不同物品交换（仅当槽位物品不超过配置上限）
+                // 不同物品交换
                 if (slotItem.getCount() <= slotItem.getMaxStackSize()) {
                     ItemStack result = slotItem.copy();
                     slot.set(carried.copy());
@@ -77,23 +166,21 @@ public class ItemHandler {
             return slot.getItem();
         }
         
-        return carried; // 无操作情况
+        return carried;
     }
 
     /**
      * 处理数字键交换点击
      */
-    public static ItemStack handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem, 
-                                          int button, Player player, TrashBox trashBox) {
+    public ItemStack handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem, 
+                                    int button, Player player) {
         ItemStack result = swapItem;
         
         if (slotItem.isEmpty()) {
-            // 空槽位直接移动
             slot.set(swapItem.copy());
             player.getInventory().setItem(button, ItemStack.EMPTY);
             result = ItemStack.EMPTY;
         } else if (slotItem.getCount() <= slotItem.getMaxStackSize() || swapItem.isEmpty()) {
-            // 交换（仅当槽位物品不超过配置上限）
             int moveCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             result = slotItem.copyWithCount(moveCount);
             player.getInventory().setItem(button, result);
@@ -107,11 +194,10 @@ public class ItemHandler {
     /**
      * 处理双击收集
      */
-    public static ItemStack handleDoubleClick(ItemStack clickedItem, ItemStack carried, TrashBox trashBox, int trashSlots) {
+    public ItemStack handleDoubleClick(ItemStack clickedItem, ItemStack carried) {
         ItemStack result = carried;
         
         if (carried.isEmpty()) {
-            // 空手双击，创建新的物品堆
             result = clickedItem.copyWithCount(0);
         }
         
@@ -119,19 +205,17 @@ public class ItemHandler {
             return result;
         }
         
-        // 收集垃圾箱内所有相同物品到手持物品堆
+        // 收集垃圾箱内所有相同物品
         int maxStackSize = result.getMaxStackSize();
         for (int i = 0; i < trashSlots && result.getCount() < maxStackSize; i++) {
             ItemStack slotItem = trashBox.getItem(i);
             if (ItemMerge.isSameItem(result, slotItem)) {
-                // 计算能取出多少（按正常规则：最多64个）
                 int maxTake = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
                 int canAdd = maxStackSize - result.getCount();
                 int takeAmount = Math.min(maxTake, canAdd);
                 
                 if (takeAmount > 0) {
                     result.grow(takeAmount);
-                    // 这里需要创建临时slot来调用updateSlotAfterMove
                     Slot tempSlot = new Slot(trashBox, i, 0, 0) {};
                     UiUtils.updateSlotAfterMove(tempSlot, takeAmount);
                 }
@@ -141,11 +225,11 @@ public class ItemHandler {
         trashBox.setChanged();
         return result;
     }
-
+    
     /**
      * 移动物品到垃圾箱
      */
-    public static boolean moveToTrashBox(ItemStack stack, TrashBox trashBox, int trashSlots) {
+    public boolean moveToTrashBox(ItemStack stack) {
         if (stack.isEmpty()) return false;
         
         boolean moved = false;

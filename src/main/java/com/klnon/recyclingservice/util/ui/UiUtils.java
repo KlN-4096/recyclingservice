@@ -6,8 +6,8 @@ import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.util.core.ErrorHandler;
-import com.klnon.recyclingservice.util.core.MessageFormatter;
+import com.klnon.recyclingservice.util.ErrorHandler;
+import com.klnon.recyclingservice.util.MessageUtils;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -101,7 +101,7 @@ public class UiUtils {
         // 添加我们的真实数量信息（带标识符）
         loreLines.add(Component.literal(LORE_PREFIX + LORE_SUFFIX)); // 空行分隔符
         loreLines.add(Component.literal(
-                LORE_PREFIX + MessageFormatter.formatTemplate(Config.ITEM_COUNT_DISPLAY_FORMAT.get(), Map.of(
+                LORE_PREFIX + MessageUtils.formatTemplate(Config.ITEM_COUNT_DISPLAY_FORMAT.get(), Map.of(
                         "current", String.valueOf(stack.getCount()),
                         "max", String.valueOf(Config.getItemStackMultiplier(stack))
                 )) + LORE_SUFFIX

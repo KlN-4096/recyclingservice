@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 统一配置管理器 - 整合各功能配置模块
+ * 采用新的架构：减少文件数量，保持合理分离
  */
 public class Config {
     
@@ -18,13 +19,9 @@ public class Config {
     public static final ModConfigSpec SPEC;
     
     // 各功能配置实例
-    public static final CleanupConfig CLEANUP = new CleanupConfig();
-    public static final TrashBoxConfig TRASH_BOX = new TrashBoxConfig();
-    public static final PaymentConfig PAYMENT = new PaymentConfig();
-    public static final FilterConfig FILTER = new FilterConfig();
-    public static final PerformanceConfig PERFORMANCE = new PerformanceConfig();
-    public static final ChunkConfig CHUNK = new ChunkConfig();
-    public static final MessageConfig MESSAGE = new MessageConfig();
+    public static final GameplayConfig GAMEPLAY = new GameplayConfig(BUILDER);
+    public static final TechnicalConfig TECHNICAL = new TechnicalConfig(BUILDER);
+    public static final MessageConfig MESSAGE = new MessageConfig(BUILDER);
     
     // 性能优化缓存
     public static volatile Set<String> whitelistCache = new HashSet<>();
@@ -33,75 +30,54 @@ public class Config {
     private static volatile Set<String> allowPutInDimensionsCache = new HashSet<>();
     private static final Map<String, Double> dimensionMultiplierCache = new ConcurrentHashMap<>();
     
-    // 调试设置
-    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS;
-    
     static {
-        // 构建所有配置节
-        CLEANUP.build(BUILDER);
-        TRASH_BOX.build(BUILDER);
-        PAYMENT.build(BUILDER);
-        FILTER.build(BUILDER);
-        PERFORMANCE.build(BUILDER);
-        CHUNK.build(BUILDER);
-        MESSAGE.build(BUILDER);
-        
-        // 调试设置
-        BUILDER.comment("Debug settings").push("debug");
-        ENABLE_DEBUG_LOGS = BUILDER
-                .comment("Enable debug logging for ErrorHandler operations")
-                .define("enable_debug_logs", false);
-        BUILDER.pop();
-        
         // 构建配置规范
         SPEC = BUILDER.build();
     }
     
     
+    // === 快速访问接口 - 保持向后兼容 ===
+    
     // 基础清理设置
-    public static final ModConfigSpec.IntValue AUTO_CLEAN_TIME = CLEANUP.autoCleanTime;
-    public static final ModConfigSpec.BooleanValue SHOW_CLEANUP_WARNINGS = CLEANUP.showCleanupWarnings;
-    public static final ModConfigSpec.IntValue WARNING_COUNTDOWN_START = CLEANUP.warningCountdownStart;
+    public static final ModConfigSpec.IntValue AUTO_CLEAN_TIME = GAMEPLAY.autoCleanTime;
+    public static final ModConfigSpec.BooleanValue SHOW_CLEANUP_WARNINGS = GAMEPLAY.showCleanupWarnings;
+    public static final ModConfigSpec.IntValue WARNING_COUNTDOWN_START = GAMEPLAY.warningCountdownStart;
     
     // 垃圾箱设置
-    public static final ModConfigSpec.IntValue TRASH_BOX_ROWS = TRASH_BOX.trashBoxRows;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_TRASH_ALLOW_PUT_IN = TRASH_BOX.dimensionTrashAllowPutIn;
-    public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_CROSS_ACCESS = TRASH_BOX.dimensionTrashCrossAccess;
-    
-    // 维度管理
-    public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION = TRASH_BOX.maxBoxesPerDimension;
-    
-    // 付费系统
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE = PAYMENT.paymentItemType;
-    public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST = PAYMENT.crossDimensionAccessCost;
-    public static final ModConfigSpec.ConfigValue<String> INSERT_PAYMENT_MODE = PAYMENT.insertPaymentMode;
-    public static final ModConfigSpec.ConfigValue<String> EXTRACT_PAYMENT_MODE = PAYMENT.extractPaymentMode;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS = PAYMENT.dimensionMultipliers;
+    public static final ModConfigSpec.IntValue TRASH_BOX_ROWS = GAMEPLAY.trashBoxRows;
+    public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER = GAMEPLAY.itemStackMultiplier;
+    public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION = GAMEPLAY.maxBoxesPerDimension;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_TRASH_ALLOW_PUT_IN = GAMEPLAY.dimensionTrashAllowPutIn;
+    public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_CROSS_ACCESS = GAMEPLAY.dimensionTrashCrossAccess;
     
     // 物品过滤
-    public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE = FILTER.cleanMode;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WHITELIST = FILTER.whitelist;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLIST = FILTER.blacklist;
+    public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE = GAMEPLAY.cleanMode;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> WHITELIST = GAMEPLAY.whitelist;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLIST = GAMEPLAY.blacklist;
+    public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES = GAMEPLAY.cleanProjectiles;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN = GAMEPLAY.projectileTypesToClean;
+    public static final ModConfigSpec.BooleanValue PROTECT_CREATE_PROCESSING_ITEMS = GAMEPLAY.protectCreateProcessingItems;
     
-    // 弹射物过滤
-    public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES = FILTER.cleanProjectiles;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN = FILTER.projectileTypesToClean;
+    // 付费系统
+    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE = GAMEPLAY.paymentItemType;
+    public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST = GAMEPLAY.crossDimensionAccessCost;
+    public static final ModConfigSpec.ConfigValue<String> INSERT_PAYMENT_MODE = GAMEPLAY.insertPaymentMode;
+    public static final ModConfigSpec.ConfigValue<String> EXTRACT_PAYMENT_MODE = GAMEPLAY.extractPaymentMode;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS = GAMEPLAY.dimensionMultipliers;
     
-    // Create模组兼容性
-    public static final ModConfigSpec.BooleanValue PROTECT_CREATE_PROCESSING_ITEMS = FILTER.protectCreateProcessingItems;
+    // 性能优化
+    public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS = TECHNICAL.maxProcessingTimeMs;
+    public static final ModConfigSpec.IntValue BATCH_SIZE = TECHNICAL.batchSize;
     
-    // 区域管理
-    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING = CHUNK.enableChunkItemWarning;
-    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING = CHUNK.enableChunkFreezing;
-    public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING = CHUNK.tooManyItemsWarning;
-    public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS = CHUNK.chunkFreezingSearchRadius;
-
-    // 主线程调度优化设置
-    public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS = PERFORMANCE.maxProcessingTimeMs;
-    public static final ModConfigSpec.IntValue BATCH_SIZE = PERFORMANCE.batchSize;
+    // 区块管理
+    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING = TECHNICAL.enableChunkItemWarning;
+    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING = TECHNICAL.enableChunkFreezing;
+    public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING = TECHNICAL.tooManyItemsWarning;
+    public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS = TECHNICAL.chunkFreezingSearchRadius;
     
-    // UI界面设置
-    public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER = TRASH_BOX.itemStackMultiplier;
+    // 调试设置
+    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS = TECHNICAL.enableDebugLogs;
+    // 消息模板
     public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY_FORMAT = MESSAGE.itemCountDisplayFormat;
     
     // 清理结果消息

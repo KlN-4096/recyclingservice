@@ -4,26 +4,25 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 import java.util.List;
 
 /**
- * 消息模板配置
+ * 消息模板配置 - 所有用户可见的消息文本
  */
-public class MessageConfig extends ConfigSection {
+public class MessageConfig {
     
-    public ModConfigSpec.ConfigValue<String> itemCountDisplayFormat;
-    public ModConfigSpec.ConfigValue<String> cleanupResultHeader;
-    public ModConfigSpec.ConfigValue<String> dimensionEntryFormat;
-    public ModConfigSpec.ConfigValue<String> errorCleanupFailed;
-    public ModConfigSpec.ConfigValue<String> manualCleanupStart;
-    public ModConfigSpec.ConfigValue<String> paymentErrorMessage;
-    public ModConfigSpec.ConfigValue<String> paymentSuccessMessage;
-    public ModConfigSpec.ConfigValue<String> warningMessage;
-    public ModConfigSpec.ConfigValue<String> tooManyItemsWarningMessage;
-    public ModConfigSpec.ConfigValue<List<? extends String>> cmdHelpMessages;
-    public ModConfigSpec.ConfigValue<String> trashBoxButtonText;
-    public ModConfigSpec.ConfigValue<String> trashBoxButtonHover;
+    public final ModConfigSpec.ConfigValue<String> itemCountDisplayFormat;
+    public final ModConfigSpec.ConfigValue<String> cleanupResultHeader;
+    public final ModConfigSpec.ConfigValue<String> dimensionEntryFormat;
+    public final ModConfigSpec.ConfigValue<String> errorCleanupFailed;
+    public final ModConfigSpec.ConfigValue<String> manualCleanupStart;
+    public final ModConfigSpec.ConfigValue<String> paymentErrorMessage;
+    public final ModConfigSpec.ConfigValue<String> paymentSuccessMessage;
+    public final ModConfigSpec.ConfigValue<String> warningMessage;
+    public final ModConfigSpec.ConfigValue<String> tooManyItemsWarningMessage;
+    public final ModConfigSpec.ConfigValue<List<? extends String>> cmdHelpMessages;
+    public final ModConfigSpec.ConfigValue<String> trashBoxButtonText;
+    public final ModConfigSpec.ConfigValue<String> trashBoxButtonHover;
     
-    @Override
-    public void build(ModConfigSpec.Builder builder) {
-        builder.comment(getDescription()).push(getName());
+    public MessageConfig(ModConfigSpec.Builder builder) {
+        builder.comment("Message Templates").push("messages");
         
         itemCountDisplayFormat = builder
                 .comment("Format for item count display. {current} = current count, {max} = maximum stack size")
@@ -82,15 +81,5 @@ public class MessageConfig extends ConfigSection {
                 .define("trash_box_button_hover", "Click to open trash box #1 in {name}");
         
         builder.pop();
-    }
-    
-    @Override
-    public String getName() {
-        return "messages";
-    }
-    
-    @Override
-    public String getDescription() {
-        return "Message templates";
     }
 }

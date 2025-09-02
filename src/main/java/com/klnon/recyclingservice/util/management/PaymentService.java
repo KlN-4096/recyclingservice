@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.util.core.MessageFormatter;
+import com.klnon.recyclingservice.util.MessageUtils;
 
 /**
  * 支付服务 - 处理所有支付相关的核心功能
@@ -86,7 +86,7 @@ public class PaymentService {
      */
     public static void sendPaymentErrorMessage(Player player, int requiredCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageFormatter.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageUtils.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
             "cost", String.valueOf(requiredCost),
             "item", itemName
         ));
@@ -101,7 +101,7 @@ public class PaymentService {
      */
     public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageFormatter.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageUtils.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
             "cost", String.valueOf(deductedCost),
             "item", itemName
         ));
