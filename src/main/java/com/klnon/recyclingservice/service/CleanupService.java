@@ -16,78 +16,115 @@ import com.klnon.recyclingservice.core.TrashManager;
 import com.klnon.recyclingservice.util.cleanup.ItemFilter;
 import com.klnon.recyclingservice.util.cleanup.ItemMerge;
 import com.klnon.recyclingservice.util.cleanup.EntityCacheReader;
-import com.klnon.recyclingservice.util.cleanup.MainThreadScheduler;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
+import com.klnon.recyclingservice.util.cleanup.GlobalDeleteSignal;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * 自动清理服务 - 基于实体主动上报的清理系统
+ * 自动清理服务 - 简化的同步清理系统
  * 核心功能：
- * - 收集上报缓存中的待清理实体（零延迟，O(1)访问）
- * - 过滤物品和弹射物
- * - 存储物品到对应维度垃圾箱
- * - 异步删除原始实体（避免TPS下降）
- * 设计特点：缓存收集同步，实体删除异步，错误隔离
+ * - 收集上报缓存中的待清理实体
+ * - 存储物品到垃圾箱
+ * - 激活删除信号，实体自删除
+ * 设计特点：线性执行，简洁高效
  */
 public class CleanupService {
     // 全局垃圾箱管理器实例
     private static final TrashManager trashManager = new TrashManager();
     
     /**
-     * 创建失败结果的通用方法
-     */
-    private static DimensionCleanupStats createFailedDimensionStats(String errorMessage) {
-        return new DimensionCleanupStats(0, 0, "Processing failed: " + errorMessage);
-    }
-
-    /**
-     * 创建失败的清理结果
-     */
-    private static CleanupResult createFailedCleanupResult(String errorMessage) {
-        return new CleanupResult(0, 0, Collections.emptyMap(), errorMessage);
-    }
-    
-    /**
-     * 执行自动清理 - 基于主动上报系统的主入口方法
+     * 执行自动清理 - 同步版本
      * @param server 服务器实例
-     * @return CompletableFuture包装的清理结果
+     * @return 清理结果
      */
-    public static CompletableFuture<CleanupResult> performAutoCleanup(MinecraftServer server) {
-        
+    public static CleanupResult performAutoCleanup(MinecraftServer server) {
         try {
-            // 同步收集缓存（轻量级操作，无需异步）
+            // 1. 收集缓存实体
             Map<ResourceLocation, EntityCacheReader.ScanResult> scanResults = 
                 EntityCacheReader.collectAllReportedEntities(server);
             
-            // 异步处理清理任务（保留异步，因为需要主线程调度删除）
-            return processCleanupAsync(server, scanResults)
-                    .thenApply(result -> {
-                        // 清理完成后清空缓存
-                        clearProcessedCache(result);
-                        return result;
-                    })
-                    .exceptionally(throwable -> createFailedCleanupResult("Cleanup failed: " + throwable.getMessage()));
+            // 2. 清空垃圾箱
+            trashManager.clearAll();
+            
+            // 3. 处理各维度
+            Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
+            int totalItemsCleaned = 0;
+            int totalProjectilesCleaned = 0;
+            boolean hasEntitiesToDelete = false;
+            
+            for (Map.Entry<ResourceLocation, EntityCacheReader.ScanResult> entry : scanResults.entrySet()) {
+                ResourceLocation dimensionId = entry.getKey();
+                EntityCacheReader.ScanResult scanResult = entry.getValue();
+                
+                try {
+                    // 获取维度
+                    ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, dimensionId);
+                    ServerLevel level = server.getLevel(levelKey);
+                    
+                    // 区块冻结检查
+                    if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
+                        ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
+                    }
+                    
+                    // 处理物品
+                    List<ItemStack> itemStacksToClean = new ArrayList<>();
+                    for (ItemEntity itemEntity : scanResult.items()) {
+                        itemStacksToClean.add(itemEntity.getItem());
+                    }
+                    List<ItemStack> itemsToClean = ItemMerge.combine(itemStacksToClean);
+                    
+                    // 存储到垃圾箱
+                    trashManager.addItemsToDimension(dimensionId, itemsToClean);
+                    
+                    // 统计弹射物
+                    List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
+                    
+                    // 检查是否有实体需要删除
+                    if (!scanResult.items().isEmpty() || !projectilesToClean.isEmpty()) {
+                        hasEntitiesToDelete = true;
+                    }
+                    
+                    // 记录统计
+                    DimensionCleanupStats stats = new DimensionCleanupStats(
+                        itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully");
+                    dimensionStats.put(dimensionId, stats);
+                    
+                    totalItemsCleaned += itemStacksToClean.size();
+                    totalProjectilesCleaned += projectilesToClean.size();
+                    
+                } catch (Exception e) {
+                    // 单个维度失败不影响其他维度
+                    dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed: " + e.getMessage()));
+                }
+            }
+            
+            // 4. 激活删除信号
+            if (hasEntitiesToDelete) {
+                GlobalDeleteSignal.activate(server);
+            }
+            
+            // 5. 清理无效缓存
+            clearProcessedCache(new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, dimensionStats, ""));
+            
+            return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
+                dimensionStats, "Cleanup completed successfully");
+                
         } catch (Exception e) {
-            // 缓存收集阶段出错，返回失败结果
-            return CompletableFuture.completedFuture(
-                createFailedCleanupResult("Cache collection failed: " + e.getMessage()));
+            return new CleanupResult(0, 0, Collections.emptyMap(), 
+                "Cleanup failed: " + e.getMessage());
         }
     }
     
     /**
-     * 精确清理已处理的缓存 - 只移除无效实体
-     * @param result 清理结果
+     * 清理无效缓存
      */
     private static void clearProcessedCache(CleanupResult result) {
         try {
             int totalCleanedEntities = 0;
             
-            // 对每个维度进行精确清理
             for (ResourceLocation dimension : result.dimensionStats().keySet()) {
-                // 清理无效实体（已删除、不存活的）
                 int cleanedInDimension = SimpleReportCache.removeInvalidEntities(dimension);
                 totalCleanedEntities += cleanedInDimension;
                 
@@ -98,115 +135,14 @@ public class CleanupService {
                 }
             }
             
-            // 记录缓存清理信息
             if (totalCleanedEntities > 0) {
                 Recyclingservice.LOGGER.debug(
                     "Cleaned {} invalid entities from report cache across {} dimensions", 
                     totalCleanedEntities, result.dimensionStats().size());
             }
         } catch (Exception e) {
-            // 出错跳过，不影响主流程
             Recyclingservice.LOGGER.debug("Failed to clean processed cache", e);
         }
-    }
-    
-    /**
-     * 异步处理清理任务 - 并行处理所有维度
-     * @param server 服务器实例
-     * @param scanResults 从上报缓存获取的结果映射 (维度ID -> 缓存结果)
-     * @return CompletableFuture包装的清理结果
-     */
-    private static CompletableFuture<CleanupResult> processCleanupAsync(
-            MinecraftServer server, Map<ResourceLocation, EntityCacheReader.ScanResult> scanResults) {
-        
-        // 清空所有垃圾桶的旧物品
-        trashManager.clearAll();
-        
-        // 为每个维度创建异步清理任务
-        List<CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>>> cleanupFutures = 
-            scanResults.entrySet().stream()
-                .map(entry -> {
-                    ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, entry.getKey());
-                    ServerLevel level = server.getLevel(levelKey);
-                    return processDimensionCleanupAsync(entry.getKey(), level, entry.getValue())
-                        .thenApply(stats -> Map.entry(entry.getKey(), stats))
-                        .exceptionally(throwable -> Map.entry(entry.getKey(), 
-                            createFailedDimensionStats(throwable.getMessage())));
-                })
-                .toList();
-        
-        // 等待所有维度清理完成并汇总结果
-        return CompletableFuture.allOf(cleanupFutures.toArray(new CompletableFuture[0]))
-            .thenApply(v -> collectCleanupResults(cleanupFutures));
-    }
-    
-    /**
-     * 处理单个维度的清理任务
-     * 步骤：区块冻结检查 -> 过滤物品弹射物 -> 存储到垃圾箱 -> 删除实体
-     * @param dimensionId 维度ID
-     * @param level 服务器维度实例
-     * @param scanResult 该维度的扫描结果
-     * @return CompletableFuture包装的维度清理统计
-     */
-    private static CompletableFuture<DimensionCleanupStats> processDimensionCleanupAsync(
-            ResourceLocation dimensionId,
-            ServerLevel level,
-            EntityCacheReader.ScanResult scanResult) {
-        
-        // 1. 区块冻结检查 - 在清理前检查每个区块的实体数量
-        if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
-            ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
-        }
-        
-        // 2. 性能优化：直接处理预过滤的物品实体
-        List<ItemStack> itemStacksToClean = scanResult.items().stream()
-                .map(ItemEntity::getItem)
-                .collect(java.util.stream.Collectors.toList());
-        List<ItemStack> itemsToClean = ItemMerge.combine(itemStacksToClean);
-        
-        // 将物品存储到对应维度的垃圾箱
-        trashManager.addItemsToDimension(dimensionId, itemsToClean);
-        
-        // 准备待删除实体列表
-        List<Entity> entitiesToDelete = new ArrayList<>(scanResult.items());
-        
-        // 添加需要清理的弹射物
-        List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
-        entitiesToDelete.addAll(projectilesToClean);
-        
-        // 分片删除实体
-        return entitiesToDelete.isEmpty() && itemsToClean.isEmpty()
-            ? CompletableFuture.completedFuture(null)
-            // 主线程任务调度器,分片删除
-            : MainThreadScheduler.getInstance().scheduleEntityDeletion(entitiesToDelete)
-            .thenApply(v -> new DimensionCleanupStats(
-                itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully"));
-    }
-
-
-    /**
-     * 收集所有维度的清理结果
-     */
-    private static CleanupResult collectCleanupResults(
-        List<CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>>> cleanupFutures) {
-        
-        Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
-        int totalItemsCleaned = 0;
-        int totalProjectilesCleaned = 0;
-        
-        for (CompletableFuture<Map.Entry<ResourceLocation, DimensionCleanupStats>> future : cleanupFutures) {
-            try {
-                Map.Entry<ResourceLocation, DimensionCleanupStats> entry = future.get();
-                dimensionStats.put(entry.getKey(), entry.getValue());
-                totalItemsCleaned += entry.getValue().itemsCleaned();
-                totalProjectilesCleaned += entry.getValue().projectilesCleaned();
-            } catch (Exception e) {
-                // 单个维度失败不影响整体结果
-            }
-        }
-        
-        return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
-            dimensionStats, "Cleanup completed successfully");
     }
     
     

@@ -37,9 +37,6 @@ public class Recyclingservice {
 
         // 注册自动清理事件处理器
         NeoForge.EVENT_BUS.register(AutoCleanupEvent.class);
-        
-        // 注册主线程任务调度器
-        NeoForge.EVENT_BUS.register(com.klnon.recyclingservice.util.cleanup.MainThreadScheduler.class);
 
         // 注册我们模组的 ModConfigSpec，以便 FML 可以为我们创建和加载配置文件
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);

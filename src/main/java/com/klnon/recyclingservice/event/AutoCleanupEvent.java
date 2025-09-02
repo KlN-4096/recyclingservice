@@ -52,20 +52,20 @@ public class AutoCleanupEvent {
      * 执行清理
      */
     private static void doCleanup(MinecraftServer server) {
-        CleanupService.performAutoCleanup(server)
-            .thenAccept(result -> {
-                // 如果有清理结果才显示消息
-                if (result.totalItemsCleaned() > 0 || result.totalProjectilesCleaned() > 0) {
-                    Component message = MessageUtils.getDetailedCleanupMessage(result.dimensionStats());
-                    MessageUtils.sendChatMessage(server, message);
-                }
-                cleaning = false;
-            })
-            .exceptionally(e -> {
-                MessageUtils.showActionBar(server, Config.MESSAGE.errorCleanupFailed.get(), MessageUtils.MessageType.ERROR.getColor());
-                cleaning = false;
-                return null;
-            });
+        try {
+            CleanupService.CleanupResult result = CleanupService.performAutoCleanup(server);
+            
+            // 如果有清理结果才显示消息
+            if (result.totalItemsCleaned() > 0 || result.totalProjectilesCleaned() > 0) {
+                Component message = MessageUtils.getDetailedCleanupMessage(result.dimensionStats());
+                MessageUtils.sendChatMessage(server, message);
+            }
+            
+        } catch (Exception e) {
+            MessageUtils.showActionBar(server, Config.MESSAGE.errorCleanupFailed.get(), MessageUtils.MessageType.ERROR.getColor());
+        } finally {
+            cleaning = false;
+        }
     }
     
     // === 公共API方法 ===

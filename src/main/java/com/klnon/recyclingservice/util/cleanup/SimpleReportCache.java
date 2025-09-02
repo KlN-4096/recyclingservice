@@ -271,6 +271,18 @@ public class SimpleReportCache {
             return overloaded != null ? new ArrayList<>(overloaded) : new ArrayList<>();
         }, new ArrayList<>());
     }
+    
+    /**
+     * 获取所有维度缓存的实体总数
+     * @return 缓存中的实体总数量
+     */
+    public static int getTotalReportedCount() {
+        return safeOperation(() -> {
+            return reportedUuids.values().stream()
+                    .mapToInt(Set::size)
+                    .sum();
+        }, 0);
+    }
 
     // === 辅助记录类 ===
     

@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
+import com.klnon.recyclingservice.util.cleanup.GlobalDeleteSignal;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
@@ -26,8 +27,8 @@ public class ProjectileReportMixin {
         try {
             Entity self = (Entity)(Object)this;
             
-            // 10秒检查一次
-            if (self.tickCount % (20 * 10) != 0) {
+            // 4秒检查一次
+            if (self.tickCount % (20 * 4) != 0) {
                 return;
             }
             
@@ -41,6 +42,12 @@ public class ProjectileReportMixin {
                 // 应该上报且未上报 -> 上报
                 SimpleReportCache.report(self);
             }
+            
+            // 检查全局删除信号，如果激活且在缓存中则自删除
+            if (!self.level().isClientSide() && alreadyReported && 
+                GlobalDeleteSignal.shouldDelete(self.level().getServer())) {
+                self.discard();
+            }
         } catch (Exception e) {
             // 出错跳过
         }
@@ -49,7 +56,7 @@ public class ProjectileReportMixin {
     @Unique
     private boolean recyclingservice$shouldReport(Entity self) {
         try {
-            return self.tickCount >= 30 * 20 && // 30秒后考虑清理
+            return self.tickCount >= 10 * 20 && // 10秒后考虑清理
                    Config.GAMEPLAY.cleanProjectiles.get() &&
                    Config.projectileTypesCache.contains(
                        BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());

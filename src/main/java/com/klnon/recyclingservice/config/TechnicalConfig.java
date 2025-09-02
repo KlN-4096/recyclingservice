@@ -3,13 +3,9 @@ package com.klnon.recyclingservice.config;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * 技术配置 - 包含性能优化、区块管理、调试设置
+ * 技术配置 - 包含区块管理、调试设置
  */
 public class TechnicalConfig {
-    
-    // === 性能优化设置 ===
-    public final ModConfigSpec.IntValue maxProcessingTimeMs;
-    public final ModConfigSpec.IntValue batchSize;
     
     // === 区块管理设置 ===
     public final ModConfigSpec.BooleanValue enableChunkItemWarning;
@@ -22,16 +18,6 @@ public class TechnicalConfig {
     
     public TechnicalConfig(ModConfigSpec.Builder builder) {
         builder.comment("Technical Settings").push("technical");
-        
-        // 性能优化
-        builder.comment("Performance optimization").push("performance");
-        maxProcessingTimeMs = builder
-                .comment("Maximum processing time per tick in milliseconds")
-                .defineInRange("max_time_ms", 2, 1, 10);
-        batchSize = builder
-                .comment("Batch size for entity processing")
-                .defineInRange("batch_size", 10, 5, 50);
-        builder.pop();
         
         // 区块管理
         builder.comment("Chunk management").push("chunk");

@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.util.cleanup.ItemFilter;
 import com.klnon.recyclingservice.util.cleanup.SimpleReportCache;
+import com.klnon.recyclingservice.util.cleanup.GlobalDeleteSignal;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -21,8 +22,8 @@ public class ItemEntityReportMixin {
         try {
             ItemEntity self = (ItemEntity)(Object)this;
             
-            // 10秒检查一次，分散检查时间避免同时计算
-            if (self.tickCount % (20*10) != (self.getId() % 20)) {
+            // 4秒检查一次，分散检查时间避免同时计算
+            if (self.tickCount % (20*4) != (self.getId() % 20)) {
                 return;
             }
             
@@ -39,6 +40,12 @@ public class ItemEntityReportMixin {
                 // 不应该上报但已上报 -> 取消上报
                 SimpleReportCache.remove(self);
             }
+            
+            // 检查全局删除信号，如果激活且在缓存中则自删除
+            if (!self.level().isClientSide() && alreadyReported && 
+                GlobalDeleteSignal.shouldDelete(self.level().getServer())) {
+                self.discard();
+            }
         } catch (Exception e) {
             // 出错跳过，什么都不做
         }
@@ -48,7 +55,7 @@ public class ItemEntityReportMixin {
     private boolean recyclingservice$shouldReport(ItemEntity self) {
         try {
             // 性能优化：预过滤逻辑 - 只上报需要清理的物品实体
-            return self.getAge() >= 30 * 20 && // 30秒后才考虑清理
+            return self.getAge() >= 10 * 20 && // 10秒后才考虑清理
                    ItemFilter.shouldCleanItem(self); // 预过滤
         } catch (Exception e) {
             return false;
