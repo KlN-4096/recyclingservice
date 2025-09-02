@@ -260,19 +260,6 @@ public class SimpleReportCache {
     }
     
     /**
-     * 获取超过阈值的区块
-     * @param dimension 维度
-     * @param threshold 阈值（会被忽略，因为使用配置中的阈值）
-     * @return 超载区块列表
-     */
-    public static List<ChunkPos> getChunksExceedingThreshold(ResourceLocation dimension, int threshold) {
-        return safeOperation(() -> {
-            Set<ChunkPos> overloaded = overloadedChunks.get(dimension);
-            return overloaded != null ? new ArrayList<>(overloaded) : new ArrayList<>();
-        }, new ArrayList<>());
-    }
-    
-    /**
      * 获取实时超载区块列表 - 新的高性能API  
      * @param dimension 维度
      * @return 超载区块列表

@@ -174,9 +174,6 @@ public class CleanupService {
         List<Entity> projectilesToClean = ItemFilter.filterProjectiles(scanResult.projectiles());
         entitiesToDelete.addAll(projectilesToClean);
         
-        // 计算实际清理的物品总数
-        // int totalItemCount = itemsToClean.stream().mapToInt(ItemStack::getCount).sum();
-        
         // 分片删除实体
         return entitiesToDelete.isEmpty() && itemsToClean.isEmpty()
             ? CompletableFuture.completedFuture(null)
