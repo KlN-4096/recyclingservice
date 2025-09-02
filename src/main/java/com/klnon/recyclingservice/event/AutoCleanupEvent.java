@@ -20,7 +20,7 @@ public class AutoCleanupEvent {
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post event) {
         if (++ticks < Config.getCleanIntervalTicks()) {
-            if (ticks % TICKS_PER_SECOND == 0 && Config.SHOW_CLEANUP_WARNINGS.get()) {
+            if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
                 checkAndSendWarning(event.getServer());
             }
             return;
@@ -41,7 +41,7 @@ public class AutoCleanupEvent {
         int remainingSeconds = getRemainingSeconds();
         
         // 使用配置的倒计时开始时间
-        if (remainingSeconds <= Config.WARNING_COUNTDOWN_START.get() && remainingSeconds > 0) {
+        if (remainingSeconds <= Config.GAMEPLAY.warningCountdownStart.get() && remainingSeconds > 0) {
             String message = MessageUtils.getWarningMessage(remainingSeconds);
             MessageUtils.showActionBar(server, message, MessageUtils.MessageType.WARNING.getColor());
         }
@@ -62,7 +62,7 @@ public class AutoCleanupEvent {
                 cleaning = false;
             })
             .exceptionally(e -> {
-                MessageUtils.showActionBar(server, Config.ERROR_CLEANUP_FAILED.get(), MessageUtils.MessageType.ERROR.getColor());
+                MessageUtils.showActionBar(server, Config.MESSAGE.errorCleanupFailed.get(), MessageUtils.MessageType.ERROR.getColor());
                 cleaning = false;
                 return null;
             });

@@ -56,8 +56,8 @@ public class MainThreadScheduler {
         int processedCount = 0;
         
         // 从配置获取动态值
-        int maxEntitiesPerTick = Config.BATCH_SIZE.get();
-        long maxProcessingTimeNs = Config.MAX_PROCESSING_TIME_MS.get() * 1_000_000L;
+        int maxEntitiesPerTick = Config.TECHNICAL.batchSize.get();
+        long maxProcessingTimeNs = Config.TECHNICAL.maxProcessingTimeMs.get() * 1_000_000L;
         
         while (!deletionQueue.isEmpty() && 
                processedCount < maxEntitiesPerTick && 

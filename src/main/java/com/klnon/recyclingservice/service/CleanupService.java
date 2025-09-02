@@ -91,7 +91,7 @@ public class CleanupService {
                 int cleanedInDimension = SimpleReportCache.removeInvalidEntities(dimension);
                 totalCleanedEntities += cleanedInDimension;
                 
-                if (Config.ENABLE_DEBUG_LOGS.get() && cleanedInDimension > 0) {
+                if (Config.TECHNICAL.enableDebugLogs.get() && cleanedInDimension > 0) {
                     Recyclingservice.LOGGER.debug(
                         "Cleaned {} invalid entities from cache in dimension {}", 
                         cleanedInDimension, dimension);
@@ -154,7 +154,7 @@ public class CleanupService {
             EntityCacheReader.ScanResult scanResult) {
         
         // 1. 区块冻结检查 - 在清理前检查每个区块的实体数量
-        if (level != null && Config.ENABLE_CHUNK_FREEZING.get()) {
+        if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
             ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
         }
         

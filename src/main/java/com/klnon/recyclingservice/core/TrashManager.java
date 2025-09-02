@@ -27,7 +27,7 @@ public class TrashManager {
      * 获取或创建指定维度的垃圾箱
      */
     public TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        if (boxNumber < 1 || boxNumber > Config.MAX_BOXES_PER_DIMENSION.get()) {
+        if (boxNumber < 1 || boxNumber > Config.GAMEPLAY.maxBoxesPerDimension.get()) {
             return null;
         }
         
@@ -36,7 +36,7 @@ public class TrashManager {
         // 当目标打开的垃圾箱编号大于当前垃圾箱总数才新建
         while (boxes.size() < boxNumber) {
             int newBoxNumber = boxes.size() + 1;
-            TrashBox newBox = new TrashBox(Config.TRASH_BOX_ROWS.get()*9, newBoxNumber, dimensionId);
+            TrashBox newBox = new TrashBox(Config.GAMEPLAY.trashBoxRows.get()*9, newBoxNumber, dimensionId);
             boxes.add(newBox);
         }
         
@@ -50,8 +50,8 @@ public class TrashManager {
         if (items.isEmpty())
             return;
         
-        final int maxBoxes = Config.MAX_BOXES_PER_DIMENSION.get();
-        final int capacity = Config.TRASH_BOX_ROWS.get()*9;
+        final int maxBoxes = Config.GAMEPLAY.maxBoxesPerDimension.get();
+        final int capacity = Config.GAMEPLAY.trashBoxRows.get()*9;
         
         // 保持原有的排序逻辑
         items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));

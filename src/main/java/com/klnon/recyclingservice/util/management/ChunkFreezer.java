@@ -36,7 +36,7 @@ public class ChunkFreezer {
      * 根据搜索半径动态计算最大检查ticket数量
      */
     private static int getMaxTicketsToCheck() {
-        int radius = Config.CHUNK_FREEZING_SEARCH_RADIUS.get();
+        int radius = Config.TECHNICAL.chunkFreezingSearchRadius.get();
         int searchArea = (2 * radius + 1) * (2 * radius + 1);  // 方形区域
         return (int)(searchArea * 1.5);  // 1.5倍安全系数
     }
@@ -108,7 +108,7 @@ public class ChunkFreezer {
             Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
             
             // 动态获取搜索参数
-            int searchRadius = Config.CHUNK_FREEZING_SEARCH_RADIUS.get();
+            int searchRadius = Config.TECHNICAL.chunkFreezingSearchRadius.get();
             int maxTicketsToCheck = getMaxTicketsToCheck();
             
             // 调试日志：显示动态参数
@@ -234,7 +234,7 @@ public class ChunkFreezer {
                 }
                 
                 // 发送警告消息（如果启用）
-                if (Config.ENABLE_CHUNK_ITEM_WARNING.get()) {
+                if (Config.TECHNICAL.enableChunkItemWarning.get()) {
                     int entityCount = SimpleReportCache.getEntityCountByChunk(dimensionId).getOrDefault(chunkPos, 0);
                     int worldX = chunkPos.x * 16 + 8;
                     int worldZ = chunkPos.z * 16 + 8;

@@ -69,7 +69,7 @@ public class MessageUtils {
      * 获取格式化的警告消息
      */
     public static String getWarningMessage(int remainingSeconds) {
-        return formatTemplate(Config.WARNING_MESSAGE.get(), 
+        return formatTemplate(Config.MESSAGE.warningMessage.get(), 
             Map.of("time", String.valueOf(remainingSeconds)));
     }
 
@@ -77,7 +77,7 @@ public class MessageUtils {
      * 获取格式化的物品过多警告消息（支持点击传送）
      */
     public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ, int ticketLevel) {
-        String message = formatTemplate(Config.TOO_MANY_ITEMS_WARNING_MESSAGE.get(), Map.of(
+        String message = formatTemplate(Config.MESSAGE.tooManyItemsWarningMessage.get(), Map.of(
             "count", String.valueOf(itemCount),
             "x", String.valueOf(worldX),
             "z", String.valueOf(worldZ),
@@ -102,7 +102,7 @@ public class MessageUtils {
      * 构建详细清理完成消息
      */
     public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
-        MutableComponent mainComponent = Component.literal(Config.CLEANUP_RESULT_HEADER.get());
+        MutableComponent mainComponent = Component.literal(Config.MESSAGE.cleanupResultHeader.get());
         
         // 按字典序排序处理所有维度
         dimensionStats.entrySet().stream()
@@ -127,16 +127,16 @@ public class MessageUtils {
         }
         
         // 创建基础文本
-        String baseText = formatTemplate(Config.DIMENSION_ENTRY_FORMAT.get(), Map.of(
+        String baseText = formatTemplate(Config.MESSAGE.dimensionEntryFormat.get(), Map.of(
             "name", getDimensionDisplayName(dimensionId),
             "items", String.valueOf(dimensionStats.itemsCleaned()),
             "entities", String.valueOf(dimensionStats.projectilesCleaned())
         ));
         
         // 创建可点击的按钮
-        String buttonText = formatTemplate(Config.TRASH_BOX_BUTTON_TEXT.get(), 
+        String buttonText = formatTemplate(Config.MESSAGE.trashBoxButtonText.get(), 
             Map.of("name", getDimensionDisplayName(dimensionId)));
-        String hoverText = formatTemplate(Config.TRASH_BOX_BUTTON_HOVER.get(), 
+        String hoverText = formatTemplate(Config.MESSAGE.trashBoxButtonHover.get(), 
             Map.of("name", getDimensionDisplayName(dimensionId)));
             
         MutableComponent button = Component.literal(buttonText)

@@ -28,13 +28,13 @@ public class ErrorHandler {
         
         try {
             T result = operation.get();
-            if (Config.ENABLE_DEBUG_LOGS.get()) {
+            if (Config.TECHNICAL.enableDebugLogs.get()) {
                 LOGGER.debug("Operation {} succeeded for {}", operationName, playerName);
             }
             return result;
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for {}: {}", operationName, playerName, e.getMessage());
-            if (player != null && Config.ENABLE_DEBUG_LOGS.get()) {
+            if (player != null && Config.TECHNICAL.enableDebugLogs.get()) {
                 // 只在调试模式下向玩家发送错误信息
                 MessageUtils.sendErrorMessage(player, "operation.error.general");
             }

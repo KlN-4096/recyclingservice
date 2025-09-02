@@ -86,7 +86,7 @@ public class PaymentService {
      */
     public static void sendPaymentErrorMessage(Player player, int requiredCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageUtils.formatTemplate(Config.PAYMENT_ERROR_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageUtils.formatTemplate(Config.MESSAGE.paymentErrorMessage.get(), Map.of(
             "cost", String.valueOf(requiredCost),
             "item", itemName
         ));
@@ -101,7 +101,7 @@ public class PaymentService {
      */
     public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
         String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageUtils.formatTemplate(Config.PAYMENT_SUCCESS_MESSAGE.get(), Map.of(
+        String formattedMessage = MessageUtils.formatTemplate(Config.MESSAGE.paymentSuccessMessage.get(), Map.of(
             "cost", String.valueOf(deductedCost),
             "item", itemName
         ));

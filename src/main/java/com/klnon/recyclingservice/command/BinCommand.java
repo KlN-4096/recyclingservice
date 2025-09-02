@@ -64,7 +64,7 @@ public class BinCommand {
     private static int showHelp(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         
-        String[] helpMessages = Config.CMD_HELP_MESSAGES.get().toArray(new String[0]);
+        String[] helpMessages = Config.MESSAGE.cmdHelpMessages.get().toArray(new String[0]);
         for (String message : helpMessages) {
             source.sendSuccess(() -> Component.literal(message), false);
         }
@@ -173,7 +173,7 @@ public class BinCommand {
         
         return ErrorHandler.handleCommandOperation(player, "手动清理",
             () -> {
-                source.sendSuccess(() -> Component.literal(Config.MANUAL_CLEANUP_START.get()), true);
+                source.sendSuccess(() -> Component.literal(Config.MESSAGE.manualCleanupStart.get()), true);
                 
                 // 触发手动清理
                 if (player != null) {

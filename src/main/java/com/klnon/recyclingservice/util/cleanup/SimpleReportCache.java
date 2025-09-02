@@ -79,7 +79,7 @@ public class SimpleReportCache {
      */
     private static void checkAndUpdateOverloadedStatus(ResourceLocation dimension, ChunkPos chunkPos, int count) {
         try {
-            int threshold = com.klnon.recyclingservice.Config.TOO_MANY_ITEMS_WARNING.get();
+            int threshold = com.klnon.recyclingservice.Config.TECHNICAL.tooManyItemsWarning.get();
             Set<ChunkPos> overloaded = overloadedChunks.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet());
             
             if (count >= threshold) {

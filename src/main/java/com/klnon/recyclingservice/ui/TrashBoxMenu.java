@@ -33,10 +33,10 @@ public class TrashBoxMenu extends ChestMenu {
     private final int trashSlots;
 
     public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
-        super(UiUtils.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.TRASH_BOX_ROWS.get());
+        super(UiUtils.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.GAMEPLAY.trashBoxRows.get());
         this.trashBox = trashBox;
         this.handler = new TrashBoxHandler(trashBox);
-        this.trashSlots = Config.TRASH_BOX_ROWS.get() * 9;
+        this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;
     }
     
     // === 静态工具方法：打开垃圾箱UI ===

@@ -26,7 +26,7 @@ public class UiUtils {
      * 根据配置的行数获取对应的菜单类型
      */
     public static MenuType<ChestMenu> getMenuTypeForRows() {
-        return switch(Config.TRASH_BOX_ROWS.get()) {
+        return switch(Config.GAMEPLAY.trashBoxRows.get()) {
             case 1 -> MenuType.GENERIC_9x1;
             case 2 -> MenuType.GENERIC_9x2;
             case 3 -> MenuType.GENERIC_9x3;
@@ -101,7 +101,7 @@ public class UiUtils {
         // 添加我们的真实数量信息（带标识符）
         loreLines.add(Component.literal(LORE_PREFIX + LORE_SUFFIX)); // 空行分隔符
         loreLines.add(Component.literal(
-                LORE_PREFIX + MessageUtils.formatTemplate(Config.ITEM_COUNT_DISPLAY_FORMAT.get(), Map.of(
+                LORE_PREFIX + MessageUtils.formatTemplate(Config.MESSAGE.itemCountDisplayFormat.get(), Map.of(
                         "current", String.valueOf(stack.getCount()),
                         "max", String.valueOf(Config.getItemStackMultiplier(stack))
                 )) + LORE_SUFFIX

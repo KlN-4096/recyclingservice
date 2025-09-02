@@ -35,71 +35,6 @@ public class Config {
         SPEC = BUILDER.build();
     }
     
-    
-    // === 快速访问接口 - 保持向后兼容 ===
-    
-    // 基础清理设置
-    public static final ModConfigSpec.IntValue AUTO_CLEAN_TIME = GAMEPLAY.autoCleanTime;
-    public static final ModConfigSpec.BooleanValue SHOW_CLEANUP_WARNINGS = GAMEPLAY.showCleanupWarnings;
-    public static final ModConfigSpec.IntValue WARNING_COUNTDOWN_START = GAMEPLAY.warningCountdownStart;
-    
-    // 垃圾箱设置
-    public static final ModConfigSpec.IntValue TRASH_BOX_ROWS = GAMEPLAY.trashBoxRows;
-    public static final ModConfigSpec.IntValue ITEM_STACK_MULTIPLIER = GAMEPLAY.itemStackMultiplier;
-    public static final ModConfigSpec.IntValue MAX_BOXES_PER_DIMENSION = GAMEPLAY.maxBoxesPerDimension;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_TRASH_ALLOW_PUT_IN = GAMEPLAY.dimensionTrashAllowPutIn;
-    public static final ModConfigSpec.BooleanValue DIMENSION_TRASH_CROSS_ACCESS = GAMEPLAY.dimensionTrashCrossAccess;
-    
-    // 物品过滤
-    public static final ModConfigSpec.ConfigValue<String> CLEAN_MODE = GAMEPLAY.cleanMode;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WHITELIST = GAMEPLAY.whitelist;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLIST = GAMEPLAY.blacklist;
-    public static final ModConfigSpec.BooleanValue CLEAN_PROJECTILES = GAMEPLAY.cleanProjectiles;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_TYPES_TO_CLEAN = GAMEPLAY.projectileTypesToClean;
-    public static final ModConfigSpec.BooleanValue PROTECT_CREATE_PROCESSING_ITEMS = GAMEPLAY.protectCreateProcessingItems;
-    
-    // 付费系统
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ITEM_TYPE = GAMEPLAY.paymentItemType;
-    public static final ModConfigSpec.IntValue CROSS_DIMENSION_ACCESS_COST = GAMEPLAY.crossDimensionAccessCost;
-    public static final ModConfigSpec.ConfigValue<String> INSERT_PAYMENT_MODE = GAMEPLAY.insertPaymentMode;
-    public static final ModConfigSpec.ConfigValue<String> EXTRACT_PAYMENT_MODE = GAMEPLAY.extractPaymentMode;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DIMENSION_MULTIPLIERS = GAMEPLAY.dimensionMultipliers;
-    
-    // 性能优化
-    public static final ModConfigSpec.IntValue MAX_PROCESSING_TIME_MS = TECHNICAL.maxProcessingTimeMs;
-    public static final ModConfigSpec.IntValue BATCH_SIZE = TECHNICAL.batchSize;
-    
-    // 区块管理
-    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_ITEM_WARNING = TECHNICAL.enableChunkItemWarning;
-    public static final ModConfigSpec.BooleanValue ENABLE_CHUNK_FREEZING = TECHNICAL.enableChunkFreezing;
-    public static final ModConfigSpec.IntValue TOO_MANY_ITEMS_WARNING = TECHNICAL.tooManyItemsWarning;
-    public static final ModConfigSpec.IntValue CHUNK_FREEZING_SEARCH_RADIUS = TECHNICAL.chunkFreezingSearchRadius;
-    
-    // 调试设置
-    public static final ModConfigSpec.BooleanValue ENABLE_DEBUG_LOGS = TECHNICAL.enableDebugLogs;
-    // 消息模板
-    public static final ModConfigSpec.ConfigValue<String> ITEM_COUNT_DISPLAY_FORMAT = MESSAGE.itemCountDisplayFormat;
-    
-    // 清理结果消息
-    public static final ModConfigSpec.ConfigValue<String> CLEANUP_RESULT_HEADER = MESSAGE.cleanupResultHeader;
-    public static final ModConfigSpec.ConfigValue<String> DIMENSION_ENTRY_FORMAT = MESSAGE.dimensionEntryFormat;
-    public static final ModConfigSpec.ConfigValue<String> ERROR_CLEANUP_FAILED = MESSAGE.errorCleanupFailed;
-    public static final ModConfigSpec.ConfigValue<String> MANUAL_CLEANUP_START = MESSAGE.manualCleanupStart;
-    
-    // 邮费系统消息
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_ERROR_MESSAGE = MESSAGE.paymentErrorMessage;
-    public static final ModConfigSpec.ConfigValue<String> PAYMENT_SUCCESS_MESSAGE = MESSAGE.paymentSuccessMessage;
-    
-    // 警告消息
-    public static final ModConfigSpec.ConfigValue<String> WARNING_MESSAGE = MESSAGE.warningMessage;
-    public static final ModConfigSpec.ConfigValue<String> TOO_MANY_ITEMS_WARNING_MESSAGE = MESSAGE.tooManyItemsWarningMessage;
-    
-    // 命令系统消息
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> CMD_HELP_MESSAGES = MESSAGE.cmdHelpMessages;
-    
-    // UI界面消息
-    public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_TEXT = MESSAGE.trashBoxButtonText;
-    public static final ModConfigSpec.ConfigValue<String> TRASH_BOX_BUTTON_HOVER = MESSAGE.trashBoxButtonHover;
 
     
     // === 便捷访问方法 ===
@@ -108,14 +43,14 @@ public class Config {
      * 获取清理间隔（tick）
      */
     public static int getCleanIntervalTicks() {
-        return AUTO_CLEAN_TIME.get() * 20;
+        return GAMEPLAY.autoCleanTime.get() * 20;
     }
     
     /**
      * 获取付费物品的ResourceLocation
      */
     public static ResourceLocation getPaymentItem() {
-        return ResourceLocation.parse(PAYMENT_ITEM_TYPE.get());
+        return ResourceLocation.parse(GAMEPLAY.paymentItemType.get());
     }
     
     /**
@@ -136,14 +71,14 @@ public class Config {
      * 检查是否为白名单模式
      */
     public static boolean isWhitelistMode() {
-        return "whitelist".equals(CLEAN_MODE.get());
+        return "whitelist".equals(GAMEPLAY.cleanMode.get());
     }
     
     /**
      * 获取物品堆叠合并限制
      */
     public static int getItemStackMultiplier(ItemStack itemStack) {
-        return ITEM_STACK_MULTIPLIER.get() * itemStack.getMaxStackSize();
+        return GAMEPLAY.itemStackMultiplier.get() * itemStack.getMaxStackSize();
     }
     
     /**
@@ -151,10 +86,10 @@ public class Config {
      */
     public static void updateCaches() {
         try {
-            whitelistCache = new HashSet<>(WHITELIST.get());
-            blacklistCache = new HashSet<>(BLACKLIST.get());
-            projectileTypesCache = new HashSet<>(PROJECTILE_TYPES_TO_CLEAN.get());
-            allowPutInDimensionsCache = new HashSet<>(DIMENSION_TRASH_ALLOW_PUT_IN.get());
+            whitelistCache = new HashSet<>(GAMEPLAY.whitelist.get());
+            blacklistCache = new HashSet<>(GAMEPLAY.blacklist.get());
+            projectileTypesCache = new HashSet<>(GAMEPLAY.projectileTypesToClean.get());
+            allowPutInDimensionsCache = new HashSet<>(GAMEPLAY.dimensionTrashAllowPutIn.get());
             parseDimensionMultipliers();
         } catch (Exception e) {
             Recyclingservice.LOGGER.error("Failed to update config caches", e);
@@ -173,7 +108,7 @@ public class Config {
         dimensionMultiplierCache.clear();
         
         try {
-            DIMENSION_MULTIPLIERS.get().forEach(entry -> {
+            GAMEPLAY.dimensionMultipliers.get().forEach(entry -> {
                 try {
                     String[] parts = entry.split(":");
                     if (parts.length == 3) {

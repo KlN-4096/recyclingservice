@@ -25,7 +25,7 @@ public class TrashBoxHandler {
     
     public TrashBoxHandler(TrashBox trashBox) {
         this.trashBox = trashBox;
-        this.trashSlots = Config.TRASH_BOX_ROWS.get() * 9;
+        this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;
     }
     
     // === 支付验证 ===
@@ -89,20 +89,20 @@ public class TrashBoxHandler {
     private int calculatePaymentCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
         boolean isSameDimension = playerDim.equals(trashDim);
         String paymentMode = "insert".equals(operation) ? 
-            Config.INSERT_PAYMENT_MODE.get() : Config.EXTRACT_PAYMENT_MODE.get();
+            Config.GAMEPLAY.insertPaymentMode.get() : Config.GAMEPLAY.extractPaymentMode.get();
         
         return switch (paymentMode) {
             case "current_dimension_free" -> 
                 isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
             case "all_dimensions_pay" -> 
-                isSameDimension ? Config.CROSS_DIMENSION_ACCESS_COST.get() : 
+                isSameDimension ? Config.GAMEPLAY.crossDimensionAccessCost.get() : 
                                   calculateCrossDimensionCost(trashDim);
             default -> 0;
         };
     }
     
     private int calculateCrossDimensionCost(ResourceLocation trashDim) {
-        int baseCost = Config.CROSS_DIMENSION_ACCESS_COST.get();
+        int baseCost = Config.GAMEPLAY.crossDimensionAccessCost.get();
         double multiplier = Config.getDimensionMultiplier(trashDim.toString());
         return (int) Math.ceil(baseCost * multiplier);
     }

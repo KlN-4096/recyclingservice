@@ -41,7 +41,7 @@ public class ItemFilter {
      */
     public static boolean shouldCleanItem(ItemEntity entity) {
         // 检查是否启用了Create模组保护且物品正在被处理
-        if (Config.PROTECT_CREATE_PROCESSING_ITEMS.get() && isBeingProcessedByCreate(entity)) {
+        if (Config.GAMEPLAY.protectCreateProcessingItems.get() && isBeingProcessedByCreate(entity)) {
             return false; // 保护正在处理中的物品
         }
         
@@ -91,7 +91,7 @@ public class ItemFilter {
      * @return 是否应该清理
      */
     public static boolean shouldCleanProjectile(Entity entity) {
-        return Config.CLEAN_PROJECTILES.get() && 
+        return Config.GAMEPLAY.cleanProjectiles.get() && 
                Config.projectileTypesCache.contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
     
