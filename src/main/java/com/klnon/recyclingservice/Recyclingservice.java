@@ -1,5 +1,8 @@
 package com.klnon.recyclingservice;
 
+import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
+import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
+import com.klnon.recyclingservice.infrastructure.command.BinCommand;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -14,9 +17,6 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import com.klnon.recyclingservice.event.AutoCleanupEvent;
-import com.klnon.recyclingservice.command.BinCommand;
-import com.klnon.recyclingservice.util.management.ChunkFreezer;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
 @Mod(Recyclingservice.MODID)

@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice;
 
-import com.klnon.recyclingservice.config.*;
+import com.klnon.recyclingservice.foundation.config.*;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.minecraft.resources.ResourceLocation;
