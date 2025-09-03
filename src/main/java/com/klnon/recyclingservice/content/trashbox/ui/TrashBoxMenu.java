@@ -5,7 +5,7 @@ import com.klnon.recyclingservice.Recyclingservice;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.core.TrashManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.payment.PaymentService;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
@@ -46,11 +46,10 @@ public class TrashBoxMenu extends ChestMenu {
     /**
      * 为玩家打开指定维度的垃圾箱UI
      */
-    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, 
-                                      int boxNumber, TrashManager trashManager) {
+    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber) {
         return ErrorHelper.handleOperation(player, "openTrashBox", () -> {
             // 获取指定的垃圾箱
-            TrashBox trashBox = trashManager.getOrCreateTrashBox(dimensionId, boxNumber);
+            TrashBox trashBox = TrashBoxManager.getOrCreateTrashBox(dimensionId, boxNumber);
             if (trashBox == null) return false;
 
             // 创建简洁的标题：例如 "overworld-1"

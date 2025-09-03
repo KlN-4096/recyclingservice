@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice.infrastructure.command;
 
-import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.ui.TrashBoxMenu;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
@@ -84,10 +84,8 @@ public class BinCommand {
             () -> {
                 ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
                 int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
-                // 获取垃圾箱管理器
-                var trashManager = CleanupManager.getTrashManager();
                 // 打开垃圾箱
-                return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber, trashManager);
+                return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber);
             });
     }
     
@@ -140,8 +138,7 @@ public class BinCommand {
             try {
                 // 尝试获取维度ID
                 ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
-                var trashManager = CleanupManager.getTrashManager();
-                List<TrashBox> existingBoxes = trashManager.getDimensionTrashBoxes(dimensionId);
+                List<TrashBox> existingBoxes = TrashBoxManager.getDimensionTrashBoxes(dimensionId);
 
                 List<String> suggestions = new ArrayList<>();
 

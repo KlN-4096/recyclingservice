@@ -2,12 +2,12 @@ package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
+import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
-import com.klnon.recyclingservice.content.trashbox.core.TrashManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
@@ -30,8 +30,6 @@ import java.util.*;
  * 设计特点：线性执行，简洁高效
  */
 public class CleanupManager {
-    // 全局垃圾箱管理器实例
-    private static final TrashManager trashManager = new TrashManager();
     
     /**
      * 执行自动清理 - 同步版本
@@ -44,7 +42,7 @@ public class CleanupManager {
             Map<ResourceLocation, ScanResult> scanResults = collectAllReportedEntities(server);
             
             // 2. 清空垃圾箱
-            trashManager.clearAll();
+            TrashBoxManager.clearAll();
             
             // 3. 处理各维度
             Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
@@ -63,7 +61,7 @@ public class CleanupManager {
                     
                     // 区块冻结检查
                     if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
-                        ChunkFreezer.performChunkFreezingCheck(dimensionId, level);
+                        ChunkManager.performFreezingCheck(dimensionId, level);
                     }
                     
                     // 处理物品
@@ -74,7 +72,7 @@ public class CleanupManager {
                     List<ItemStack> itemsToClean = EntityMerger.combine(itemStacksToClean);
                     
                     // 存储到垃圾箱
-                    trashManager.addItemsToDimension(dimensionId, itemsToClean);
+                    TrashBoxManager.addItemsToDimension(dimensionId, itemsToClean);
                     
                     // 统计弹射物
                     List<Entity> projectilesToClean = EntityFilter.filterProjectiles(scanResult.projectiles());
@@ -214,16 +212,6 @@ public class CleanupManager {
             // 整个收集出错返回空结果
             return ScanResult.EMPTY;
         }
-    }
-
-    /**
-     * 获取垃圾箱管理器实例
-     * 用于外部访问垃圾箱系统
-     * 
-     * @return 垃圾箱管理器实例
-     */
-    public static TrashManager getTrashManager() {
-        return trashManager;
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice.foundation.events;
 
-import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
+import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.server.MinecraftServer;
@@ -68,7 +68,7 @@ public class AutoCleanupEvent {
         
         // 执行检查的条件：到了恢复检查时间，或者到了暂停检查时间
         if (shouldCheckRestore || shouldCheckSuspend) {
-            ChunkFreezer.performDynamicChunkManagement(server);
+            ChunkManager.performDynamicManagement(server);
             
             if (shouldCheckRestore) {
                 lastRestoreCheck = currentTimeSeconds;

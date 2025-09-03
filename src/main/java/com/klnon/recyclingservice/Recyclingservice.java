@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice;
 
-import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
+import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.infrastructure.command.BinCommand;
 import org.slf4j.Logger;
@@ -66,7 +66,7 @@ public class Recyclingservice {
         LOGGER.info("Server fully started, performing startup chunk cleanup");
         
         // 执行启动区块清理
-        ChunkFreezer.performStartupChunkCleanup(event.getServer());
+        ChunkManager.performStartupCleanup(event.getServer());
     }
     
     // 注册命令事件
