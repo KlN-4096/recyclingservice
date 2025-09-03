@@ -6,7 +6,8 @@ bin
 .classpath
 .project
 .claude
-src/区块级清理参考
+.vscode
+.github
 
 # idea
 out
