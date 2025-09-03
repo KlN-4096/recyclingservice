@@ -12,9 +12,11 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import com.klnon.recyclingservice.event.AutoCleanupEvent;
 import com.klnon.recyclingservice.command.BinCommand;
+import com.klnon.recyclingservice.util.management.ChunkFreezer;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
 @Mod(Recyclingservice.MODID)
@@ -56,6 +58,15 @@ public class Recyclingservice {
         // 初始化性能优化缓存
         Config.updateCaches();
         LOGGER.info("Performance caches initialized");
+    }
+    
+    // 服务器启动完成事件 - 执行启动区块清理
+    @SubscribeEvent
+    public void onServerStarted(ServerStartedEvent event) {
+        LOGGER.info("Server fully started, performing startup chunk cleanup");
+        
+        // 执行启动区块清理
+        ChunkFreezer.performStartupChunkCleanup(event.getServer());
     }
     
     // 注册命令事件

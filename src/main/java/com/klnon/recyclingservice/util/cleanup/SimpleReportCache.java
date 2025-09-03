@@ -8,7 +8,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
-import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 /**
  * 主动上报缓存系统 - UUID统一操作的简化版本

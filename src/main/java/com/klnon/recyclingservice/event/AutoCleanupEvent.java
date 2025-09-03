@@ -7,9 +7,11 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.service.CleanupService;
 import com.klnon.recyclingservice.util.MessageUtils;
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.util.management.ChunkFreezer;
 
 /**
  * 自动清理事件处理器 - 定时触发清理并显示警告
+ * 新增动态区块管理功能
  */
 public class AutoCleanupEvent {
     
@@ -17,8 +19,20 @@ public class AutoCleanupEvent {
     private static int ticks = 0;
     private static boolean cleaning = false;
     
+    // 动态区块管理计时器
+    private static int dynamicManagementTicks = 0;
+    private static long lastSuspendCheck = 0;
+    private static long lastRestoreCheck = 0;
+    
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post event) {
+        // 动态区块管理
+        dynamicManagementTicks++;
+        if (dynamicManagementTicks % TICKS_PER_SECOND == 0) { // 每秒检查一次
+            checkDynamicChunkManagement(event.getServer());
+        }
+        
+        // 原有的清理逻辑
         if (++ticks < Config.getCleanIntervalTicks()) {
             if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
                 checkAndSendWarning(event.getServer());
@@ -32,6 +46,38 @@ public class AutoCleanupEvent {
         
         cleaning = true;
         doCleanup(event.getServer());
+    }
+    
+    /**
+     * 检查动态区块管理 - 根据配置间隔执行性能检查和区块调整
+     */
+    private static void checkDynamicChunkManagement(MinecraftServer server) {
+        if (!Config.TECHNICAL.enableDynamicChunkManagement.get()) {
+            return;
+        }
+        
+        long currentTimeSeconds = dynamicManagementTicks / TICKS_PER_SECOND;
+        int restoreInterval = Config.TECHNICAL.restoreCheckInterval.get() * 60; // 转换为秒
+        int suspendInterval = Config.TECHNICAL.suspendCheckInterval.get() * 60; // 转换为秒
+        
+        // 检查是否需要进行恢复检查（更频繁）
+        boolean shouldCheckRestore = (currentTimeSeconds - lastRestoreCheck) >= restoreInterval;
+        
+        // 检查是否需要进行暂停检查（较少频繁）
+        boolean shouldCheckSuspend = (currentTimeSeconds - lastSuspendCheck) >= suspendInterval;
+        
+        // 执行检查的条件：到了恢复检查时间，或者到了暂停检查时间
+        if (shouldCheckRestore || shouldCheckSuspend) {
+            ChunkFreezer.performDynamicChunkManagement(server);
+            
+            if (shouldCheckRestore) {
+                lastRestoreCheck = currentTimeSeconds;
+            }
+            
+            if (shouldCheckSuspend) {
+                lastSuspendCheck = currentTimeSeconds;
+            }
+        }
     }
     
     /**
