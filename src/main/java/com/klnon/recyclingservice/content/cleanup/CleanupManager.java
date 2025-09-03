@@ -3,7 +3,6 @@ package com.klnon.recyclingservice.content.cleanup;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityCacheReader;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
@@ -41,9 +40,8 @@ public class CleanupManager {
      */
     public static CleanupResult performAutoCleanup(MinecraftServer server) {
         try {
-            // 1. 收集缓存实体
-            Map<ResourceLocation, EntityCacheReader.ScanResult> scanResults =
-                EntityCacheReader.collectAllReportedEntities(server);
+            // 1. 收集缓存实体 - 直接处理，无需额外抽象层
+            Map<ResourceLocation, ScanResult> scanResults = collectAllReportedEntities(server);
             
             // 2. 清空垃圾箱
             trashManager.clearAll();
@@ -54,9 +52,9 @@ public class CleanupManager {
             int totalProjectilesCleaned = 0;
             boolean hasEntitiesToDelete = false;
             
-            for (Map.Entry<ResourceLocation, EntityCacheReader.ScanResult> entry : scanResults.entrySet()) {
+            for (Map.Entry<ResourceLocation, ScanResult> entry : scanResults.entrySet()) {
                 ResourceLocation dimensionId = entry.getKey();
-                EntityCacheReader.ScanResult scanResult = entry.getValue();
+                ScanResult scanResult = entry.getValue();
                 
                 try {
                     // 获取维度
@@ -147,6 +145,78 @@ public class CleanupManager {
     
     
     /**
+     * 收集所有维度的上报实体，按维度分类返回
+     * @param server 服务器实例
+     * @return 维度ID -> 收集结果映射
+     */
+    private static Map<ResourceLocation, ScanResult> collectAllReportedEntities(MinecraftServer server) {
+        Map<ResourceLocation, ScanResult> results = new HashMap<>();
+        
+        try {
+            // 为所有维度执行收集
+            for (ServerLevel level : server.getAllLevels()) {
+                try {
+                    ScanResult result = collectReportedEntities(level);
+                    if (!result.isEmpty()) {
+                        results.put(level.dimension().location(), result);
+                    }
+                } catch (Exception e) {
+                    // 单个维度出错就跳过
+                    Recyclingservice.LOGGER.debug("Failed to collect entities from dimension: {}, skipping", 
+                        level.dimension().location(), e);
+                }
+            }
+        } catch (Exception e) {
+            // 出错返回空结果
+            Recyclingservice.LOGGER.error("Failed to collect entities from all dimensions", e);
+        }
+        
+        return results;
+    }
+    
+    /**
+     * 从缓存收集单个维度的实体报告
+     * @param level 服务器维度
+     * @return 收集结果
+     */
+    private static ScanResult collectReportedEntities(ServerLevel level) {
+        try {
+            ResourceLocation dimension = level.dimension().location();
+            List<EntityReportCache.EntityReport> reportedEntries = EntityReportCache.getReportedEntries(dimension);
+            
+            // 直接从 EntityReport 分类，避免冗余转换
+            List<ItemEntity> items = new ArrayList<>();
+            List<Entity> projectiles = new ArrayList<>();
+            
+            for (EntityReportCache.EntityReport report : reportedEntries) {
+                try {
+                    Entity entity = report.entity();
+                    
+                    // 验证实体仍然有效
+                    if (entity.isRemoved() || !entity.isAlive()) {
+                        continue; // 无效实体跳过
+                    }
+                    
+                    // 直接分类，无需重复类型判断
+                    if (entity instanceof ItemEntity itemEntity) {
+                        items.add(itemEntity);
+                    } else {
+                        projectiles.add(entity);
+                    }
+                } catch (Exception e) {
+                    // 单个实体出错就跳过
+                }
+            }
+            
+            return new ScanResult(items, projectiles);
+            
+        } catch (Exception e) {
+            // 整个收集出错返回空结果
+            return ScanResult.EMPTY;
+        }
+    }
+
+    /**
      * 获取垃圾箱管理器实例
      * 用于外部访问垃圾箱系统
      * 
@@ -154,6 +224,17 @@ public class CleanupManager {
      */
     public static TrashManager getTrashManager() {
         return trashManager;
+    }
+
+    /**
+     * 实体收集结果类 - 包含分类后的物品和弹射物
+     */
+    private record ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
+        public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
+
+        public boolean isEmpty() {
+            return items.isEmpty() && projectiles.isEmpty();
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.foundation.utility;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import org.slf4j.Logger;
@@ -9,10 +10,12 @@ import java.util.function.Supplier;
 /**
  * 错误处理工具类 - 提供统一的错误处理和日志记录
  * 职责单一：只负责错误捕获、日志记录和默认值返回
+ * 简化版本：移除对其他Helper的依赖，避免循环引用
  */
 public class ErrorHelper {
     
     private static final Logger LOGGER = Recyclingservice.LOGGER;
+    private static final int ERROR_MESSAGE_COLOR = 0xFF5555; // 红色
     
     /**
      * 通用错误处理方法
@@ -35,8 +38,8 @@ public class ErrorHelper {
         } catch (Exception e) {
             LOGGER.error("Operation {} failed for {}: {}", operationName, playerName, e.getMessage());
             if (player != null && Config.TECHNICAL.enableDebugLogs.get()) {
-                // 只在调试模式下向玩家发送错误信息
-                MessageHelper.sendErrorMessage(player, "operation.error.general");
+                // 直接发送错误消息，避免对MessageHelper的依赖
+                sendSimpleErrorMessage(player, "Operation failed: " + operationName);
             }
             return defaultValue;
         }
@@ -64,5 +67,22 @@ public class ErrorHelper {
      */
     public static <T> T handleSilently(String operationName, Supplier<T> operation, T defaultValue) {
         return handleOperation(null, operationName, operation, defaultValue);
+    }
+    
+    /**
+     * 发送简单错误消息
+     * @param player 玩家
+     * @param message 错误消息
+     */
+    private static void sendSimpleErrorMessage(ServerPlayer player, String message) {
+        try {
+            Component component = Component.literal(message)
+                .withStyle(style -> style.withColor(ERROR_MESSAGE_COLOR));
+            player.sendSystemMessage(component);
+        } catch (Exception e) {
+            // 发送消息失败也不要抛出异常，只记录日志
+            LOGGER.debug("Failed to send error message to player {}: {}", 
+                player.getName().getString(), e.getMessage());
+        }
     }
 }
