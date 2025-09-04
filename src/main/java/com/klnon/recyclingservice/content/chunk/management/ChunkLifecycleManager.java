@@ -1,5 +1,8 @@
 package com.klnon.recyclingservice.content.chunk.management;
 
+import com.klnon.recyclingservice.content.chunk.management.monitoring.ItemBasedFreezer;
+import com.klnon.recyclingservice.content.chunk.management.performance.PerformanceBasedController;
+import com.klnon.recyclingservice.content.chunk.management.startup.ChunkTakeoverHandler;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkDataStore;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkInfo;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkState;
@@ -20,7 +23,7 @@ public class ChunkLifecycleManager {
      * 服务器启动时的区块接管
      */
     public static void performStartupTakeover(MinecraftServer server) {
-        com.klnon.recyclingservice.content.chunk.management.startup.ChunkTakeoverHandler
+        ChunkTakeoverHandler
             .performTakeover(server);
     }
     
@@ -28,7 +31,7 @@ public class ChunkLifecycleManager {
      * 清理时的超载区块处理
      */
     public static void performOverloadHandling(ResourceLocation dimensionId, ServerLevel level) {
-        com.klnon.recyclingservice.content.chunk.management.monitoring.ItemBasedFreezer
+        ItemBasedFreezer
             .handleOverloadedChunks(dimensionId, level);
     }
     
@@ -36,7 +39,7 @@ public class ChunkLifecycleManager {
      * 物品监控检查
      */
     public static void performItemMonitoring(MinecraftServer server) {
-        com.klnon.recyclingservice.content.chunk.management.monitoring.ItemBasedFreezer
+        ItemBasedFreezer
             .performItemCheck(server);
     }
     
@@ -44,7 +47,7 @@ public class ChunkLifecycleManager {
      * 性能调整检查
      */
     public static void performPerformanceAdjustment(MinecraftServer server) {
-        com.klnon.recyclingservice.content.chunk.management.performance.PerformanceBasedController
+        PerformanceBasedController
             .performAdjustment(server);
     }
     

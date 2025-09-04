@@ -39,4 +39,8 @@ public class GlobalDeleteSignal {
         
         return true;
     }
+
+    public static boolean getSignal(){
+        return deleteSignalActive;
+    }
 }

@@ -92,29 +92,31 @@ public class ChunkTakeoverHandler {
             }
             
             try {
-                // 移除非白名单tickets
-                for (Ticket<?> ticket : toRemove) {
-                    distanceManager.removeTicket(chunkKey, ticket);
-                }
-                processed++;
-                
-                // 检查是否需要管理
+                // 1. 先检查区块内容(趁着区块还被其他ticket加载)
                 var chunkAccess = level.getChunkSource().getChunkNow(chunkPos.x, chunkPos.z);
                 if (chunkAccess != null) {
                     int blockEntityCount = chunkAccess.getBlockEntities().size();
                     
                     if (blockEntityCount >= threshold) {
-                        // 添加管理
+                        // 2. 值得接管：先添加我们的ticket保护区块
                         if (ChunkDataStore.addManagedChunk(chunkPos, level, blockEntityCount)) {
                             managed++;
+                            Recyclingservice.LOGGER.debug("Took over chunk ({}, {}) with {} block entities", 
+                                chunkPos.x, chunkPos.z, blockEntityCount);
                         }
                     } else {
-                        // 标记为未管理状态
+                        // 不值得管理，标记为未管理状态
                         ChunkDataStore.updateChunk(dimension, 
                             new com.klnon.recyclingservice.content.chunk.management.storage.ChunkInfo(
                                 chunkPos, ChunkState.UNMANAGED, blockEntityCount));
                     }
                 }
+                
+                // 3. 最后移除其他模组的tickets(此时重要区块已被我们的ticket保护)
+                for (Ticket<?> ticket : toRemove) {
+                    distanceManager.removeTicket(chunkKey, ticket);
+                }
+                processed++;
                 
             } catch (Exception e) {
                 Recyclingservice.LOGGER.debug("Failed to process chunk ({}, {})", 

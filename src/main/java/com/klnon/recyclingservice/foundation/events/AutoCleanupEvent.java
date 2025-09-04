@@ -16,7 +16,7 @@ import com.klnon.recyclingservice.Config;
  */
 public class AutoCleanupEvent {
     
-    private static final int TICKS_PER_SECOND = 20;
+    private static final int TICKS_PER_SECOND = 200;
     private static int ticks = 0;
     private static boolean cleaning = false;
     

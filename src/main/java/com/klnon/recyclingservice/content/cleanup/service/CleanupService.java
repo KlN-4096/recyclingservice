@@ -37,49 +37,46 @@ public class CleanupService {
             Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
             int totalItemsCleaned = 0;
             int totalProjectilesCleaned = 0;
-            boolean hasEntitiesToDelete = false;
+            // 先删除实体,再添加到垃圾桶
+            GlobalDeleteSignal.activate(server);
             
-            for (Map.Entry<ResourceLocation, ScanResult> entry : scanResults.entrySet()) {
-                ResourceLocation dimensionId = entry.getKey();
-                ScanResult scanResult = entry.getValue();
-                
-                try {
-                    ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, dimensionId);
-                    ServerLevel level = server.getLevel(levelKey);
+            if(!GlobalDeleteSignal.getSignal()){
+                for (Map.Entry<ResourceLocation, ScanResult> entry : scanResults.entrySet()) {
+                    ResourceLocation dimensionId = entry.getKey();
+                    ScanResult scanResult = entry.getValue();
                     
-                    if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
-                        ChunkManager.performOverloadHandling(dimensionId, level);
+                    try {
+                        ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, dimensionId);
+                        ServerLevel level = server.getLevel(levelKey);
+                        
+                        if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
+                            ChunkManager.performOverloadHandling(dimensionId, level);
+                        }
+                        
+                        List<ItemStack> itemStacksToClean = new ArrayList<>();
+                        for (ItemEntity itemEntity : scanResult.items()) {
+                            itemStacksToClean.add(itemEntity.getItem());
+                        }
+                        List<ItemStack> itemsToClean = EntityMerger.combine(itemStacksToClean);
+                        
+                        TrashBoxManager.addItemsToDimension(dimensionId, itemsToClean);
+                        
+                        List<Entity> projectilesToClean = EntityFilter.filterProjectiles(scanResult.projectiles());
+                    
+                        
+                        DimensionCleanupStats stats = new DimensionCleanupStats(
+                            itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully");
+                        dimensionStats.put(dimensionId, stats);
+                        
+                        totalItemsCleaned += itemStacksToClean.size();
+                        totalProjectilesCleaned += projectilesToClean.size();
+                        
+                    } catch (Exception e) {
+                        dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed: " + e.getMessage()));
                     }
-                    
-                    List<ItemStack> itemStacksToClean = new ArrayList<>();
-                    for (ItemEntity itemEntity : scanResult.items()) {
-                        itemStacksToClean.add(itemEntity.getItem());
-                    }
-                    List<ItemStack> itemsToClean = EntityMerger.combine(itemStacksToClean);
-                    
-                    TrashBoxManager.addItemsToDimension(dimensionId, itemsToClean);
-                    
-                    List<Entity> projectilesToClean = EntityFilter.filterProjectiles(scanResult.projectiles());
-                    
-                    if (!scanResult.items().isEmpty() || !projectilesToClean.isEmpty()) {
-                        hasEntitiesToDelete = true;
-                    }
-                    
-                    DimensionCleanupStats stats = new DimensionCleanupStats(
-                        itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully");
-                    dimensionStats.put(dimensionId, stats);
-                    
-                    totalItemsCleaned += itemStacksToClean.size();
-                    totalProjectilesCleaned += projectilesToClean.size();
-                    
-                } catch (Exception e) {
-                    dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed: " + e.getMessage()));
                 }
             }
-            
-            if (hasEntitiesToDelete) {
-                GlobalDeleteSignal.activate(server);
-            }
+
             
             clearProcessedCache(new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, dimensionStats, ""));
             
