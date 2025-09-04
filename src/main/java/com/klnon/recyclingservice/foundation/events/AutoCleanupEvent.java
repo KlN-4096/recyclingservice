@@ -2,6 +2,7 @@ package com.klnon.recyclingservice.foundation.events;
 
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.chat.Component;
@@ -99,7 +100,7 @@ public class AutoCleanupEvent {
      */
     private static void doCleanup(MinecraftServer server) {
         try {
-            CleanupManager.CleanupResult result = CleanupManager.performAutoCleanup(server);
+            CleanupService.CleanupResult result = CleanupManager.performAutoCleanup(server);
             
             // 如果有清理结果才显示消息
             if (result.totalItemsCleaned() > 0 || result.totalProjectilesCleaned() > 0) {

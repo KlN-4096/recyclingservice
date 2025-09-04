@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice.foundation.utility;
 
-import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -123,7 +123,7 @@ public class MessageHelper {
      */
     private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
         // 使用instanceof模式匹配检查类型
-        if (!(stats instanceof CleanupManager.DimensionCleanupStats dimensionStats)) {
+        if (!(stats instanceof CleanupService.DimensionCleanupStats dimensionStats)) {
             return null;
         }
         

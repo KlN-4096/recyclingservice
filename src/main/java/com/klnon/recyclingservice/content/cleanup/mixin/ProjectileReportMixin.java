@@ -1,10 +1,6 @@
 package com.klnon.recyclingservice.content.cleanup.mixin;
 
-import com.klnon.recyclingservice.Config;
-
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
-import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -33,19 +29,19 @@ public class ProjectileReportMixin {
             }
             
             // 检查是否已在缓存中
-            boolean alreadyReported = EntityReportCache.isEntityReported(self);
+            boolean alreadyReported = CleanupManager.isEntityReported(self);
             
             // 检查是否应该上报
             boolean shouldReport = recyclingservice$shouldReport(self);
             
             if (shouldReport && !alreadyReported && !self.level().isClientSide()) {
                 // 应该上报且未上报 -> 上报
-                EntityReportCache.report(self);
+                CleanupManager.reportEntity(self);
             }
             
             // 检查全局删除信号，如果激活且在缓存中则自删除
             if (!self.level().isClientSide() && alreadyReported && 
-                GlobalDeleteSignal.shouldDelete(self.level().getServer())) {
+                CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 self.discard();
             }
         } catch (Exception e) {
@@ -57,9 +53,7 @@ public class ProjectileReportMixin {
     private boolean recyclingservice$shouldReport(Entity self) {
         try {
             return self.tickCount >= 10 * 20 && // 10秒后考虑清理
-                   Config.GAMEPLAY.cleanProjectiles.get() &&
-                   Config.projectileTypesCache.contains(
-                       BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()).toString());
+                   CleanupManager.shouldCleanProjectile(self);
         } catch (Exception e) {
             return false;
         }

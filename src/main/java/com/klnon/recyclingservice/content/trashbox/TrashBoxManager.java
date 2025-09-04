@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.content.trashbox;
 
+import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.core.TrashStorage;
 import net.minecraft.resources.ResourceLocation;
@@ -51,5 +52,17 @@ public class TrashBoxManager {
      */
     public static void clearAll() {
         trashStorage.clearAll();
+    }
+    
+    // === UI辅助功能 ===
+    
+    /**
+     * 检查两个物品是否为同一种物品（用于UI操作中的物品比较）
+     * @param stack1 第一个物品
+     * @param stack2 第二个物品
+     * @return 是否为同一种物品
+     */
+    public static boolean isSameItem(ItemStack stack1, ItemStack stack2) {
+        return EntityMerger.isSameItem(stack1, stack2);
     }
 }

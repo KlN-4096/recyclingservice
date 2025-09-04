@@ -1,8 +1,6 @@
 package com.klnon.recyclingservice.content.cleanup.mixin;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
-import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,22 +26,22 @@ public class ItemEntityReportMixin {
             }
             
             // 检查是否已在缓存中
-            boolean alreadyReported = EntityReportCache.isEntityReported(self);
+            boolean alreadyReported = CleanupManager.isEntityReported(self);
             
             // 检查是否应该上报
             boolean shouldReport = recyclingservice$shouldReport(self);
             
             if (shouldReport && !alreadyReported) {
                 // 应该上报且未上报 -> 上报
-                EntityReportCache.report(self);
+                CleanupManager.reportEntity(self);
             } else if (!shouldReport && alreadyReported && !self.level().isClientSide()) {
                 // 不应该上报但已上报 -> 取消上报
-                EntityReportCache.remove(self);
+                CleanupManager.removeReportedEntity(self);
             }
             
             // 检查全局删除信号，如果激活且在缓存中则自删除
             if (!self.level().isClientSide() && alreadyReported && 
-                GlobalDeleteSignal.shouldDelete(self.level().getServer())) {
+                CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 self.discard();
             }
         } catch (Exception e) {
@@ -56,7 +54,7 @@ public class ItemEntityReportMixin {
         try {
             // 性能优化：预过滤逻辑 - 只上报需要清理的物品实体
             return self.getAge() >= 10 * 20 && // 10秒后才考虑清理
-                   EntityFilter.shouldCleanItem(self); // 预过滤
+                   CleanupManager.shouldCleanItem(self); // 预过滤
         } catch (Exception e) {
             return false;
         }

@@ -3,7 +3,6 @@ package com.klnon.recyclingservice.content.trashbox.ui;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.payment.TrashPaymentSystem;
@@ -318,7 +317,7 @@ public class TrashBoxMenu extends ChestMenu {
                     remainingCarried.shrink(1);
                     return remainingCarried.isEmpty() ? ItemStack.EMPTY : remainingCarried;
                 }
-            } else if (EntityMerger.isSameItem(carried, slotItem)) {
+            } else if (TrashBoxManager.isSameItem(carried, slotItem)) {
                 // 相同物品合并
                 int configLimit = Config.getItemStackMultiplier(slotItem);
                 if (slotItem.getCount() < configLimit) {
@@ -380,7 +379,7 @@ public class TrashBoxMenu extends ChestMenu {
             result = clickedItem.copyWithCount(0);
         }
         
-        if (!EntityMerger.isSameItem(result, clickedItem) && !clickedItem.isEmpty()) {
+        if (!TrashBoxManager.isSameItem(result, clickedItem) && !clickedItem.isEmpty()) {
             return result;
         }
         
@@ -388,7 +387,7 @@ public class TrashBoxMenu extends ChestMenu {
         int maxStackSize = result.getMaxStackSize();
         for (int i = 0; i < trashSlots && result.getCount() < maxStackSize; i++) {
             ItemStack slotItem = trashBox.getItem(i);
-            if (EntityMerger.isSameItem(result, slotItem)) {
+            if (TrashBoxManager.isSameItem(result, slotItem)) {
                 int maxTake = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
                 int canAdd = maxStackSize - result.getCount();
                 int takeAmount = Math.min(maxTake, canAdd);
@@ -424,7 +423,7 @@ public class TrashBoxMenu extends ChestMenu {
                 stack.setCount(0);
                 moved = true;
                 break;
-            } else if (EntityMerger.isSameItem(stack, slotItem)) {
+            } else if (TrashBoxManager.isSameItem(stack, slotItem)) {
                 // 找到相同物品，尝试合并
                 int canAdd = configLimit - slotItem.getCount();
                 if (canAdd > 0) {
