@@ -65,8 +65,8 @@ public class Recyclingservice {
     public void onServerStarted(ServerStartedEvent event) {
         LOGGER.info("Server fully started, performing startup chunk cleanup");
         
-        // 执行启动区块清理
-        ChunkManager.performStartupCleanup(event.getServer());
+        // 执行启动区块接管
+        ChunkManager.performStartupTakeover(event.getServer());
     }
     
     // 注册命令事件

@@ -25,12 +25,23 @@ public class AutoCleanupEvent {
     private static long lastSuspendCheck = 0;
     private static long lastRestoreCheck = 0;
     
+    // 物品监控计时器
+    private static int itemMonitoringTicks = 0;
+    
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post event) {
         // 动态区块管理
         dynamicManagementTicks++;
         if (dynamicManagementTicks % TICKS_PER_SECOND == 0) { // 每秒检查一次
             checkDynamicChunkManagement(event.getServer());
+        }
+        
+        // 物品监控检查
+        itemMonitoringTicks++;
+        int itemCheckInterval = getItemMonitoringIntervalTicks();
+        if (itemMonitoringTicks >= itemCheckInterval) {
+            itemMonitoringTicks = 0;
+            checkItemMonitoring(event.getServer());
         }
         
         // 原有的清理逻辑
@@ -69,7 +80,7 @@ public class AutoCleanupEvent {
         
         // 执行检查的条件：到了恢复检查时间，或者到了暂停检查时间
         if (shouldCheckRestore || shouldCheckSuspend) {
-            ChunkManager.performDynamicManagement(server);
+            ChunkManager.performPerformanceAdjustment(server);
             
             if (shouldCheckRestore) {
                 lastRestoreCheck = currentTimeSeconds;
@@ -78,6 +89,21 @@ public class AutoCleanupEvent {
             if (shouldCheckSuspend) {
                 lastSuspendCheck = currentTimeSeconds;
             }
+        }
+    }
+    
+    /**
+     * 检查物品监控
+     */
+    private static void checkItemMonitoring(MinecraftServer server) {
+        if (!Config.TECHNICAL.enableItemBasedFreezing.get()) {
+            return;
+        }
+        
+        try {
+            ChunkManager.performItemMonitoring(server);
+        } catch (Exception e) {
+            // 物品监控失败不影响主要功能
         }
     }
     
@@ -132,5 +158,16 @@ public class AutoCleanupEvent {
      */
     public static int getRemainingSeconds() {
         return (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;
+    }
+    
+    /**
+     * 获取物品监控间隔(ticks)
+     */
+    private static int getItemMonitoringIntervalTicks() {
+        try {
+            return Config.TECHNICAL.itemMonitoringIntervalMinutes.get() * 60 * TICKS_PER_SECOND;
+        } catch (Exception e) {
+            return 5 * 60 * TICKS_PER_SECOND; // 默认5分钟
+        }
     }
 }

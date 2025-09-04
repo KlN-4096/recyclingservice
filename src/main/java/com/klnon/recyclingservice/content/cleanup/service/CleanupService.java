@@ -48,7 +48,7 @@ public class CleanupService {
                     ServerLevel level = server.getLevel(levelKey);
                     
                     if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
-                        ChunkManager.performFreezingCheck(dimensionId, level);
+                        ChunkManager.performOverloadHandling(dimensionId, level);
                     }
                     
                     List<ItemStack> itemStacksToClean = new ArrayList<>();

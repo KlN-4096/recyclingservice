@@ -23,6 +23,15 @@ public class TechnicalConfig {
     public final ModConfigSpec.IntValue suspendCheckInterval;
     public final ModConfigSpec.IntValue restoreCheckInterval;
     
+    // 激进接管配置
+    public final ModConfigSpec.BooleanValue enableAggressiveTakeover;
+    public final ModConfigSpec.IntValue takeoverBlockEntityThreshold;
+    
+    // 物品监控配置  
+    public final ModConfigSpec.BooleanValue enableItemBasedFreezing;
+    public final ModConfigSpec.IntValue itemFreezeHours;
+    public final ModConfigSpec.IntValue itemMonitoringIntervalMinutes;
+    
     // === 调试设置 ===
     public final ModConfigSpec.BooleanValue enableDebugLogs;
     
@@ -70,6 +79,29 @@ public class TechnicalConfig {
         restoreCheckInterval = builder
                 .comment("Interval in minutes for checking if chunks should be restored")
                 .defineInRange("restore_check_interval", 1, 1, 10);
+        builder.pop();
+        
+        // 激进接管
+        builder.comment("Aggressive takeover settings").push("takeover");
+        enableAggressiveTakeover = builder
+                .comment("Enable aggressive chunk takeover on startup")
+                .define("enable_aggressive_takeover", false);
+        takeoverBlockEntityThreshold = builder
+                .comment("Block entity count threshold for takeover")
+                .defineInRange("takeover_threshold", 100, 10, 10000);
+        builder.pop();
+        
+        // 物品监控
+        builder.comment("Item-based freezing settings").push("item_freezing");
+        enableItemBasedFreezing = builder
+                .comment("Enable item-based chunk freezing")
+                .define("enable_item_freezing", true);
+        itemFreezeHours = builder
+                .comment("Hours to freeze chunks with too many items")
+                .defineInRange("freeze_hours", 1, 1, 24);
+        itemMonitoringIntervalMinutes = builder
+                .comment("Interval in minutes for item monitoring checks")
+                .defineInRange("monitoring_interval", 5, 1, 60);
         builder.pop();
         
         // 调试

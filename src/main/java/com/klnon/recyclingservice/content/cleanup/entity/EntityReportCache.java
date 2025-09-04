@@ -150,7 +150,7 @@ public class EntityReportCache {
     // === 公共API方法 ===
     
     /**
-     * 上报实体 (Entity便捷方法)
+     * 上报实体
      */
     public static void report(Entity entity) {
         EntityInfo info = extractEntityInfo(entity);
@@ -158,36 +158,22 @@ public class EntityReportCache {
     }
     
     /**
-     * 检查UUID是否已上报 (核心方法)
-     */
-    public static boolean isReported(ResourceLocation dimension, UUID uuid) {
-        return safeOperation(() -> {
-            Set<UUID> reported = reportedUuids.get(dimension);
-            return reported != null && reported.contains(uuid);
-        }, false);
-    }
-    
-    /**
-     * 检查实体是否已上报 (Entity便捷方法)
+     * 检查实体是否已上报
      */
     public static boolean isEntityReported(Entity entity) {
         EntityInfo info = extractEntityInfo(entity);
-        return isReported(info.dimension(), info.uuid());
+        return safeOperation(() -> {
+            Set<UUID> reported = reportedUuids.get(info.dimension());
+            return reported != null && reported.contains(info.uuid());
+        },false);
     }
-    
+
     /**
-     * 移除UUID (核心方法)
-     */
-    public static void remove(ResourceLocation dimension, UUID uuid) {
-        removeFromCache(dimension, uuid);
-    }
-    
-    /**
-     * 移除实体 (Entity便捷方法)
+     * 移除实体
      */
     public static void remove(Entity entity) {
         EntityInfo info = extractEntityInfo(entity);
-        remove(info.dimension(), info.uuid());
+        removeFromCache(info.dimension(), info.uuid());
     }
     
     /**
@@ -276,11 +262,9 @@ public class EntityReportCache {
      * @return 缓存中的实体总数量
      */
     public static int getTotalReportedCount() {
-        return safeOperation(() -> {
-            return reportedUuids.values().stream()
-                    .mapToInt(Set::size)
-                    .sum();
-        }, 0);
+        return safeOperation(() -> reportedUuids.values().stream()
+                .mapToInt(Set::size)
+                .sum(), 0);
     }
 
     // === 辅助记录类 ===
