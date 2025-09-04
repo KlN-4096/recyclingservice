@@ -1,8 +1,8 @@
 package com.klnon.recyclingservice.content.chunk;
 
 import com.klnon.recyclingservice.content.chunk.freezer.ChunkFreezer;
-import com.klnon.recyclingservice.content.chunk.freezer.DynamicChunkManager;
-import com.klnon.recyclingservice.content.chunk.freezer.StartupChunkCleaner;
+import com.klnon.recyclingservice.content.chunk.freezer.ChunkDynamicController;
+import com.klnon.recyclingservice.content.chunk.freezer.ChunkStartupCleaner;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -32,7 +32,7 @@ public class ChunkManager {
      * @param server 服务器实例
      */
     public static void performStartupCleanup(MinecraftServer server) {
-        StartupChunkCleaner.performStartupChunkCleanup(server);
+        ChunkStartupCleaner.performStartupChunkCleanup(server);
     }
     
     /**
@@ -42,6 +42,6 @@ public class ChunkManager {
      * @param server 服务器实例
      */
     public static void performDynamicManagement(MinecraftServer server) {
-        DynamicChunkManager.performDynamicChunkManagement(server);
+        ChunkDynamicController.performDynamicChunkManagement(server);
     }
 }

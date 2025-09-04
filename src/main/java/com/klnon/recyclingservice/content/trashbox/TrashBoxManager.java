@@ -1,7 +1,7 @@
 package com.klnon.recyclingservice.content.trashbox;
 
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.core.TrashManager;
+import com.klnon.recyclingservice.content.trashbox.core.TrashStorage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class TrashBoxManager {
     
-    private static final TrashManager trashManager = new TrashManager();
+    private static final TrashStorage trashStorage = new TrashStorage();
     
     /**
      * 获取或创建指定维度的垃圾箱
@@ -23,7 +23,7 @@ public class TrashBoxManager {
      * @return 垃圾箱实例
      */
     public static TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        return trashManager.getOrCreateTrashBox(dimensionId, boxNumber);
+        return trashStorage.getOrCreateTrashBox(dimensionId, boxNumber);
     }
     
     /**
@@ -33,7 +33,7 @@ public class TrashBoxManager {
      * @param items 要添加的物品列表
      */
     public static void addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        trashManager.addItemsToDimension(dimensionId, items);
+        trashStorage.addItemsToDimension(dimensionId, items);
     }
     
     /**
@@ -43,13 +43,13 @@ public class TrashBoxManager {
      * @return 垃圾箱列表
      */
     public static List<TrashBox> getDimensionTrashBoxes(ResourceLocation dimensionId) {
-        return trashManager.getDimensionTrashBoxes(dimensionId);
+        return trashStorage.getDimensionTrashBoxes(dimensionId);
     }
     
     /**
      * 清空所有垃圾箱
      */
     public static void clearAll() {
-        trashManager.clearAll();
+        trashStorage.clearAll();
     }
 }

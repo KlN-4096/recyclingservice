@@ -6,7 +6,7 @@ import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
-import com.klnon.recyclingservice.content.trashbox.payment.PaymentService;
+import com.klnon.recyclingservice.content.trashbox.payment.TrashPaymentSystem;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.world.MenuProvider;
@@ -223,7 +223,7 @@ public class TrashBoxMenu extends ChestMenu {
         int cost = calculatePaymentCost(playerDim, trashDim, operation);
         if (cost <= 0) return true;
         
-        return PaymentService.checkAndDeductPayment(player, cost);
+        return TrashPaymentSystem.checkAndDeductPayment(player, cost);
     }
     
     /**
