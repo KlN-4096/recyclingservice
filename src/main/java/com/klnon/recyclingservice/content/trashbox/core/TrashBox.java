@@ -9,6 +9,11 @@ import net.minecraft.resources.ResourceLocation;
 import com.klnon.recyclingservice.Config;
 
 import javax.annotation.Nonnull;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 
 /**
  * 垃圾箱实体类 - 实现Container接口，直接作为容器使用
@@ -20,26 +25,72 @@ public class TrashBox implements Container {
     private final int boxNumber;
     private final ResourceLocation dimensionId;
     
+    // 统一索引：物品类型->槽位列表，EMPTY表示空位置
+    private final Map<String, List<Integer>> itemTypeSlots = new HashMap<>();
+    private static final String EMPTY_KEY = "EMPTY";
+    
     public TrashBox(int capacity, int boxNumber, ResourceLocation dimensionId) {
         this.capacity = capacity;
         this.boxNumber = boxNumber;
         this.dimensionId = dimensionId;
         this.items = NonNullList.withSize(capacity, ItemStack.EMPTY);
+        initializeIndex();
+    }
+    
+    /**
+     * 初始化索引 - 全部设置为空位置
+     */
+    private void initializeIndex() {
+        itemTypeSlots.clear();
+        itemTypeSlots.put(EMPTY_KEY, 
+        IntStream.range(0, capacity)
+            .boxed()
+            .collect(Collectors.toList()));
     }
     
     /**
      * 添加物品到垃圾箱
      */
-    public void addItem(ItemStack item) {
-        if (item.isEmpty()) {
-            return;
+    public boolean addItem(ItemStack item) {
+        // 1. 尝试合并到相同物品槽位
+        if (tryMergeToExisting(item)) {
+            return true;
         }
         
-        // 利用NonNullList的indexOf找空槽位
-        int emptySlot = items.indexOf(ItemStack.EMPTY);
-        if (emptySlot != -1) {
-            setItem(emptySlot, item);
+        // 2. 放入空槽位
+        return tryAddToEmptySlot(item);
+    }
+    private boolean tryMergeToExisting(ItemStack item) {
+        String itemKey = EntityMerger.generateComplexItemKey(item);
+        List<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);
+        
+        if (sameTypeSlots == null) return false;
+        
+        for (Integer slot : sameTypeSlots) {
+            ItemStack slotItem = getItem(slot);
+            
+            int configLimit = Config.getItemStackMultiplier(slotItem);
+            int canAdd = configLimit - slotItem.getCount();
+            if (canAdd <= 0) continue;
+            
+            int addAmount = Math.min(canAdd, item.getCount());
+            slotItem.grow(addAmount);
+            UiHelper.updateTooltip(slotItem);
+            item.shrink(addAmount);
+            
+            if (item.isEmpty()) return true;
         }
+        return false;
+    }
+
+    private boolean tryAddToEmptySlot(ItemStack item) {
+        List<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
+        if (emptySlots != null && !emptySlots.isEmpty()) {
+            Integer emptySlot = emptySlots.remove(emptySlots.size() - 1);
+            setItem(emptySlot, item.copy());
+            return true;
+        }
+        return false;
     }
     
     /**
@@ -101,19 +152,47 @@ public class TrashBox implements Container {
      * 设置指定位置的物品 - Container接口方法
      */
     @Override
-    public void setItem(int slot,@Nonnull ItemStack stack) {
+    public void setItem(int slot, @Nonnull ItemStack stack) {
         if (!isValidSlot(slot)) {
             return;
         }
         
-        if (stack.isEmpty()) {
-            items.set(slot, ItemStack.EMPTY);
+        ItemStack oldItem = items.get(slot);
+        
+        // 准备新物品
+        ItemStack newItem = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
+        UiHelper.updateTooltip(newItem);
+        
+        // 更新存储
+        items.set(slot, newItem);
+        
+        // 统一更新索引：先移除旧的，再添加新的
+        if (!oldItem.isEmpty()) {
+            removeFromIndex(slot, oldItem);
         } else {
-            ItemStack itemCopy = stack.copy();
-            UiHelper.updateTooltip(itemCopy);
-            items.set(slot, itemCopy);
+            removeFromIndex(slot, ItemStack.EMPTY);
         }
+        // 添加新索引
+        addToIndex(slot, newItem);
+        
         setChanged();
+    }
+
+
+    private void removeFromIndex(int slot, ItemStack item) {
+        String key = item.isEmpty() ? EMPTY_KEY : EntityMerger.generateComplexItemKey(item);
+        List<Integer> slots = itemTypeSlots.get(key);
+        if (slots != null) {
+            slots.remove(Integer.valueOf(slot));
+            if (slots.isEmpty()) {
+                itemTypeSlots.remove(key);
+            }
+        }
+    }
+
+    private void addToIndex(int slot, ItemStack item) {
+        String key = item.isEmpty() ? EMPTY_KEY : EntityMerger.generateComplexItemKey(item);
+        itemTypeSlots.computeIfAbsent(key, k -> new ArrayList<>()).add(slot);
     }
     
     /**
@@ -122,6 +201,7 @@ public class TrashBox implements Container {
     @Override
     public void clearContent() {
         items.clear();
+        initializeIndex();
         setChanged();
     }
 

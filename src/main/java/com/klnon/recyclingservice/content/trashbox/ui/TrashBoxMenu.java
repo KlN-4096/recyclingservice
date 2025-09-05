@@ -410,37 +410,17 @@ public class TrashBoxMenu extends ChestMenu {
     private boolean moveToTrashBox(ItemStack stack) {
         if (stack.isEmpty()) return false;
         
-        boolean moved = false;
-        int configLimit = Config.getItemStackMultiplier(stack);
+        ItemStack remaining = stack.copy();
+        trashBox.addItem(remaining);
         
-        // 按顺序搜索：空位和相同物品谁先找到就用谁
-        for (int i = 0; i < trashSlots && !stack.isEmpty(); i++) {
-            ItemStack slotItem = trashBox.getItem(i);
-            
-            if (slotItem.isEmpty()) {
-                // 找到空槽位，直接放入
-                trashBox.setItem(i, stack.copy());
-                stack.setCount(0);
-                moved = true;
-                break;
-            } else if (TrashBoxManager.isSameItem(stack, slotItem)) {
-                // 找到相同物品，尝试合并
-                int canAdd = configLimit - slotItem.getCount();
-                if (canAdd > 0) {
-                    int addAmount = Math.min(canAdd, stack.getCount());
-                    slotItem.grow(addAmount);
-                    UiHelper.updateTooltip(slotItem);
-                    stack.shrink(addAmount);
-                    moved = true;
-                    // 注意：这里不break，因为可能还有剩余物品需要继续寻找下一个槽位
-                }
-            }
+        // 检查是否完全添加
+        if (remaining.isEmpty()) {
+            stack.setCount(0);
+            return true;
+        } else {
+            // 部分添加，更新原始栈的数量
+            stack.setCount(remaining.getCount());
+            return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功
         }
-        
-        if (moved) {
-            trashBox.setChanged();
-        }
-        
-        return moved;
     }
 }

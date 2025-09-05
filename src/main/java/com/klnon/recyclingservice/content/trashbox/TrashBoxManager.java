@@ -33,8 +33,12 @@ public class TrashBoxManager {
      * @param dimensionId 维度ID
      * @param items 要添加的物品列表
      */
-    public static void addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        trashStorage.addItemsToDimension(dimensionId, items);
+    public static void addItemToDimension(ResourceLocation dimensionId, ItemStack item) {
+        if (item.isEmpty()) return;
+        TrashBox trashBox = getOrCreateTrashBox(dimensionId, 1);
+        if (trashBox != null) {
+            trashBox.addItem(item);
+        }
     }
     
     /**

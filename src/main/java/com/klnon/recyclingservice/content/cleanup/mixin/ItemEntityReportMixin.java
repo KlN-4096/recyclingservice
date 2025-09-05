@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.content.cleanup.mixin;
 
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -42,6 +43,11 @@ public class ItemEntityReportMixin {
             // 检查全局删除信号，如果激活且在缓存中则自删除
             if (!self.level().isClientSide() && alreadyReported && 
                 CleanupManager.shouldDeleteEntity(self.level().getServer())) {
+                // 添加物品到垃圾箱
+                TrashBoxManager.addItemToDimension(
+                    self.level().dimension().location(), 
+                    self.getItem()
+                );
                 self.discard();
             }
         } catch (Exception e) {

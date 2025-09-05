@@ -56,23 +56,16 @@ public class CleanupService {
                             ChunkManager.performOverloadHandling(dimensionId, level);
                         }
                         
-                        List<ItemStack> itemStacksToClean = new ArrayList<>();
-                        for (ItemEntity itemEntity : scanResult.items()) {
-                            itemStacksToClean.add(itemEntity.getItem());
-                        }
-                        List<ItemStack> itemsToClean = EntityMerger.combine(itemStacksToClean);
-                        
-                        TrashBoxManager.addItemsToDimension(dimensionId, itemsToClean);
-                        
-                        List<Entity> projectilesToClean = EntityFilter.filterProjectiles(scanResult.projectiles());
-                    
+                        // mixin已经在实体删除前添加到垃圾箱，这里只统计数量
+                        int itemCount = scanResult.items().size();
+                        int projectileCount = EntityFilter.filterProjectiles(scanResult.projectiles()).size();
                         
                         DimensionCleanupStats stats = new DimensionCleanupStats(
-                            itemStacksToClean.size(), projectilesToClean.size(), "Cleaned successfully");
+                            itemCount, projectileCount, "Cleaned successfully");
                         dimensionStats.put(dimensionId, stats);
                         
-                        totalItemsCleaned += itemStacksToClean.size();
-                        totalProjectilesCleaned += projectilesToClean.size();
+                        totalItemsCleaned += itemCount;
+                        totalProjectilesCleaned += projectileCount;
                         
                     } catch (Exception e) {
                         dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed: " + e.getMessage()));

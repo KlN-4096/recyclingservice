@@ -47,33 +47,28 @@ public class TrashStorage {
      * 为指定维度添加物品到垃圾箱
      */
     public void addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        if (items.isEmpty())
-            return;
+        if (items.isEmpty()) return;
         
-        final int maxBoxes = Config.GAMEPLAY.maxBoxesPerDimension.get();
-        final int capacity = Config.GAMEPLAY.trashBoxRows.get()*9;
-        
-        // 保持原有的排序逻辑
+        // 按数量降序排序，让大堆的物品优先放入
         items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
         
-        // 计算需要的垃圾箱数量，不超过最大限制
-        int requiredBoxes = (int) Math.ceil((double) items.size() / capacity);
-        int actualBoxes = Math.min(requiredBoxes, maxBoxes);
+        int currentBox = 1;
+        final int maxBoxes = Config.GAMEPLAY.maxBoxesPerDimension.get();
         
-        // 分段批量分配到各个垃圾箱
-        for (int boxIndex = 0; boxIndex < actualBoxes; boxIndex++) {
-            TrashBox box = getOrCreateTrashBox(dimensionId, boxIndex + 1);
-            if (box == null) break;
+        // 逐个添加物品，利用新的索引系统
+        for (ItemStack item : items) {
+            boolean added = false;
             
-            // 计算当前垃圾箱应处理的物品范围
-            int startIndex = boxIndex * capacity;
-            int endIndex = Math.min(startIndex + capacity, items.size());
-            
-            // 直接批量放入物品到垃圾箱
-            for (int i = startIndex; i < endIndex; i++) {
-                box.items.set(i - startIndex, items.get(i).copy());
+            // 尝试从当前箱子开始添加
+            for (int boxIndex = currentBox; boxIndex <= maxBoxes && !added; boxIndex++) {
+                TrashBox box = getOrCreateTrashBox(dimensionId, boxIndex);
+                if (box != null && box.addItem(item.copy())) {
+                    added = true;
+                    currentBox = boxIndex; // 记住成功的箱子，下次优先尝试
+                }
             }
-            box.setChanged();
+            
+            if (!added) break; // 所有箱子都满了，停止添加
         }
     }
     
