@@ -285,7 +285,7 @@ public class TrashBoxMenu extends ChestMenu {
         return (int) Math.ceil(baseCost * multiplier);
     }
     
-    // === 物品处理方法（从 TrashBoxHandler 迁移） ===
+    // === 物品处理方法===
     
     /**
      * 处理拾取点击（左键/右键点击）

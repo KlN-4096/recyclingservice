@@ -42,10 +42,11 @@ public class TrashBox implements Container {
      */
     private void initializeIndex() {
         itemTypeSlots.clear();
-        itemTypeSlots.put(EMPTY_KEY, 
-        IntStream.range(0, capacity)
-            .boxed()
-            .collect(Collectors.toList()));
+        List<Integer> emptySlots = new ArrayList<>();
+        for (int i = capacity - 1; i >= 0; i--) {  // 从大到小,从前往后填充
+            emptySlots.add(i);
+        }
+        itemTypeSlots.put(EMPTY_KEY, emptySlots);
     }
     
     /**
@@ -58,9 +59,10 @@ public class TrashBox implements Container {
         }
         
         // 2. 放入空槽位
-        return tryAddToEmptySlot(item);
+        return tryAddToEmptySlot(item,-1);
     }
-    private boolean tryMergeToExisting(ItemStack item) {
+
+    public boolean tryMergeToExisting(ItemStack item) {
         String itemKey = EntityMerger.generateComplexItemKey(item);
         List<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);
         
@@ -77,16 +79,14 @@ public class TrashBox implements Container {
             slotItem.grow(addAmount);
             UiHelper.updateTooltip(slotItem);
             item.shrink(addAmount);
-            
-            if (item.isEmpty()) return true;
         }
-        return false;
+        return item.isEmpty();
     }
 
-    private boolean tryAddToEmptySlot(ItemStack item) {
+    public boolean tryAddToEmptySlot(ItemStack item,int slot) {
         List<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
         if (emptySlots != null && !emptySlots.isEmpty()) {
-            Integer emptySlot = emptySlots.remove(emptySlots.size() - 1);
+            Integer emptySlot = slot ==-1 ? emptySlots.remove(emptySlots.size() - 1) : slot;
             setItem(emptySlot, item.copy());
             return true;
         }
@@ -193,6 +193,15 @@ public class TrashBox implements Container {
     private void addToIndex(int slot, ItemStack item) {
         String key = item.isEmpty() ? EMPTY_KEY : EntityMerger.generateComplexItemKey(item);
         itemTypeSlots.computeIfAbsent(key, k -> new ArrayList<>()).add(slot);
+    }
+    
+    /**
+     * 获取相同物品的槽位列表（用于UI优化）
+     */
+    public List<Integer> getSameItemSlots(ItemStack item) {
+        if (item.isEmpty()) return Collections.emptyList();
+        String key = EntityMerger.generateComplexItemKey(item);
+        return itemTypeSlots.getOrDefault(key, Collections.emptyList());
     }
     
     /**
