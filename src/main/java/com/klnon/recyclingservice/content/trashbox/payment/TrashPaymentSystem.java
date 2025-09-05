@@ -139,4 +139,37 @@ public class TrashPaymentSystem {
             return false;
         }
     }
+    
+    /**
+     * 计算垃圾箱操作的邮费
+     * @param playerDim 玩家所在维度
+     * @param trashDim 垃圾箱维度  
+     * @param operation 操作类型（insert/extract）
+     * @return 需要的邮费数量
+     */
+    public static int calculateOperationCost(ResourceLocation playerDim, ResourceLocation trashDim, String operation) {
+        boolean isSameDimension = playerDim.equals(trashDim);
+        String paymentMode = "insert".equals(operation) ? 
+            Config.GAMEPLAY.insertPaymentMode.get() : Config.GAMEPLAY.extractPaymentMode.get();
+        
+        return switch (paymentMode) {
+            case "current_dimension_free" -> 
+                isSameDimension ? 0 : calculateCrossDimensionCost(trashDim);
+            case "all_dimensions_pay" -> 
+                isSameDimension ? Config.GAMEPLAY.crossDimensionAccessCost.get() : 
+                                  calculateCrossDimensionCost(trashDim);
+            default -> 0;
+        };
+    }
+    
+    /**
+     * 计算跨维度访问费用
+     * @param trashDim 垃圾箱维度
+     * @return 跨维度费用
+     */
+    public static int calculateCrossDimensionCost(ResourceLocation trashDim) {
+        int baseCost = Config.GAMEPLAY.crossDimensionAccessCost.get();
+        double multiplier = Config.getDimensionMultiplier(trashDim.toString());
+        return (int) Math.ceil(baseCost * multiplier);
+    }
 }

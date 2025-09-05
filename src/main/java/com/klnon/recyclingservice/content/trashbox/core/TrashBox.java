@@ -10,8 +10,6 @@ import com.klnon.recyclingservice.Config;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 
@@ -83,10 +81,15 @@ public class TrashBox implements Container {
         return item.isEmpty();
     }
 
-    public boolean tryAddToEmptySlot(ItemStack item,int slot) {
+    public boolean tryAddToEmptySlot(ItemStack item, int slot) {
+        if (slot != -1) {
+            setItem(slot, item.copy());
+            return true;
+        }
+        
         List<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
         if (emptySlots != null && !emptySlots.isEmpty()) {
-            Integer emptySlot = slot ==-1 ? emptySlots.remove(emptySlots.size() - 1) : slot;
+            Integer emptySlot = emptySlots.remove(emptySlots.size() - 1);
             setItem(emptySlot, item.copy());
             return true;
         }
