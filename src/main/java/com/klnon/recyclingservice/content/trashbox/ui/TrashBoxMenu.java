@@ -286,40 +286,6 @@ public class TrashBoxMenu extends ChestMenu {
         return ItemStack.EMPTY;
     }
     
-    @Override
-    protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex, 
-                                     boolean reverseDirection) {
-        // 移动到垃圾箱的特殊处理
-        if (startIndex == 0 && endIndex <= trashSlots) {
-            return moveToTrashBox(stack);
-        }
-        
-        // 其他情况使用原版逻辑
-        UiHelper.updateTooltip(stack);
-        return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
-    }
-    
-    /**
-     * 移动物品到垃圾箱
-     */
-    private boolean moveToTrashBox(ItemStack stack) {
-        if (stack.isEmpty()) return false;
-        
-        ItemStack remaining = stack.copy();
-        trashBox.addItem(remaining);
-        
-        // 检查是否完全添加
-        if (remaining.isEmpty()) {
-            stack.setCount(0);
-            return true;
-        } else {
-            // 部分添加，更新原始栈的数量
-            stack.setCount(remaining.getCount());
-            return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功
-        }
-    }
-
-    
     /**
      * 处理丢弃物品的点击
      */
@@ -330,6 +296,34 @@ public class TrashBoxMenu extends ChestMenu {
         result = slot.safeTake(throwCount, Integer.MAX_VALUE, player);
         player.drop(result, true);
     }
+
+    @Override
+    protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex, 
+                                     boolean reverseDirection) {
+        // 移动到垃圾箱的特殊处理
+        if (startIndex == 0 && endIndex <= trashSlots) {
+            if (stack.isEmpty()) return false;
+            
+            ItemStack remaining = stack.copy();
+            trashBox.addItem(remaining);
+            
+            // 检查是否完全添加
+            if (remaining.isEmpty()) {
+                stack.setCount(0);
+                return true;
+            } else {
+                // 部分添加，更新原始栈的数量
+                stack.setCount(remaining.getCount());
+                return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功
+            }
+        }
+        
+        // 其他情况使用原版逻辑
+        UiHelper.updateTooltip(stack);
+        return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
+    }
+
+    
 
     // === 支付验证和处理方法 ===
     
