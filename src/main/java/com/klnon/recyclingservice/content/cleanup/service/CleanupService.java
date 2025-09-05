@@ -39,6 +39,9 @@ public class CleanupService {
             int totalProjectilesCleaned = 0;
             // 先删除实体,再添加到垃圾桶
             GlobalDeleteSignal.activate(server);
+            while(!GlobalDeleteSignal.getSignal()){
+                
+            }
             
             if(!GlobalDeleteSignal.getSignal()){
                 for (Map.Entry<ResourceLocation, ScanResult> entry : scanResults.entrySet()) {
