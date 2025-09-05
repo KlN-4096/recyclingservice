@@ -40,14 +40,16 @@ public class PerformanceBasedController {
             boolean canRestore = averageTickTime < msptRestoreThreshold;
             
             if (shouldSuspend) {
-                int suspended = suspendChunks(server, operationCount);
+                int suspended = adjustChunks(server, operationCount, 
+                    ChunkState.MANAGED, ChunkState.PERFORMANCE_FROZEN, true, "suspend");
                 if (suspended > 0) {
                     Recyclingservice.LOGGER.info(
                         "Performance degraded (TPS: {}, MSPT: {}), suspended {} chunks",
                         String.format("%.2f", tps), String.format("%.2f", averageTickTime), suspended);
                 }
             } else if (canRestore) {
-                int restored = restoreChunks(server, operationCount);
+                int restored = adjustChunks(server, operationCount,
+                    ChunkState.PERFORMANCE_FROZEN, ChunkState.MANAGED, false, "restore");
                 if (restored > 0) {
                     Recyclingservice.LOGGER.info(
                         "Performance improved (MSPT: {}), restored {} chunks",
@@ -60,93 +62,55 @@ public class PerformanceBasedController {
     }
     
     /**
-     * 暂停管理的区块
+     * 通用区块调整方法
      */
-    private static int suspendChunks(MinecraftServer server, int count) {
+    private static int adjustChunks(MinecraftServer server, int count, 
+                                  ChunkState sourceState, ChunkState targetState, 
+                                  boolean prioritizeHeavy, String operation) {
         if (count <= 0) return 0;
         
-        List<ChunkCandidate> candidates = new ArrayList<>();
+        Map<ResourceLocation, Set<ChunkPos>> chunks = ChunkDataStore.getChunksByState(sourceState);
+        List<ChunkAdjustment> adjustments = new ArrayList<>();
         
-        // 收集MANAGED状态的区块
-        Map<ResourceLocation, Set<ChunkPos>> managedChunks = 
-            ChunkDataStore.getChunksByState(ChunkState.MANAGED);
-        
-        for (var dimensionEntry : managedChunks.entrySet()) {
-            ResourceLocation dimensionId = dimensionEntry.getKey();
+        // 收集调整候选
+        for (var entry : chunks.entrySet()) {
+            ResourceLocation dimensionId = entry.getKey();
             ServerLevel level = server.getLevel(ResourceKey.create(
                 net.minecraft.core.registries.Registries.DIMENSION, dimensionId));
             if (level == null) continue;
             
-            for (ChunkPos pos : dimensionEntry.getValue()) {
+            for (ChunkPos pos : entry.getValue()) {
                 ChunkInfo info = ChunkDataStore.getChunk(dimensionId, pos);
                 if (info != null) {
-                    candidates.add(new ChunkCandidate(dimensionId, level, pos, info));
+                    adjustments.add(new ChunkAdjustment(dimensionId, level, pos, info.blockEntityCount()));
                 }
             }
         }
         
-        // 按block entity数量降序排序(优先暂停重的区块)
-        candidates.sort((a, b) -> Integer.compare(
-            b.info().blockEntityCount(), a.info().blockEntityCount()));
+        // 排序：heavy优先=降序，light优先=升序
+        adjustments.sort(prioritizeHeavy ? 
+            (a, b) -> Integer.compare(b.blockEntityCount, a.blockEntityCount) :
+            (a, b) -> Integer.compare(a.blockEntityCount, b.blockEntityCount));
         
-        return processChunkCandidates(candidates, count, ChunkState.PERFORMANCE_FROZEN, "suspend");
-    }
-    
-    /**
-     * 恢复性能冻结的区块
-     */
-    private static int restoreChunks(MinecraftServer server, int count) {
-        if (count <= 0) return 0;
-        
-        List<ChunkCandidate> candidates = new ArrayList<>();
-        
-        // 收集PERFORMANCE_FROZEN状态的区块
-        Map<ResourceLocation, Set<ChunkPos>> frozenChunks = 
-            ChunkDataStore.getChunksByState(ChunkState.PERFORMANCE_FROZEN);
-        
-        for (var dimensionEntry : frozenChunks.entrySet()) {
-            ResourceLocation dimensionId = dimensionEntry.getKey();
-            ServerLevel level = server.getLevel(ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION, dimensionId));
-            if (level == null) continue;
-            
-            for (ChunkPos pos : dimensionEntry.getValue()) {
-                ChunkInfo info = ChunkDataStore.getChunk(dimensionId, pos);
-                if (info != null) {
-                    candidates.add(new ChunkCandidate(dimensionId, level, pos, info));
-                }
-            }
-        }
-        
-        // 按block entity数量升序排序(优先恢复轻的区块)
-        candidates.sort((a, b) -> Integer.compare(
-            a.info().blockEntityCount(), b.info().blockEntityCount()));
-        
-        return processChunkCandidates(candidates, count, ChunkState.MANAGED, "restore");
-    }
-    
-    private static int processChunkCandidates(List<ChunkCandidate> candidates, int count, 
-                                            ChunkState targetState, String operation) {
+        // 执行调整
         int processed = 0;
-        
-        for (ChunkCandidate candidate : candidates) {
+        for (ChunkAdjustment adj : adjustments) {
             if (processed >= count) break;
             
             try {
-                if (ChunkDataStore.transitionChunkState(candidate.dimensionId(), 
-                                                     candidate.pos(), targetState, candidate.level())) {
+                if (ChunkDataStore.transitionChunkState(adj.dimensionId, adj.pos, targetState, adj.level)) {
                     processed++;
                 }
             } catch (Exception e) {
                 Recyclingservice.LOGGER.debug("Failed to {} chunk ({}, {})", 
-                    operation, candidate.pos().x, candidate.pos().z, e);
+                    operation, adj.pos.x, adj.pos.z, e);
             }
         }
         
         return processed;
     }
     
-    private record ChunkCandidate(ResourceLocation dimensionId, ServerLevel level, 
-                                ChunkPos pos, ChunkInfo info) {
+    private record ChunkAdjustment(ResourceLocation dimensionId, ServerLevel level, 
+                                 ChunkPos pos, int blockEntityCount) {
     }
 }

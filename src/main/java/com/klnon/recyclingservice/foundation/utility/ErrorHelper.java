@@ -57,18 +57,7 @@ public class ErrorHelper {
         Boolean result = handleOperation(player, operationName, operation, false);
         return result ? 1 : 0;
     }
-    
-    /**
-     * 静默处理操作 - 不向玩家发送任何消息
-     * @param operationName 操作名称
-     * @param operation 要执行的操作
-     * @param defaultValue 默认值
-     * @return 操作结果或默认值
-     */
-    public static <T> T handleSilently(String operationName, Supplier<T> operation, T defaultValue) {
-        return handleOperation(null, operationName, operation, defaultValue);
-    }
-    
+
     /**
      * 发送简单错误消息
      * @param player 玩家

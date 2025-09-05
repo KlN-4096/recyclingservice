@@ -4,7 +4,6 @@ import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
@@ -12,11 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.Level;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -30,150 +25,60 @@ public class CleanupService {
      * 执行自动清理
      */
     public static CleanupResult performAutoCleanup(MinecraftServer server) {
-        try {
-            Map<ResourceLocation, ScanResult> scanResults = collectAllReportedEntities(server);
-            TrashBoxManager.clearAll();
+        TrashBoxManager.clearAll();
+        GlobalDeleteSignal.activate(server);
+        
+        Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
+        int totalItemsCleaned = 0;
+        int totalProjectilesCleaned = 0;
+        
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceLocation dimensionId = level.dimension().location();
             
-            Map<ResourceLocation, DimensionCleanupStats> dimensionStats = new HashMap<>();
-            int totalItemsCleaned = 0;
-            int totalProjectilesCleaned = 0;
-            // 先删除实体,再添加到垃圾桶
-            GlobalDeleteSignal.activate(server);
-            while(!GlobalDeleteSignal.getSignal()){
+            try {
+                // 直接从缓存获取并统计
+                List<EntityReportCache.EntityReport> reports = EntityReportCache.getReportedEntries(dimensionId);
+                int itemCount = 0;
+                int projectileCount = 0;
                 
-            }
-            
-            if(!GlobalDeleteSignal.getSignal()){
-                for (Map.Entry<ResourceLocation, ScanResult> entry : scanResults.entrySet()) {
-                    ResourceLocation dimensionId = entry.getKey();
-                    ScanResult scanResult = entry.getValue();
-                    
+                for (EntityReportCache.EntityReport report : reports) {
                     try {
-                        ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, dimensionId);
-                        ServerLevel level = server.getLevel(levelKey);
+                        Entity entity = report.entity();
+                        if (entity.isRemoved() || !entity.isAlive()) continue;
                         
-                        if (level != null && Config.TECHNICAL.enableChunkFreezing.get()) {
-                            ChunkManager.performOverloadHandling(dimensionId, level);
+                        if (entity instanceof ItemEntity) {
+                            itemCount++;
+                        } else if (EntityFilter.shouldCleanProjectile(entity)) {
+                            projectileCount++;
                         }
-                        
-                        // mixin已经在实体删除前添加到垃圾箱，这里只统计数量
-                        int itemCount = scanResult.items().size();
-                        int projectileCount = EntityFilter.filterProjectiles(scanResult.projectiles()).size();
-                        
-                        DimensionCleanupStats stats = new DimensionCleanupStats(
-                            itemCount, projectileCount, "Cleaned successfully");
-                        dimensionStats.put(dimensionId, stats);
-                        
-                        totalItemsCleaned += itemCount;
-                        totalProjectilesCleaned += projectileCount;
-                        
                     } catch (Exception e) {
-                        dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed: " + e.getMessage()));
+                        // 单个实体出错就跳过
                     }
                 }
-            }
-
-            
-            clearProcessedCache(new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, dimensionStats, ""));
-            
-            return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
-                dimensionStats, "Cleanup completed successfully");
                 
-        } catch (Exception e) {
-            return new CleanupResult(0, 0, Collections.emptyMap(), 
-                "Cleanup failed: " + e.getMessage());
-        }
-    }
-    
-    private static Map<ResourceLocation, ScanResult> collectAllReportedEntities(MinecraftServer server) {
-        Map<ResourceLocation, ScanResult> results = new HashMap<>();
-        
-        try {
-            for (ServerLevel level : server.getAllLevels()) {
-                try {
-                    ScanResult result = collectReportedEntities(level);
-                    if (!result.isEmpty()) {
-                        results.put(level.dimension().location(), result);
-                    }
-                } catch (Exception e) {
-                    Recyclingservice.LOGGER.debug("Failed to collect entities from dimension: {}, skipping", 
-                        level.dimension().location(), e);
+                // 区块超载处理
+                if (Config.TECHNICAL.enableChunkFreezing.get()) {
+                    ChunkManager.performOverloadHandling(dimensionId, level);
                 }
+                
+                // 清理缓存
+                EntityReportCache.removeInvalidEntities(dimensionId);
+                
+                // 记录统计
+                if (itemCount > 0 || projectileCount > 0) {
+                    dimensionStats.put(dimensionId, new DimensionCleanupStats(itemCount, projectileCount, "OK"));
+                    totalItemsCleaned += itemCount;
+                    totalProjectilesCleaned += projectileCount;
+                }
+                
+            } catch (Exception e) {
+                Recyclingservice.LOGGER.debug("Failed to cleanup dimension {}: {}", dimensionId, e.getMessage());
+                dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed"));
             }
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.error("Failed to collect entities from all dimensions", e);
         }
         
-        return results;
-    }
-    
-    private static ScanResult collectReportedEntities(ServerLevel level) {
-        try {
-            ResourceLocation dimension = level.dimension().location();
-            List<EntityReportCache.EntityReport> reportedEntries = EntityReportCache.getReportedEntries(dimension);
-            
-            List<ItemEntity> items = new ArrayList<>();
-            List<Entity> projectiles = new ArrayList<>();
-            
-            for (EntityReportCache.EntityReport report : reportedEntries) {
-                try {
-                    Entity entity = report.entity();
-                    
-                    if (entity.isRemoved() || !entity.isAlive()) {
-                        continue;
-                    }
-                    
-                    if (entity instanceof ItemEntity itemEntity) {
-                        items.add(itemEntity);
-                    } else {
-                        projectiles.add(entity);
-                    }
-                } catch (Exception e) {
-                    // 单个实体出错就跳过
-                }
-            }
-            
-            return new ScanResult(items, projectiles);
-            
-        } catch (Exception e) {
-            return ScanResult.EMPTY;
-        }
-    }
-    
-    private static void clearProcessedCache(CleanupResult result) {
-        try {
-            int totalCleanedEntities = 0;
-            
-            for (ResourceLocation dimension : result.dimensionStats().keySet()) {
-                int cleanedInDimension = EntityReportCache.removeInvalidEntities(dimension);
-                totalCleanedEntities += cleanedInDimension;
-                
-                if (Config.TECHNICAL.enableDebugLogs.get() && cleanedInDimension > 0) {
-                    Recyclingservice.LOGGER.debug(
-                        "Cleaned {} invalid entities from cache in dimension {}", 
-                        cleanedInDimension, dimension);
-                }
-            }
-            
-            if (totalCleanedEntities > 0) {
-                Recyclingservice.LOGGER.debug(
-                    "Cleaned {} invalid entities from report cache across {} dimensions", 
-                    totalCleanedEntities, result.dimensionStats().size());
-            }
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to clean processed cache", e);
-        }
-    }
-    
-    /**
-     * 实体收集结果
-     */
-    public record ScanResult(List<ItemEntity> items, List<Entity> projectiles) {
-        public static final ScanResult EMPTY = new ScanResult(List.of(), List.of());
-
-        public boolean isEmpty() {
-            return items.isEmpty() && projectiles.isEmpty();
-        }
+        return new CleanupResult(totalItemsCleaned, totalProjectilesCleaned, 
+            dimensionStats, "Cleanup completed successfully");
     }
 
     /**

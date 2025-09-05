@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.content.trashbox.core;
 
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
@@ -11,7 +12,6 @@ import com.klnon.recyclingservice.Config;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 
 /**
  * 垃圾箱实体类 - 实现Container接口，直接作为容器使用
@@ -61,7 +61,7 @@ public class TrashBox implements Container {
     }
 
     public boolean tryMergeToExisting(ItemStack item) {
-        String itemKey = EntityMerger.generateComplexItemKey(item);
+        String itemKey = CleanupManager.generateComplexItemKey(item);
         List<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);
         
         if (sameTypeSlots == null) return false;
@@ -89,7 +89,7 @@ public class TrashBox implements Container {
         
         List<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
         if (emptySlots != null && !emptySlots.isEmpty()) {
-            Integer emptySlot = emptySlots.remove(emptySlots.size() - 1);
+            Integer emptySlot = emptySlots.removeLast();
             setItem(emptySlot, item.copy());
             return true;
         }
@@ -183,7 +183,7 @@ public class TrashBox implements Container {
 
 
     private void removeFromIndex(int slot, ItemStack item) {
-        String key = item.isEmpty() ? EMPTY_KEY : EntityMerger.generateComplexItemKey(item);
+        String key = item.isEmpty() ? EMPTY_KEY : CleanupManager.generateComplexItemKey(item);
         List<Integer> slots = itemTypeSlots.get(key);
         if (slots != null) {
             slots.remove(Integer.valueOf(slot));
@@ -194,7 +194,7 @@ public class TrashBox implements Container {
     }
 
     private void addToIndex(int slot, ItemStack item) {
-        String key = item.isEmpty() ? EMPTY_KEY : EntityMerger.generateComplexItemKey(item);
+        String key = item.isEmpty() ? EMPTY_KEY : CleanupManager.generateComplexItemKey(item);
         itemTypeSlots.computeIfAbsent(key, k -> new ArrayList<>()).add(slot);
     }
     
@@ -203,7 +203,7 @@ public class TrashBox implements Container {
      */
     public List<Integer> getSameItemSlots(ItemStack item) {
         if (item.isEmpty()) return Collections.emptyList();
-        String key = EntityMerger.generateComplexItemKey(item);
+        String key = CleanupManager.generateComplexItemKey(item);
         return itemTypeSlots.getOrDefault(key, Collections.emptyList());
     }
     

@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
+import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
 import com.klnon.recyclingservice.content.cleanup.service.CleanupService.CleanupResult;
@@ -8,6 +9,7 @@ import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * 清理管理器 - 接口层
@@ -67,6 +69,13 @@ public class CleanupManager {
      */
     public static boolean shouldCleanItem(ItemEntity itemEntity) {
         return EntityFilter.shouldCleanItem(itemEntity);
+    }
+
+    /**
+     * 执行自动清理
+     */
+    public static String generateComplexItemKey(ItemStack stack) {
+        return EntityMerger.generateComplexItemKey(stack);
     }
     
     // === 核心清理功能 ===

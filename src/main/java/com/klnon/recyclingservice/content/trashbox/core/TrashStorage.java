@@ -46,29 +46,11 @@ public class TrashStorage {
     /**
      * 为指定维度添加物品到垃圾箱
      */
-    public void addItemsToDimension(ResourceLocation dimensionId, List<ItemStack> items) {
-        if (items.isEmpty()) return;
-        
-        // 按数量降序排序，让大堆的物品优先放入
-        items.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
-        
-        int currentBox = 1;
-        final int maxBoxes = Config.GAMEPLAY.maxBoxesPerDimension.get();
-        
-        // 逐个添加物品，利用新的索引系统
-        for (ItemStack item : items) {
-            boolean added = false;
-            
-            // 尝试从当前箱子开始添加
-            for (int boxIndex = currentBox; boxIndex <= maxBoxes && !added; boxIndex++) {
-                TrashBox box = getOrCreateTrashBox(dimensionId, boxIndex);
-                if (box != null && box.addItem(item.copy())) {
-                    added = true;
-                    currentBox = boxIndex; // 记住成功的箱子，下次优先尝试
-                }
-            }
-            
-            if (!added) break; // 所有箱子都满了，停止添加
+    public void addItemToDimension(ResourceLocation dimensionId, ItemStack item) {
+        if (item.isEmpty()) return;
+        TrashBox trashBox = getOrCreateTrashBox(dimensionId, 1);
+        if (trashBox != null) {
+            trashBox.addItem(item);
         }
     }
     

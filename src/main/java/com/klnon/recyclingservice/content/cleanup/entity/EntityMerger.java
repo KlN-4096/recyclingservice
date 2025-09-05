@@ -1,58 +1,9 @@
 package com.klnon.recyclingservice.content.cleanup.entity;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
-import com.klnon.recyclingservice.Config;
 
 public class EntityMerger {
-    
-    /**
-     * 简化的零拷贝合并：使用Map统计，延迟创建ItemStack
-     * @param stacks 输入的ItemStack列表
-     * @return 合并后的ItemStack列表
-     */
-    public static List<ItemStack> combine(List<ItemStack> stacks) {
-        // 使用Map统计：键 -> (模板ItemStack, 总数量)
-        Map<String, ItemStack> templates = new HashMap<>();
-        Map<String, Integer> counts = new HashMap<>();
-        
-        // 使用Stream API统计相同物品数量
-        stacks.stream()
-            .filter(stack -> !stack.isEmpty())
-            .forEach(stack -> {
-                String key = EntityFilter.isComplexItem(stack) ? 
-                    generateComplexItemKey(stack) : stack.getItem().toString();
-                templates.putIfAbsent(key, stack);
-                counts.merge(key, stack.getCount(), Integer::sum);
-            });
-        
-        List<ItemStack> result = new ArrayList<>();
-        
-        // 创建最终的ItemStack列表
-        for (String key : templates.keySet()) {
-            ItemStack template = templates.get(key);
-            int totalCount = counts.get(key);
-            int mergeLimit = Config.getItemStackMultiplier(template);
-            
-            // 按限制分组创建ItemStack
-            while (totalCount > 0) {
-                int count = Math.min(totalCount, mergeLimit);
-                ItemStack newStack = template.copy();
-                newStack.setCount(count);
-                UiHelper.updateTooltip(newStack);
-                result.add(newStack);
-                totalCount -= count;
-            }
-        }
-        
-        return result;
-    }
 
     public static Boolean isSameItem(ItemStack stack1, ItemStack stack2) {
         return generateComplexItemKey(stack1).equals(generateComplexItemKey(stack2));

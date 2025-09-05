@@ -5,13 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.Recyclingservice;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
@@ -32,22 +28,6 @@ public class UiHelper {
             case 5 -> MenuType.GENERIC_9x5;
             default -> MenuType.GENERIC_9x6;
         };
-    }
-
-    public static boolean hasModInstalled(Player player) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return false;
-        }
-
-        return ErrorHelper.handleOperation(null, "modDetection", () -> {
-            // 检查客户端是否注册了我们的mod网络通道
-            ResourceLocation modChannel = ResourceLocation.fromNamespaceAndPath(
-                    Recyclingservice.MODID, "main"
-            );
-
-            // NeoForge网络通道检测
-            return serverPlayer.connection.hasChannel(modChannel);
-        }, false); // 如果检测失败，默认认为客户端无mod（安全策略）
     }
 
     /**
@@ -90,7 +70,7 @@ public class UiHelper {
         // 保留非我们添加的lore
         if (existingLore != null) {
             for (Component line : existingLore.lines()) {
-                if (!isOurLoreLine(line)) {
+                if (isOurLoreLine(line)) {
                     loreLines.add(line);
                 }
             }
@@ -116,7 +96,7 @@ public class UiHelper {
         String text = line.getString();
 
         // 检查是否同时包含我们的前缀和后缀
-        return text.startsWith(LORE_PREFIX) && text.endsWith(LORE_SUFFIX);
+        return !text.startsWith(LORE_PREFIX) || !text.endsWith(LORE_SUFFIX);
     }
 
     /**
@@ -137,7 +117,7 @@ public class UiHelper {
 
         // 过滤掉我们的lore行，保留其他lore
         List<Component> filteredLines = existingLore.lines().stream()
-                .filter(line -> !isOurLoreLine(line))
+                .filter(UiHelper::isOurLoreLine)
                 .toList();
 
         // 无论过滤后是否为空，都保持LORE组件以维持组件数量一致

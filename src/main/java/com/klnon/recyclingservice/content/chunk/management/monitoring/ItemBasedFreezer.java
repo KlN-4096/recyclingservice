@@ -67,7 +67,7 @@ public class ItemBasedFreezer {
                 ResourceLocation dimension = level.dimension().location();
                 
                 // 检查管理状态的区块是否需要冻结
-                Map<ChunkPos, ChunkInfo> managedChunks = getChunksInState(dimension, ChunkState.MANAGED);
+                Map<ChunkPos, ChunkInfo> managedChunks = getChunksInState(dimension);
                 for (Map.Entry<ChunkPos, ChunkInfo> entry : managedChunks.entrySet()) {
                     ChunkPos pos = entry.getKey();
                     ChunkInfo info = entry.getValue();
@@ -123,10 +123,10 @@ public class ItemBasedFreezer {
         return ChunkDataStore.freezeChunkTickets(chunkPos, level);
     }
     
-    private static Map<ChunkPos, ChunkInfo> getChunksInState(ResourceLocation dimension, ChunkState state) {
+    private static Map<ChunkPos, ChunkInfo> getChunksInState(ResourceLocation dimension) {
         Map<ChunkPos, ChunkInfo> allChunks = ChunkDataStore.getDimensionChunks(dimension);
         return allChunks.entrySet().stream()
-            .filter(entry -> entry.getValue().state() == state)
+            .filter(entry -> entry.getValue().state() == ChunkState.MANAGED)
             .collect(java.util.stream.Collectors.toMap(
                 Map.Entry::getKey, 
                 Map.Entry::getValue

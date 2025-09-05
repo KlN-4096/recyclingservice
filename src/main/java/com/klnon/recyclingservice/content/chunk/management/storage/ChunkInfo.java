@@ -22,11 +22,7 @@ public record ChunkInfo(
     public ChunkInfo withState(ChunkState newState) {
         return new ChunkInfo(chunkPos, newState, blockEntityCount, itemCount, lastItemCheck, unfreezeTime, addedTime);
     }
-    
-    public ChunkInfo withItemCount(int newItemCount) {
-        return new ChunkInfo(chunkPos, state, blockEntityCount, newItemCount, System.currentTimeMillis(), unfreezeTime, addedTime);
-    }
-    
+
     public ChunkInfo withUnfreezeTime(long newUnfreezeTime) {
         return new ChunkInfo(chunkPos, state, blockEntityCount, itemCount, lastItemCheck, newUnfreezeTime, addedTime);
     }

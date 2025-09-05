@@ -323,8 +323,6 @@ public class TrashBoxMenu extends ChestMenu {
         return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
     }
 
-    
-
     // === 支付验证和处理方法 ===
     
     /**

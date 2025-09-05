@@ -32,7 +32,7 @@ public class AutoCleanupEvent {
     public static void onTick(ServerTickEvent.Post event) {
         // 动态区块管理
         dynamicManagementTicks++;
-        if (dynamicManagementTicks % TICKS_PER_SECOND == 0) { // 每秒检查一次
+        if (dynamicManagementTicks % TICKS_PER_SECOND == 0) { // 每10秒检查一次
             checkDynamicChunkManagement(event.getServer());
         }
         
@@ -44,7 +44,7 @@ public class AutoCleanupEvent {
             checkItemMonitoring(event.getServer());
         }
         
-        // 原有的清理逻辑
+        // 清理逻辑
         if (++ticks < Config.getCleanIntervalTicks()) {
             if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
                 checkAndSendWarning(event.getServer());

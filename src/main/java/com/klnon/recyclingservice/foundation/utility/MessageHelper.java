@@ -11,7 +11,6 @@ import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.ChatFormatting;
-import net.minecraft.world.entity.player.Player;
 
 import com.klnon.recyclingservice.Config;
 import java.util.Map;
@@ -194,15 +193,6 @@ public class MessageHelper {
         }
     }
 
-    /**
-     * 发送错误消息给单个玩家
-     */
-    public static void sendErrorMessage(Player player, String translationKey) {
-        Component message = Component.translatable(translationKey)
-            .withStyle(style -> style.withColor(MessageType.ERROR.getColor()));
-        player.sendSystemMessage(message);
-    }
-    
     /**
      * 显示ActionBar消息（兼容旧接口）
      */

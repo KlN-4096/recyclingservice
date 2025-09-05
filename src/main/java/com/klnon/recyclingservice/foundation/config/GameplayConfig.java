@@ -67,7 +67,7 @@ public class GameplayConfig {
                 .comment("Dimensions that allow players to put items")
                 .defineListAllowEmpty("allow_put_dimensions",
                     List.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"),
-                    () -> "", obj -> validateResourceLocation(obj));
+                    () -> "", this::validateResourceLocation);
         dimensionTrashCrossAccess = builder
                 .comment("Allow cross-dimension trash box access")
                 .define("cross_access", true);
@@ -82,12 +82,12 @@ public class GameplayConfig {
                 .comment("Items protected from cleaning")
                 .defineListAllowEmpty("whitelist",
                     List.of("minecraft:netherite_ingot", "minecraft:elytra"),
-                    () -> "", obj -> validateResourceLocation(obj));
+                    () -> "", this::validateResourceLocation);
         blacklist = builder
                 .comment("Items to be cleaned")
                 .defineListAllowEmpty("blacklist", 
                     List.of("minecraft:cobblestone", "minecraft:dirt", "minecraft:gravel"),
-                    () -> "", obj -> validateResourceLocation(obj));
+                    () -> "", this::validateResourceLocation);
         cleanProjectiles = builder
                 .comment("Enable projectile cleanup")
                 .define("clean_projectiles", true);
@@ -95,7 +95,7 @@ public class GameplayConfig {
                 .comment("Projectile types to clean")
                 .defineListAllowEmpty("projectile_types",
                     List.of("minecraft:arrow", "minecraft:spectral_arrow", "minecraft:snowball"),
-                    () -> "", obj -> validateResourceLocation(obj));
+                    () -> "", this::validateResourceLocation);
         protectCreateProcessingItems = builder
                 .comment("Protect items being processed by Create mod")
                 .define("protect_create_items", true);

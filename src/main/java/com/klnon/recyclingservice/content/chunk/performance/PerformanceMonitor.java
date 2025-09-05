@@ -37,7 +37,7 @@ public class PerformanceMonitor {
                 return 50.0;
             }
             
-            return (sum / count) / 1_000_000.0;
+            return ((double) sum / count) / 1_000_000.0;
             
         } catch (Exception e) {
             return 50.0;
