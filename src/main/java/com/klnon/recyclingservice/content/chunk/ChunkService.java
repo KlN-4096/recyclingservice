@@ -3,22 +3,18 @@ package com.klnon.recyclingservice.content.chunk;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
-import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
-import net.minecraft.server.level.TicketType;
 import net.minecraft.util.SortedArraySet;
 import net.minecraft.world.level.ChunkPos;
 
-import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 区块服务 - 整合所有区块处理逻辑
@@ -29,9 +25,7 @@ import java.util.stream.Collectors;
  * - ChunkTakeoverHandler: 启动时区块接管
  */
 public class ChunkService {
-    
-    private static final ChunkCache cache = new ChunkCache();
-    
+
     // ================== 启动接管功能 (原ChunkTakeoverHandler) ==================
     
     /**
@@ -58,50 +52,38 @@ public class ChunkService {
             Recyclingservice.LOGGER.error("Failed to perform startup chunk takeover", e);
         }
     }
-    
-    private static int takeoverDimensionChunks(ResourceLocation dimension, ServerLevel level, 
+
+    private static int takeoverDimensionChunks(ResourceLocation dimension, ServerLevel level,
                                                DistanceManager distanceManager) {
         int managedCount = 0;
-        
+
         try {
-            Field ticketsField = distanceManager.getClass().getDeclaredField("tickets");
-            ticketsField.setAccessible(true);
-            Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = 
-                (Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>>) ticketsField.get(distanceManager);
-            
-            if (tickets == null || tickets.isEmpty()) {
-                return 0;
-            }
-            
-            Set<ChunkPos> chunksToManage = new HashSet<>();
-            
-            tickets.forEach((encodedPos, ticketSet) -> {
+            // 直接使用 DistanceManager 的 tickets 字段
+            var tickets = distanceManager.tickets;
+
+            // 使用 Stream API 简化逻辑，避免中间集合
+            var chunksToManage = tickets.long2ObjectEntrySet()
+                    .stream()
+                    .filter(entry -> entry.getValue().stream()
+                            .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType())))
+                    .mapToLong(Long2ObjectMap.Entry::getLongKey)
+                    .toArray();
+
+            // 批量处理区块状态转换
+            for (long encodedPos : chunksToManage) {
                 ChunkPos chunkPos = new ChunkPos(encodedPos);
-                
-                boolean hasCustomTickets = ticketSet.stream()
-                    .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
-                
-                if (hasCustomTickets) {
-                    chunksToManage.add(chunkPos);
-                }
-            });
-            
-            for (ChunkPos chunkPos : chunksToManage) {
-                ChunkInfo existingInfo = ChunkCache.getChunk(dimension, chunkPos);
-                if (existingInfo == null || existingInfo.state() == ChunkState.UNMANAGED) {
-                    if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
-                        managedCount++;
-                    }
+                if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
+                    managedCount++;
                 }
             }
-            
+
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to takeover chunks for dimension {}", dimension, e);
         }
-        
+
         return managedCount;
     }
-    
+
     // ================== 物品冻结功能 (原ItemBasedFreezer) ==================
     
     /**
@@ -150,11 +132,8 @@ public class ChunkService {
                 ResourceLocation dimension = level.dimension().location();
                 
                 // 检查管理状态的区块是否需要冻结
-                Map<ChunkPos, ChunkInfo> managedChunks = getChunksInState(dimension);
-                for (Map.Entry<ChunkPos, ChunkInfo> entry : managedChunks.entrySet()) {
-                    ChunkPos pos = entry.getKey();
-                    ChunkInfo info = entry.getValue();
-                    
+                List<ChunkPos> managedChunks = ChunkCache.getChunksByState(dimension, ChunkState.MANAGED);
+                for (ChunkPos pos : managedChunks) {
                     int itemCount = getChunkItemCount(dimension, pos);
                     if (shouldFreezeForItems(itemCount)) {
                         if (ChunkCache.transitionChunkState(dimension, pos, ChunkState.ITEM_FROZEN, level)) {
@@ -214,85 +193,44 @@ public class ChunkService {
         double mspt = PerformanceMonitor.getAverageTickTime(server);
         
         if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
-            freezeChunksForPerformance(server);
+            adjustChunksByPerformance(server, ChunkState.MANAGED, ChunkState.PERFORMANCE_FROZEN, "Frozen");
         } else if (mspt < Config.TECHNICAL.msptThresholdRestore.get()) {
-            unfreezeChunksForPerformance(server);
+            adjustChunksByPerformance(server, ChunkState.PERFORMANCE_FROZEN, ChunkState.MANAGED, "Unfrozen");
         }
     }
     
-    private static void freezeChunksForPerformance(MinecraftServer server) {
+    private static void adjustChunksByPerformance(MinecraftServer server, 
+                                                    ChunkState fromState, 
+                                                    ChunkState toState, 
+                                                    String action) {
         try {
             int targetCount = Config.TECHNICAL.chunkOperationCount.get();
-            int frozenCount = 0;
-            
+            int processedCount = 0;
+
             for (ServerLevel level : server.getAllLevels()) {
-                if (frozenCount >= targetCount) break;
-                
+                if (processedCount >= targetCount) break;
+
                 ResourceLocation dimension = level.dimension().location();
-                Map<ChunkPos, ChunkInfo> managedChunks = ChunkCache.getDimensionChunks(dimension)
-                    .entrySet().stream()
-                    .filter(e -> e.getValue().state() == ChunkState.MANAGED)
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-                
-                for (Map.Entry<ChunkPos, ChunkInfo> entry : managedChunks.entrySet()) {
-                    if (frozenCount >= targetCount) break;
-                    
-                    if (ChunkCache.transitionChunkState(dimension, entry.getKey(), 
-                            ChunkState.PERFORMANCE_FROZEN, level)) {
-                        frozenCount++;
+                List<ChunkPos> targetChunks = ChunkCache.getChunksByState(dimension, fromState);
+
+                for (ChunkPos pos : targetChunks) {
+                    if (processedCount >= targetCount) break;
+
+                    if (ChunkCache.transitionChunkState(dimension, pos, toState, level)) {
+                        processedCount++;
                     }
                 }
             }
-            
-            if (frozenCount > 0) {
-                Recyclingservice.LOGGER.info("Performance: Frozen {} chunks due to high MSPT", frozenCount);
+
+            if (processedCount > 0) {
+                Recyclingservice.LOGGER.info("Performance: {} {} chunks",action, processedCount);
             }
             
         } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to freeze chunks for performance", e);
+            Recyclingservice.LOGGER.debug("Failed to {} chunks for performance", action.toLowerCase(), e);
         }
     }
-    
-    private static void unfreezeChunksForPerformance(MinecraftServer server) {
-        try {
-            int unfrozenCount = 0;
-            
-            for (ServerLevel level : server.getAllLevels()) {
-                ResourceLocation dimension = level.dimension().location();
-                Map<ChunkPos, ChunkInfo> frozenChunks = ChunkCache.getDimensionChunks(dimension)
-                    .entrySet().stream()
-                    .filter(e -> e.getValue().state() == ChunkState.PERFORMANCE_FROZEN)
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-                
-                for (Map.Entry<ChunkPos, ChunkInfo> entry : frozenChunks.entrySet()) {
-                    if (ChunkCache.transitionChunkState(dimension, entry.getKey(), 
-                            ChunkState.MANAGED, level)) {
-                        unfrozenCount++;
-                    }
-                }
-            }
-            
-            if (unfrozenCount > 0) {
-                Recyclingservice.LOGGER.info("Performance: Unfrozen {} chunks due to improved MSPT", 
-                    unfrozenCount);
-            }
-            
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to unfreeze chunks for performance", e);
-        }
-    }
-    
     // ================== 辅助方法 ==================
-    
-    private static Map<ChunkPos, ChunkInfo> getChunksInState(ResourceLocation dimension) {
-        Map<ChunkPos, ChunkInfo> allChunks = ChunkCache.getDimensionChunks(dimension);
-        return allChunks.entrySet().stream()
-            .filter(entry -> entry.getValue().state() == ChunkState.MANAGED)
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                Map.Entry::getValue
-            ));
-    }
     
     private static int getChunkItemCount(ResourceLocation dimension, ChunkPos pos) {
         Map<ChunkPos, Integer> entityCounts = CleanupManager.getEntityCountByChunk(dimension);

@@ -20,8 +20,6 @@ public class TechnicalConfig {
     public final ModConfigSpec.DoubleValue msptThresholdSuspend;
     public final ModConfigSpec.DoubleValue msptThresholdRestore;
     public final ModConfigSpec.IntValue chunkOperationCount;
-    public final ModConfigSpec.IntValue suspendCheckInterval;
-    public final ModConfigSpec.IntValue restoreCheckInterval;
     
     // 激进接管配置
     public final ModConfigSpec.BooleanValue enableAggressiveTakeover;
@@ -30,7 +28,6 @@ public class TechnicalConfig {
     // 物品监控配置  
     public final ModConfigSpec.BooleanValue enableItemBasedFreezing;
     public final ModConfigSpec.IntValue itemFreezeHours;
-    public final ModConfigSpec.IntValue itemMonitoringIntervalMinutes;
     
     // === 调试设置 ===
     public final ModConfigSpec.BooleanValue enableDebugLogs;
@@ -73,12 +70,6 @@ public class TechnicalConfig {
         chunkOperationCount = builder
                 .comment("Number of chunks to suspend/restore per operation")
                 .defineInRange("chunk_operation_count", 10, 1, 100);
-        suspendCheckInterval = builder
-                .comment("Interval in minutes for checking if chunks should be suspended")
-                .defineInRange("suspend_check_interval", 5, 1, 60);
-        restoreCheckInterval = builder
-                .comment("Interval in minutes for checking if chunks should be restored")
-                .defineInRange("restore_check_interval", 1, 1, 10);
         builder.pop();
         
         // 激进接管
@@ -99,9 +90,6 @@ public class TechnicalConfig {
         itemFreezeHours = builder
                 .comment("Hours to freeze chunks with too many items")
                 .defineInRange("freeze_hours", 1, 1, 24);
-        itemMonitoringIntervalMinutes = builder
-                .comment("Interval in minutes for item monitoring checks")
-                .defineInRange("monitoring_interval", 5, 1, 60);
         builder.pop();
         
         // 调试

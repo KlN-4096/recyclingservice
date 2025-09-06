@@ -31,7 +31,7 @@ public class ChunkCache {
     public static final TicketType<ChunkPos> RECYCLING_SERVICE_TICKET = 
         TicketType.create("recycling_service_chunk", Comparator.comparingLong(ChunkPos::toLong), 600);
     
-    // 简化为单一数据存储: 维度 -> 区块位置 -> 区块信息
+    // 单一数据存储: 维度 -> 区块位置 -> 区块信息
     private static final Map<ResourceLocation, Map<ChunkPos, ChunkInfo>> chunks = new ConcurrentHashMap<>();
     
     /**
@@ -72,7 +72,7 @@ public class ChunkCache {
             .map(Map.Entry::getKey)
             .toList();
     }
-    
+
     /**
      * 获取维度的所有区块
      */
