@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.foundation.commadn;
+package com.klnon.recyclingservice.foundation.command;
 
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;

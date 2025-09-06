@@ -2,7 +2,7 @@ package com.klnon.recyclingservice;
 
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
-import com.klnon.recyclingservice.foundation.commadn.BinCommand;
+import com.klnon.recyclingservice.foundation.command.BinCommand;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
