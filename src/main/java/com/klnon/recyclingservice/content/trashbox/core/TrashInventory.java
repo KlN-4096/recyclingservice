@@ -14,12 +14,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * - 创建和获取指定垃圾箱
  * - 处理物品分配到垃圾箱
  */
-public class TrashStorage {
+public class TrashInventory {
     
     // 维度ID -> 垃圾箱列表
     private final Map<ResourceLocation, List<TrashBox>> dimensionBoxes;
     
-    public TrashStorage() {
+    public TrashInventory() {
         this.dimensionBoxes = new ConcurrentHashMap<>();
     }
     

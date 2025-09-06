@@ -2,7 +2,8 @@ package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
+import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
+import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import com.klnon.recyclingservice.content.cleanup.CleanupService.CleanupResult;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -26,7 +27,7 @@ public class CleanupManager {
      * @param entity 要上报的实体
      */
     public static void reportEntity(ResourceLocation dimension, UUID uuid, Entity entity) {
-        EntityReportCache.addEntity(dimension, entity.getUUID(), entity);
+        EntityCache.addEntity(dimension, entity.getUUID(), entity);
     }
     
     /**
@@ -34,7 +35,7 @@ public class CleanupManager {
      * @param entity 要移除的实体
      */
     public static void removeReportedEntity(ResourceLocation dimension, Entity entity) {
-        EntityReportCache.removeEntity(dimension,entity.getUUID());
+        EntityCache.removeEntity(dimension,entity.getUUID());
     }
     
     /**
@@ -43,7 +44,7 @@ public class CleanupManager {
      * @return 是否已上报
      */
     public static boolean isEntityReported(Entity entity) {
-        return EntityReportCache.isEntityReported(entity);
+        return EntityCache.isEntityReported(entity);
     }
     
     /**
@@ -84,22 +85,22 @@ public class CleanupManager {
      * 清理无效实体
      */
     public static void removeInvalidEntities(ResourceLocation dimension) {
-        EntityReportCache.removeInvalidEntities(dimension);
+        EntityCache.removeInvalidEntities(dimension);
     }
 
     /**
      * 获取维度的所有实体报告
      */
-    public static List<EntityReportCache.EntityReport> getReportedEntries(ResourceLocation dimension) {
-        return EntityReportCache.getReportedEntries(dimension);
+    public static List<EntityCache.EntityReport> getReportedEntries(ResourceLocation dimension) {
+        return EntityCache.getReportedEntries(dimension);
     }
 
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
-        return EntityReportCache.getEntityCountByChunk(dimension);
+        return EntityCache.getEntityCountByChunk(dimension);
     }
 
     public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
-        return  EntityReportCache.getOverloadedChunks(dimension);
+        return  EntityCache.getOverloadedChunks(dimension);
     }
 
     // === 核心清理功能 ===

@@ -2,7 +2,7 @@ package com.klnon.recyclingservice.content.trashbox;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.core.TrashStorage;
+import com.klnon.recyclingservice.content.trashbox.core.TrashInventory;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class TrashBoxManager {
     
-    private static final TrashStorage trashStorage = new TrashStorage();
+    private static final TrashInventory trashStorage = new TrashInventory();
     
     /**
      * 获取或创建指定维度的垃圾箱

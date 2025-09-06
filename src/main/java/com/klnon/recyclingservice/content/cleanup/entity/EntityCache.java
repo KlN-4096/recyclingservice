@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 主动上报缓存系统 - UUID统一操作的简化版本
  * 核心理念：所有操作都基于UUID，提供Entity便捷方法
  */
-public class EntityReportCache {
+public class EntityCache {
     
     // 统一主存储：维度 -> UUID -> 实体记录
     private static final ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<UUID, EntityRecord>> entities 

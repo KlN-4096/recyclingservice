@@ -1,9 +1,11 @@
-package com.klnon.recyclingservice.content.trashbox;
+package com.klnon.recyclingservice.content.trashbox.ui;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
+import com.klnon.recyclingservice.content.trashbox.payment.TrashPaymentHandler;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.world.MenuProvider;
@@ -334,10 +336,10 @@ public class TrashBoxMenu extends ChestMenu {
         ResourceLocation playerDim = player.level().dimension().location();
         ResourceLocation trashDim = trashBox.getDimensionId();
         
-        int cost = TrashPaymentSystem.calculateOperationCost(playerDim, trashDim, operation);
+        int cost = TrashPaymentHandler.calculateOperationCost(playerDim, trashDim, operation);
         if (cost <= 0) return true;
         
-        return TrashPaymentSystem.checkAndDeductPayment(player, cost);
+        return TrashPaymentHandler.checkAndDeductPayment(player, cost);
     }
     
     /**

@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.trashbox;
+package com.klnon.recyclingservice.content.trashbox.payment;
 
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -18,7 +18,7 @@ import com.klnon.recyclingservice.Config;
  * - 发送支付相关消息  
  * - 支付物品验证
  */
-public class TrashPaymentSystem {
+public class TrashPaymentHandler {
 
     /**
      * 扣除玩家的邮费

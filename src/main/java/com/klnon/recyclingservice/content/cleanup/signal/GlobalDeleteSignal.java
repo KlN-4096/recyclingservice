@@ -1,6 +1,6 @@
-package com.klnon.recyclingservice.content.cleanup;
+package com.klnon.recyclingservice.content.cleanup.signal;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
+import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
 import net.minecraft.server.MinecraftServer;
 
 /**
@@ -30,7 +30,7 @@ public class GlobalDeleteSignal {
         
         // 检查关闭条件
         boolean timeOut = (server.getTickCount() - signalStartTick) > 200; // 10秒=200tick
-        boolean cacheEmpty = EntityReportCache.getTotalReportedCount() == 0;
+        boolean cacheEmpty = EntityCache.getTotalReportedCount() == 0;
         
         if (timeOut || cacheEmpty) {
             deleteSignalActive = false;

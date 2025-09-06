@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 区块数据存储管理器
  */
-public class ChunkDataStore {
+public class ChunkCache {
     
     // 白名单ticket类型
     public static final Set<TicketType<?>> WHITELIST_TICKET_TYPES = Set.of(

@@ -4,7 +4,8 @@ import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
+import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
+import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -36,11 +37,11 @@ public class CleanupService {
             
             try {
                 // 直接从缓存获取并统计
-                List<EntityReportCache.EntityReport> reports = CleanupManager.getReportedEntries(dimensionId);
+                List<EntityCache.EntityReport> reports = CleanupManager.getReportedEntries(dimensionId);
                 int itemCount = 0;
                 int projectileCount = 0;
                 
-                for (EntityReportCache.EntityReport report : reports) {
+                for (EntityCache.EntityReport report : reports) {
                     try {
                         Entity entity = report.entity();
                         if (entity.isRemoved() || !entity.isAlive()) continue;
