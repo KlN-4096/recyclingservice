@@ -91,8 +91,8 @@ public class TrashBoxMenu extends ChestMenu {
             return; // 邮费不足，阻止操作
         }
         
-        // 检查维度是否允许放入
-        if (slotId >= 0 && !trashBox.isAllowedToPutIn()) {
+        // 检查维度是否允许放入（支持跨维度访问控制）
+        if (slotId >= 0 && !trashBox.isAllowedToPutIn(player)) {
             if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots)
                 return;
             if ((!getCarried().isEmpty() || (clickType == ClickType.SWAP && slotId > trashSlots)) 

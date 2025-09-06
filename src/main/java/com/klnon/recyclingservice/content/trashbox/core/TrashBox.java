@@ -260,8 +260,8 @@ public class TrashBox implements Container {
     /**
      * 检查当前维度是否允许玩家主动放入物品到垃圾箱
      */
-    public boolean isAllowedToPutIn() {
-        return Config.isDimensionAllowPutIn(dimensionId.toString());
+    public boolean isAllowedToPutIn(Player player) {
+        return Config.isDimensionAllowPutIn(dimensionId.toString(),player.level().dimension().location().toString());
     }
 
     /**

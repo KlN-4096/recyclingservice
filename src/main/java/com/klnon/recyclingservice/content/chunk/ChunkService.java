@@ -13,9 +13,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.*;
 
@@ -124,7 +125,8 @@ public class ChunkService {
 
                     // 简化的状态转换：MANAGED <-> PERFORMANCE_FROZEN
                     boolean success = false;
-                    if (fromState == ChunkState.MANAGED && toState == ChunkState.PERFORMANCE_FROZEN) {
+                    LevelChunk chunk = (LevelChunk)level.getChunk(pos.x, pos.z);
+                    if ((fromState == ChunkState.MANAGED && toState == ChunkState.PERFORMANCE_FROZEN)||chunk.getBlockEntities().size()<Config.TECHNICAL.chunkEntityThreshold.get()){
                         success = ChunkCache.removeManagementTicket(pos, level);
                     } else if (fromState == ChunkState.PERFORMANCE_FROZEN && toState == ChunkState.MANAGED) {
                         success = ChunkCache.addManagementTicket(pos, level);

@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice;
 
 import com.klnon.recyclingservice.foundation.config.*;
+
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.minecraft.resources.ResourceLocation;
@@ -61,10 +62,16 @@ public class Config {
     }
     
     /**
-     * 检查维度是否允许玩家主动放入物品到垃圾箱
+     * 检查维度是否允许指定玩家主动放入物品到垃圾箱
      */
-    public static boolean isDimensionAllowPutIn(String dimensionId) {
-        return allowPutInDimensionsCache.contains(dimensionId);
+    public static boolean isDimensionAllowPutIn(String dimensionId, String playerDimension) {
+        if (!GAMEPLAY.dimensionTrashCrossAccess.get()) {
+            // 不允许跨维度访问：只能访问玩家当前所在维度的垃圾箱
+            return playerDimension.equals(dimensionId) && allowPutInDimensionsCache.contains(dimensionId);
+        } else {
+            // 允许跨维度访问：按配置列表判断
+            return allowPutInDimensionsCache.contains(dimensionId);
+        }
     }
     
     /**
