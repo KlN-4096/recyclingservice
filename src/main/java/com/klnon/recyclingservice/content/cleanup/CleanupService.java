@@ -5,7 +5,6 @@ import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
-import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;

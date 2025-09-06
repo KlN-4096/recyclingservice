@@ -3,7 +3,6 @@ package com.klnon.recyclingservice.content.cleanup;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
-import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
 import com.klnon.recyclingservice.content.cleanup.CleanupService.CleanupResult;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -27,7 +26,7 @@ public class CleanupManager {
      * @param entity 要上报的实体
      */
     public static void reportEntity(ResourceLocation dimension, UUID uuid, Entity entity) {
-        EntityCache.addEntity(dimension, entity.getUUID(), entity);
+        EntityCache.addEntity(dimension, uuid, entity);
     }
     
     /**

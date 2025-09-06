@@ -1,8 +1,8 @@
-package com.klnon.recyclingservice.infrastructure.command;
+package com.klnon.recyclingservice.foundation.commadn;
 
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.ui.TrashBoxMenu;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.mojang.brigadier.CommandDispatcher;
