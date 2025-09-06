@@ -16,19 +16,13 @@ public class ChunkManager {
     public static void performStartupTakeover(MinecraftServer server) {
         ChunkService.handleStartupTakeover(server);
     }
-    
-    /**
-     * 执行清理时的超载区块处理
-     */
-    public static void performOverloadHandling(ResourceLocation dimensionId, ServerLevel level) {
-        ChunkService.handleOverloadedChunks(dimensionId, level);
-    }
+
     
     /**
      * 执行物品监控检查
      */
     public static void performItemMonitoring(MinecraftServer server) {
-        ChunkService.performItemCheck(server);
+        ChunkService.performItemMonitoring(server);
     }
     
     /**

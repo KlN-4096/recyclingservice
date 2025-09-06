@@ -9,7 +9,6 @@ public class TechnicalConfig {
     
     // === 区块管理设置 ===
     public final ModConfigSpec.BooleanValue enableChunkItemWarning;
-    public final ModConfigSpec.BooleanValue enableChunkFreezing;
     public final ModConfigSpec.IntValue tooManyItemsWarning;
     public final ModConfigSpec.IntValue chunkFreezingSearchRadius;
     public final ModConfigSpec.BooleanValue enableStartupChunkCleanup;
@@ -40,9 +39,6 @@ public class TechnicalConfig {
         enableChunkItemWarning = builder
                 .comment("Enable warnings for chunks with too many items")
                 .define("enable_warning", true);
-        enableChunkFreezing = builder
-                .comment("Enable automatic chunk freezing")
-                .define("enable_freezing", true);
         tooManyItemsWarning = builder
                 .comment("Item count threshold for warnings")
                 .defineInRange("warning_threshold", 50, 5, 10000);

@@ -148,7 +148,7 @@ public class ChunkCache {
     }
     
     /**
-     * 冻结区块tickets(不管理状态) - 直接移除非白名单tickets
+     * 直接移除非白名单tickets
      */
     public static int freezeChunkTickets(ChunkPos chunkPos, ServerLevel level) {
         try {

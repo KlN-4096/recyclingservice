@@ -5,13 +5,10 @@ import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.Ticket;
-import net.minecraft.util.SortedArraySet;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.*;
@@ -85,76 +82,41 @@ public class ChunkService {
     }
 
     // ================== 物品冻结功能 (原ItemBasedFreezer) ==================
-    
+
     /**
-     * 处理超载区块（基于物品数量）
+     * 物品监控 - 简化版本，直接处理EntityCache统计的超载区块
      */
-    public static void handleOverloadedChunks(ResourceLocation dimensionId, ServerLevel level) {
+    public static void performItemMonitoring(MinecraftServer server) {
         if (!Config.TECHNICAL.enableItemBasedFreezing.get()) {
             return;
         }
         
         try {
-            List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimensionId);
-            if (overloadedChunks.isEmpty()) {
-                return;
-            }
-            
-            int frozenCount = 0;
-            for (ChunkPos chunkPos : overloadedChunks) {
-                processOverloadedChunk(dimensionId, chunkPos, level);
-                frozenCount++;
-            }
-            
-            if (frozenCount > 0) {
-                Recyclingservice.LOGGER.info("Frozen {} overloaded chunks in {}", 
-                    frozenCount, dimensionId);
-            }
-            
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to handle overloaded chunks for {}", dimensionId, e);
-        }
-    }
-    
-    /**
-     * 定期物品检查
-     */
-    public static void performItemCheck(MinecraftServer server) {
-        if (!Config.TECHNICAL.enableItemBasedFreezing.get()) {
-            return;
-        }
-        
-        try {
-            int frozenCount = 0;
+            int totalFrozenCount = 0;
             int unfrozenCount = 0;
             
+            // 处理所有维度的超载区块
             for (ServerLevel level : server.getAllLevels()) {
                 ResourceLocation dimension = level.dimension().location();
                 
-                // 检查管理状态的区块是否需要冻结
-                List<ChunkPos> managedChunks = ChunkCache.getChunksByState(dimension, ChunkState.MANAGED);
-                for (ChunkPos pos : managedChunks) {
-                    int itemCount = getChunkItemCount(dimension, pos);
-                    if (shouldFreezeForItems(itemCount)) {
-                        if (ChunkCache.transitionChunkState(dimension, pos, ChunkState.ITEM_FROZEN, level)) {
-                            frozenCount++;
-                            Recyclingservice.LOGGER.debug("Frozen chunk ({}, {}) for {} items", 
-                                pos.x, pos.z, itemCount);
-                        }
-                    }
+                // 获取并处理超载区块
+                List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimension);
+                for (ChunkPos chunkPos : overloadedChunks) {
+                    processOverloadedChunk(dimension, chunkPos, level);
+                    totalFrozenCount++;
                 }
-                
+
                 // 检查已冻结的区块是否应该解冻
                 unfrozenCount += unfreezeExpiredChunks(server);
             }
             
-            if (frozenCount > 0 || unfrozenCount > 0) {
+            if (totalFrozenCount > 0 || unfrozenCount > 0) {
                 Recyclingservice.LOGGER.info("Item monitoring completed: {} frozen, {} unfrozen", 
-                    frozenCount, unfrozenCount);
+                    totalFrozenCount, unfrozenCount);
             }
             
         } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to perform item check", e);
+            Recyclingservice.LOGGER.debug("Failed to perform item monitoring", e);
         }
     }
     
@@ -167,19 +129,61 @@ public class ChunkService {
             Recyclingservice.LOGGER.debug("Frozen managed chunk ({}, {}) due to item overload", 
                 chunkPos.x, chunkPos.z);
         } else {
-            // 未管理的区块，尝试直接冻结其tickets
-            int frozenTickets = ChunkCache.freezeChunkTickets(chunkPos, level);
-            if (frozenTickets > 0) {
-                Recyclingservice.LOGGER.debug("Frozen unmanaged chunk ({}, {}) with {} tickets", 
-                    chunkPos.x, chunkPos.z, frozenTickets);
-                
-                // 记录为未管理状态
-                ChunkCache.updateChunk(dimension, 
-                    new ChunkInfo(chunkPos, ChunkState.UNMANAGED, 0));
+            // 未管理的区块，先创建基础信息再接管管理
+            if (existingInfo == null) {
+                // 创建基础区块信息
+                ChunkCache.updateChunk(dimension, new ChunkInfo(chunkPos, ChunkState.UNMANAGED, 0));
+            }
+            
+            // 接管管理
+            if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
+                // 接管成功，再转为冻结状态
+                if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.ITEM_FROZEN, level)) {
+                    Recyclingservice.LOGGER.debug("Taken over and frozen unmanaged chunk ({}, {}) due to item overload", 
+                        chunkPos.x, chunkPos.z);
+                }
+            } else {
+                // 接管失败，尝试直接冻结其tickets作为后备方案
+                int frozenTickets = ChunkCache.freezeChunkTickets(chunkPos, level);
+                if (frozenTickets > 0) {
+                    Recyclingservice.LOGGER.debug("Frozen unmanaged chunk ({}, {}) with {} tickets (fallback)", 
+                        chunkPos.x, chunkPos.z, frozenTickets);
+                }
             }
         }
     }
-    
+
+    private static int unfreezeExpiredChunks(MinecraftServer server) {
+        int unfrozenCount = 0;
+        
+        try {
+            for (ServerLevel level : server.getAllLevels()) {
+                ResourceLocation dimension = level.dimension().location();
+                
+                // 获取所有物品冻结状态的区块
+                List<ChunkPos> frozenChunks = ChunkCache.getChunksByState(dimension, ChunkState.ITEM_FROZEN);
+                
+                for (ChunkPos chunkPos : frozenChunks) {
+                    ChunkInfo chunkInfo = ChunkCache.getChunk(dimension, chunkPos);
+                    
+                    // 检查是否到期
+                    if (chunkInfo != null && chunkInfo.shouldUnfreeze()) {
+                        // 解冻：转回MANAGED状态
+                        if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
+                            unfrozenCount++;
+                            Recyclingservice.LOGGER.debug("Unfrozen expired chunk ({}, {}) after {} hours", 
+                                chunkPos.x, chunkPos.z, 
+                                (System.currentTimeMillis() - (chunkInfo.unfreezeTime() - Config.TECHNICAL.itemFreezeHours.get() * 3600_000L)) / 3600_000L);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.debug("Failed to unfreeze expired chunks", e);
+        }
+        
+        return unfrozenCount;
+    }
     // ================== 性能控制功能 (原PerformanceBasedController) ==================
     
     /**
@@ -230,19 +234,5 @@ public class ChunkService {
             Recyclingservice.LOGGER.debug("Failed to {} chunks for performance", action.toLowerCase(), e);
         }
     }
-    // ================== 辅助方法 ==================
-    
-    private static int getChunkItemCount(ResourceLocation dimension, ChunkPos pos) {
-        Map<ChunkPos, Integer> entityCounts = CleanupManager.getEntityCountByChunk(dimension);
-        return entityCounts.getOrDefault(pos, 0);
-    }
-    
-    private static boolean shouldFreezeForItems(int itemCount) {
-        return itemCount > Config.TECHNICAL.tooManyItemsWarning.get();
-    }
-    
-    private static int unfreezeExpiredChunks(MinecraftServer server) {
-        // 简化版本，可以根据需要扩展
-        return 0;
-    }
+
 }

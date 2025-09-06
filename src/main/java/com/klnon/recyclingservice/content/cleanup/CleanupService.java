@@ -55,11 +55,6 @@ public class CleanupService {
                     }
                 }
                 
-                // 区块超载处理
-                if (Config.TECHNICAL.enableChunkFreezing.get()) {
-                    ChunkManager.performOverloadHandling(dimensionId, level);
-                }
-                
                 // 清理缓存
                 CleanupManager.removeInvalidEntities(dimensionId);
                 
