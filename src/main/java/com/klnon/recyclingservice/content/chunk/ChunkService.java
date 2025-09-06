@@ -4,11 +4,17 @@ import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 
+import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.Ticket;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.*;
@@ -158,14 +164,17 @@ public class ChunkService {
             for (ServerLevel level : server.getAllLevels()) {
                 ResourceLocation dimension = level.dimension().location();
                 
-                // 直接冻结超载区块
+                // 获取超载区块
                 List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimension);
+                
+                // 发送警告消息（如果启用）
+                if (Config.TECHNICAL.enableChunkItemWarning.get()) {
+                    sendItemWarningMessages(server, dimension, overloadedChunks);
+                }
+                
+                // 冻结超载区块（包括扩散冻结）
                 for (ChunkPos chunkPos : overloadedChunks) {
-                    if (ChunkCache.freezeChunkForItems(dimension, chunkPos, level)) {
-                        totalFrozenCount++;
-                        Recyclingservice.LOGGER.debug("Frozen overloaded chunk ({}, {}) due to items", 
-                            chunkPos.x, chunkPos.z);
-                    }
+                    totalFrozenCount += freezeChunkWithRadius(dimension, chunkPos, level);
                 }
 
                 // 检查已冻结的区块是否应该解冻
@@ -205,6 +214,104 @@ public class ChunkService {
         }
         
         return unfrozenCount;
+    }
+    
+    /**
+     * 发送物品超载警告消息给所有玩家
+     */
+    private static void sendItemWarningMessages(MinecraftServer server, ResourceLocation dimension, List<ChunkPos> overloadedChunks) {
+        if (overloadedChunks.isEmpty()) return;
+        
+        try {
+            // 获取该维度所有区块的实体数量统计
+            Map<ChunkPos, Integer> entityCountMap = CleanupManager.getEntityCountByChunk(dimension);
+            ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, dimension));
+            DistanceManager distanceManager = level != null ? level.getChunkSource().chunkMap.getDistanceManager() : null;
+            
+            for (ChunkPos chunkPos : overloadedChunks) {
+                int itemCount = entityCountMap.getOrDefault(chunkPos, 0);
+                
+                if (itemCount > 0) {
+                    // 计算世界坐标（区块中心）
+                    int worldX = chunkPos.x * 16 + 8;
+                    int worldZ = chunkPos.z * 16 + 8;
+                    
+                    // 直接获取ticket等级
+                    int ticketLevel = 33; // 默认未加载
+                    if (distanceManager != null) {
+                        var chunkTickets = distanceManager.tickets.get(chunkPos.toLong());
+                        if (chunkTickets != null && !chunkTickets.isEmpty()) {
+                            ticketLevel = chunkTickets.stream()
+                                .mapToInt(Ticket::getTicketLevel)
+                                .min()
+                                .orElse(33);
+                        }
+                    }
+                    
+                    Component warningMessage = MessageHelper.getItemWarningMessage(itemCount, worldX, worldZ, ticketLevel);
+                    
+                    // 发送给所有玩家（在聊天栏显示）
+                    MessageHelper.sendChatMessage(server, warningMessage);
+                }
+            }
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.debug("Failed to send item warning messages for {}", dimension, e);
+        }
+    }
+    
+    
+    /**
+     * 扩散冻结：冻结超载区块及其周围半径内的非白名单强加载区块
+     */
+    private static int freezeChunkWithRadius(ResourceLocation dimension, ChunkPos centerChunk, ServerLevel level) {
+        int frozenCount = 0;
+        int radius = Config.TECHNICAL.chunkFreezingSearchRadius.get();
+        
+        try {
+            // 首先冻结中心区块
+            if (ChunkCache.freezeChunkForItems(dimension, centerChunk, level)) {
+                frozenCount++;
+                Recyclingservice.LOGGER.debug("Frozen overloaded chunk ({}, {}) due to items", 
+                    centerChunk.x, centerChunk.z);
+            }
+            
+            // 获取DistanceManager来检查周围区块的ticket状态
+            DistanceManager distanceManager = level.getChunkSource().chunkMap.getDistanceManager();
+            var tickets = distanceManager.tickets;
+            
+            // 遍历半径内的所有区块
+            for (int x = centerChunk.x - radius; x <= centerChunk.x + radius; x++) {
+                for (int z = centerChunk.z - radius; z <= centerChunk.z + radius; z++) {
+                    // 跳过中心区块（已经处理过）
+                    if (x == centerChunk.x && z == centerChunk.z) continue;
+                    
+                    ChunkPos chunkPos = new ChunkPos(x, z);
+                    long chunkKey = chunkPos.toLong();
+                    
+                    // 检查该区块是否有非白名单的ticket（强加载区块）
+                    var chunkTickets = tickets.get(chunkKey);
+                    if (chunkTickets != null && !chunkTickets.isEmpty()) {
+                        boolean hasNonWhitelistTicket = chunkTickets.stream()
+                            .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+                        
+                        if (hasNonWhitelistTicket) {
+                            // 冻结该区块
+                            if (ChunkCache.freezeChunkForItems(dimension, chunkPos, level)) {
+                                frozenCount++;
+                                Recyclingservice.LOGGER.debug("Frozen adjacent chunk ({}, {}) within radius {} of overloaded chunk", 
+                                    chunkPos.x, chunkPos.z, radius);
+                            }
+                        }
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.debug("Failed to freeze chunk with radius for ({}, {})", 
+                centerChunk.x, centerChunk.z, e);
+        }
+        
+        return frozenCount;
     }
 
 
