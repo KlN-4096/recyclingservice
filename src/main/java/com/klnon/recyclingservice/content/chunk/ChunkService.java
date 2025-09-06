@@ -15,7 +15,6 @@ import java.util.*;
 
 /**
  * 区块服务 - 整合所有区块处理逻辑
- * 
  * 包含原来的：
  * - ItemBasedFreezer: 基于物品数量的冻结
  * - PerformanceBasedController: 基于性能的控制
@@ -69,7 +68,7 @@ public class ChunkService {
             // 批量处理区块状态转换
             for (long encodedPos : chunksToManage) {
                 ChunkPos chunkPos = new ChunkPos(encodedPos);
-                if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
+                if (ChunkCache.addManagementTicket(chunkPos, level)) {
                     managedCount++;
                 }
             }
@@ -81,10 +80,70 @@ public class ChunkService {
         return managedCount;
     }
 
-    // ================== 物品冻结功能 (原ItemBasedFreezer) ==================
+    // ================== 性能控制功能 ==================
 
     /**
-     * 物品监控 - 简化版本，直接处理EntityCache统计的超载区块
+     * 基于性能调整区块
+     */
+    public static void adjustChunksBasedOnPerformance(MinecraftServer server) {
+        if (!Config.TECHNICAL.enableDynamicChunkManagement.get()) {
+            return;
+        }
+
+        double mspt = PerformanceMonitor.getAverageTickTime(server);
+
+        if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
+            adjustChunksByPerformance(server, ChunkState.MANAGED, ChunkState.PERFORMANCE_FROZEN, "Frozen");
+        } else if (mspt < Config.TECHNICAL.msptThresholdRestore.get()) {
+            adjustChunksByPerformance(server, ChunkState.PERFORMANCE_FROZEN, ChunkState.MANAGED, "Unfrozen");
+        }
+    }
+
+    private static void adjustChunksByPerformance(MinecraftServer server,
+                                                  ChunkState fromState,
+                                                  ChunkState toState,
+                                                  String action) {
+        try {
+            int targetCount = Config.TECHNICAL.chunkOperationCount.get();
+            int processedCount = 0;
+
+            for (ServerLevel level : server.getAllLevels()) {
+                if (processedCount >= targetCount) break;
+
+                ResourceLocation dimension = level.dimension().location();
+                List<ChunkPos> targetChunks = ChunkCache.getChunksByState(dimension, fromState, level);
+
+                for (ChunkPos pos : targetChunks) {
+                    if (processedCount >= targetCount) break;
+
+                    // 简化的状态转换：MANAGED <-> PERFORMANCE_FROZEN
+                    boolean success = false;
+                    if (fromState == ChunkState.MANAGED && toState == ChunkState.PERFORMANCE_FROZEN) {
+                        success = ChunkCache.removeManagementTicket(pos, level);
+                    } else if (fromState == ChunkState.PERFORMANCE_FROZEN && toState == ChunkState.MANAGED) {
+                        success = ChunkCache.addManagementTicket(pos, level);
+                    }
+
+                    if (success) {
+                        processedCount++;
+                    }
+                }
+            }
+
+            if (processedCount > 0) {
+                Recyclingservice.LOGGER.info("Performance: {} {} chunks",action, processedCount);
+            }
+
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.debug("Failed to {} chunks for performance", action.toLowerCase(), e);
+        }
+    }
+
+
+    // ================== 物品超载冻结功能 ==================
+
+    /**
+     * 物品监控 ，直接处理EntityCache统计的超载区块
      */
     public static void performItemMonitoring(MinecraftServer server) {
         if (!Config.TECHNICAL.enableItemBasedFreezing.get()) {
@@ -99,15 +158,18 @@ public class ChunkService {
             for (ServerLevel level : server.getAllLevels()) {
                 ResourceLocation dimension = level.dimension().location();
                 
-                // 获取并处理超载区块
+                // 直接冻结超载区块
                 List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimension);
                 for (ChunkPos chunkPos : overloadedChunks) {
-                    processOverloadedChunk(dimension, chunkPos, level);
-                    totalFrozenCount++;
+                    if (ChunkCache.freezeChunkForItems(dimension, chunkPos, level)) {
+                        totalFrozenCount++;
+                        Recyclingservice.LOGGER.debug("Frozen overloaded chunk ({}, {}) due to items", 
+                            chunkPos.x, chunkPos.z);
+                    }
                 }
 
                 // 检查已冻结的区块是否应该解冻
-                unfrozenCount += unfreezeExpiredChunks(server);
+                unfrozenCount += unfreezeExpiredChunks(dimension, level);
             }
             
             if (totalFrozenCount > 0 || unfrozenCount > 0) {
@@ -120,119 +182,30 @@ public class ChunkService {
         }
     }
     
-    private static void processOverloadedChunk(ResourceLocation dimension, ChunkPos chunkPos, ServerLevel level) {
-        ChunkInfo existingInfo = ChunkCache.getChunk(dimension, chunkPos);
-        
-        if (existingInfo != null && existingInfo.state() == ChunkState.MANAGED) {
-            // 已管理的区块，转为物品冻结状态
-            ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.ITEM_FROZEN, level);
-            Recyclingservice.LOGGER.debug("Frozen managed chunk ({}, {}) due to item overload", 
-                chunkPos.x, chunkPos.z);
-        } else {
-            // 未管理的区块，先创建基础信息再接管管理
-            if (existingInfo == null) {
-                // 创建基础区块信息
-                ChunkCache.updateChunk(dimension, new ChunkInfo(chunkPos, ChunkState.UNMANAGED, 0));
-            }
-            
-            // 接管管理
-            if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
-                // 接管成功，再转为冻结状态
-                if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.ITEM_FROZEN, level)) {
-                    Recyclingservice.LOGGER.debug("Taken over and frozen unmanaged chunk ({}, {}) due to item overload", 
-                        chunkPos.x, chunkPos.z);
-                }
-            } else {
-                // 接管失败，尝试直接冻结其tickets作为后备方案
-                int frozenTickets = ChunkCache.freezeChunkTickets(chunkPos, level);
-                if (frozenTickets > 0) {
-                    Recyclingservice.LOGGER.debug("Frozen unmanaged chunk ({}, {}) with {} tickets (fallback)", 
-                        chunkPos.x, chunkPos.z, frozenTickets);
-                }
-            }
-        }
-    }
-
-    private static int unfreezeExpiredChunks(MinecraftServer server) {
+    private static int unfreezeExpiredChunks(ResourceLocation dimension, ServerLevel level) {
         int unfrozenCount = 0;
         
         try {
-            for (ServerLevel level : server.getAllLevels()) {
-                ResourceLocation dimension = level.dimension().location();
-                
-                // 获取所有物品冻结状态的区块
-                List<ChunkPos> frozenChunks = ChunkCache.getChunksByState(dimension, ChunkState.ITEM_FROZEN);
-                
-                for (ChunkPos chunkPos : frozenChunks) {
-                    ChunkInfo chunkInfo = ChunkCache.getChunk(dimension, chunkPos);
-                    
-                    // 检查是否到期
-                    if (chunkInfo != null && chunkInfo.shouldUnfreeze()) {
-                        // 解冻：转回MANAGED状态
-                        if (ChunkCache.transitionChunkState(dimension, chunkPos, ChunkState.MANAGED, level)) {
-                            unfrozenCount++;
-                            Recyclingservice.LOGGER.debug("Unfrozen expired chunk ({}, {}) after {} hours", 
-                                chunkPos.x, chunkPos.z, 
-                                (System.currentTimeMillis() - (chunkInfo.unfreezeTime() - Config.TECHNICAL.itemFreezeHours.get() * 3600_000L)) / 3600_000L);
-                        }
+            // 获取所有物品冻结的区块
+            List<ChunkPos> frozenChunks = ChunkCache.getItemFrozenChunks(dimension);
+            
+            for (ChunkPos chunkPos : frozenChunks) {
+                // 检查是否到期
+                if (ChunkCache.shouldUnfreezeItemFrozenChunk(dimension, chunkPos)) {
+                    // 解冻：恢复管理
+                    if (ChunkCache.unfreezeChunk(dimension, chunkPos, level)) {
+                        unfrozenCount++;
+                        Recyclingservice.LOGGER.debug("Unfrozen expired chunk ({}, {})", 
+                            chunkPos.x, chunkPos.z);
                     }
                 }
             }
         } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to unfreeze expired chunks", e);
+            Recyclingservice.LOGGER.debug("Failed to unfreeze expired chunks for {}", dimension, e);
         }
         
         return unfrozenCount;
     }
-    // ================== 性能控制功能 (原PerformanceBasedController) ==================
-    
-    /**
-     * 基于性能调整区块
-     */
-    public static void adjustChunksBasedOnPerformance(MinecraftServer server) {
-        if (!Config.TECHNICAL.enableDynamicChunkManagement.get()) {
-            return;
-        }
-        
-        double mspt = PerformanceMonitor.getAverageTickTime(server);
-        
-        if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
-            adjustChunksByPerformance(server, ChunkState.MANAGED, ChunkState.PERFORMANCE_FROZEN, "Frozen");
-        } else if (mspt < Config.TECHNICAL.msptThresholdRestore.get()) {
-            adjustChunksByPerformance(server, ChunkState.PERFORMANCE_FROZEN, ChunkState.MANAGED, "Unfrozen");
-        }
-    }
-    
-    private static void adjustChunksByPerformance(MinecraftServer server, 
-                                                    ChunkState fromState, 
-                                                    ChunkState toState, 
-                                                    String action) {
-        try {
-            int targetCount = Config.TECHNICAL.chunkOperationCount.get();
-            int processedCount = 0;
 
-            for (ServerLevel level : server.getAllLevels()) {
-                if (processedCount >= targetCount) break;
-
-                ResourceLocation dimension = level.dimension().location();
-                List<ChunkPos> targetChunks = ChunkCache.getChunksByState(dimension, fromState);
-
-                for (ChunkPos pos : targetChunks) {
-                    if (processedCount >= targetCount) break;
-
-                    if (ChunkCache.transitionChunkState(dimension, pos, toState, level)) {
-                        processedCount++;
-                    }
-                }
-            }
-
-            if (processedCount > 0) {
-                Recyclingservice.LOGGER.info("Performance: {} {} chunks",action, processedCount);
-            }
-            
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.debug("Failed to {} chunks for performance", action.toLowerCase(), e);
-        }
-    }
 
 }

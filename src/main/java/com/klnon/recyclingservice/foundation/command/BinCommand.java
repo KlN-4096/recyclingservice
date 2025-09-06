@@ -8,6 +8,8 @@ import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
@@ -96,9 +98,9 @@ public class BinCommand {
      * @param builder 补全建议构建器
      * @return CompletableFuture包装的补全建议
      */
-    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestDimensions(
+    private static java.util.concurrent.CompletableFuture<Suggestions> suggestDimensions(
             CommandContext<CommandSourceStack> context, 
-            com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+            SuggestionsBuilder builder) {
         
         return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestDimensions", () -> {
             try {
@@ -130,9 +132,9 @@ public class BinCommand {
      * @param builder 补全建议构建器
      * @return CompletableFuture包装的补全建议
      */
-    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestBoxNumbers(
+    private static java.util.concurrent.CompletableFuture<Suggestions> suggestBoxNumbers(
             CommandContext<CommandSourceStack> context, 
-            com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+            SuggestionsBuilder builder) {
         
         return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestBoxNumbers", () -> {
             try {
@@ -183,7 +185,7 @@ public class BinCommand {
     }
     
     /**
-     * 显示区块tickets信息 - 硬编码实现
+     * 显示区块tickets信息 - 硬编码
      */
     private static int showChunkTickets(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();

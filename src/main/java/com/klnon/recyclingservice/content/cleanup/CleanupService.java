@@ -1,8 +1,6 @@
 package com.klnon.recyclingservice.content.cleanup;
 
-import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;

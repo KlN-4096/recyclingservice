@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.content.chunk;
 
+import com.klnon.recyclingservice.Config;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
@@ -13,8 +14,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 区块数据存储管理器 - 简化版本
- * 遵循KISS原则，移除过度复杂的双重索引系统
+ * 区块缓存 - 极简版本
+ * 只存储真正需要的时间信息，状态通过ticket推断
  */
 public class ChunkCache {
     
@@ -31,104 +32,82 @@ public class ChunkCache {
     public static final TicketType<ChunkPos> RECYCLING_SERVICE_TICKET = 
         TicketType.create("recycling_service_chunk", Comparator.comparingLong(ChunkPos::toLong), 600);
     
-    // 单一数据存储: 维度 -> 区块位置 -> 区块信息
-    private static final Map<ResourceLocation, Map<ChunkPos, ChunkInfo>> chunks = new ConcurrentHashMap<>();
-    
-    /**
-     * 添加或更新区块信息
-     */
-    public static void updateChunk(ResourceLocation dimension, ChunkInfo chunkInfo) {
-        chunks.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
-              .put(chunkInfo.chunkPos(), chunkInfo);
-    }
-    
-    /**
-     * 获取区块信息
-     */
-    public static ChunkInfo getChunk(ResourceLocation dimension, ChunkPos pos) {
-        return chunks.getOrDefault(dimension, Collections.emptyMap()).get(pos);
-    }
-    
-    /**
-     * 移除区块
-     */
-    public static void removeChunk(ResourceLocation dimension, ChunkPos pos) {
-        Map<ChunkPos, ChunkInfo> dimensionChunks = chunks.get(dimension);
-        if (dimensionChunks != null) {
-            dimensionChunks.remove(pos);
-            if (dimensionChunks.isEmpty()) {
-                chunks.remove(dimension);
-            }
-        }
-    }
-    
-    /**
-     * 获取维度中指定状态的区块列表 (按需计算)
-     */
-    public static List<ChunkPos> getChunksByState(ResourceLocation dimension, ChunkState state) {
-        return chunks.getOrDefault(dimension, Collections.emptyMap())
-            .entrySet().stream()
-            .filter(entry -> entry.getValue().state() == state)
-            .map(Map.Entry::getKey)
-            .toList();
-    }
+    // 唯一真正需要存储的信息：物品冻结区块的解冻时间
+    private static final Map<ResourceLocation, Map<ChunkPos, Long>> itemFrozenChunks = new ConcurrentHashMap<>();
 
-    /**
-     * 获取维度的所有区块
-     */
-    public static Map<ChunkPos, ChunkInfo> getDimensionChunks(ResourceLocation dimension) {
-        return new HashMap<>(chunks.getOrDefault(dimension, Collections.emptyMap()));
-    }
     
     /**
-     * 获取区块状态
+     * 获取维度中指定状态的区块列表（基于tickets推断）
      */
-    public static ChunkState getChunkState(ResourceLocation dimension, ChunkPos pos) {
-        ChunkInfo info = getChunk(dimension, pos);
-        return info != null ? info.state() : ChunkState.UNMANAGED;
-    }
-    
-    /**
-     * 转换区块状态 - 统一的状态转换方法
-     */
-    public static boolean transitionChunkState(ResourceLocation dimension, ChunkPos pos, 
-                                             ChunkState newState, ServerLevel level) {
-        ChunkInfo info = getChunk(dimension, pos);
-        if (info == null) return false;
+    public static List<ChunkPos> getChunksByState(ResourceLocation dimension, ChunkState state, ServerLevel level) {
+        List<ChunkPos> result = new ArrayList<>();
         
-        ChunkState oldState = info.state();
-        
-        // 处理ticket变化
-        if (!handleTickets(pos, level, oldState, newState)) {
-            return false;
-        }
-        
-        // 更新状态
-        ChunkInfo newInfo = info.withState(newState);
-        if (newState == ChunkState.ITEM_FROZEN) {
-            long unfreezeTime = System.currentTimeMillis() + getItemFreezeHours() * 3600_000L;
-            newInfo = newInfo.withUnfreezeTime(unfreezeTime);
-        }
-        
-        updateChunk(dimension, newInfo);
-        return true;
-    }
-    
-    /**
-     * 统一的ticket处理方法
-     */
-    private static boolean handleTickets(ChunkPos pos, ServerLevel level, 
-                                       ChunkState oldState, ChunkState newState) {
         try {
             DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
             
-            boolean oldHasTicket = oldState == ChunkState.MANAGED;
-            boolean newHasTicket = newState == ChunkState.MANAGED;
+            tickets.forEach((encodedPos, ticketSet) -> {
+                ChunkPos chunkPos = new ChunkPos(encodedPos);
+                ChunkState currentState = getChunkState(dimension, chunkPos, ticketSet);
+                
+                if (currentState == state) {
+                    result.add(chunkPos);
+                }
+            });
+        } catch (Exception e) {
+            // 推断失败，返回空列表
+        }
+        
+        return result;
+    }
+    
+    // ================== 物品冻结管理 ==================
+    
+    /**
+     * 冻结区块（物品过多）
+     */
+    public static boolean freezeChunkForItems(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
+        try {
+            // 移除非白名单tickets
+            int frozenTickets = freezeChunkTickets(pos, level);
             
-            if (!oldHasTicket && newHasTicket) {
-                distanceManager.addTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
-            } else if (oldHasTicket && !newHasTicket) {
-                distanceManager.removeTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
+            if (frozenTickets > 0) {
+                // 记录解冻时间
+                long unfreezeTime = System.currentTimeMillis() + Config.TECHNICAL.itemFreezeHours.get() * 3600_000L;
+                itemFrozenChunks.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
+                    .put(pos, unfreezeTime);
+                return true;
+            }
+        } catch (Exception e) {
+            // 冻结失败
+        }
+        return false;
+    }
+    
+    /**
+     * 检查物品超载区块是否应该解冻
+     */
+    public static boolean shouldUnfreezeItemFrozenChunk(ResourceLocation dimension, ChunkPos pos) {
+        Long unfreezeTime = itemFrozenChunks.getOrDefault(dimension, Collections.emptyMap()).get(pos);
+        return unfreezeTime != null && System.currentTimeMillis() >= unfreezeTime;
+    }
+    
+    /**
+     * 解冻区块（恢复管理）
+     */
+    public static boolean unfreezeChunk(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
+        try {
+            // 添加我们的管理ticket
+            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            distanceManager.addTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
+            
+            // 移除解冻时间记录
+            Map<ChunkPos, Long> dimensionFrozen = itemFrozenChunks.get(dimension);
+            if (dimensionFrozen != null) {
+                dimensionFrozen.remove(pos);
+                if (dimensionFrozen.isEmpty()) {
+                    itemFrozenChunks.remove(dimension);
+                }
             }
             return true;
         } catch (Exception e) {
@@ -137,18 +116,42 @@ public class ChunkCache {
     }
     
     /**
-     * 获取物品冻结持续时间(小时)
+     * 获取所有物品冻结的区块
      */
-    private static int getItemFreezeHours() {
+    public static List<ChunkPos> getItemFrozenChunks(ResourceLocation dimension) {
+        return new ArrayList<>(itemFrozenChunks.getOrDefault(dimension, Collections.emptyMap()).keySet());
+    }
+    
+    // ================== Ticket管理 ==================
+    
+    /**
+     * 添加管理ticket
+     */
+    public static boolean addManagementTicket(ChunkPos pos, ServerLevel level) {
         try {
-            return com.klnon.recyclingservice.Config.TECHNICAL.itemFreezeHours.get();
+            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            distanceManager.addTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
+            return true;
         } catch (Exception e) {
-            return 1; // 默认1小时
+            return false;
         }
     }
     
     /**
-     * 直接移除非白名单tickets
+     * 移除管理ticket
+     */
+    public static boolean removeManagementTicket(ChunkPos pos, ServerLevel level) {
+        try {
+            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            distanceManager.removeTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * 冻结区块tickets(移除非白名单tickets)
      */
     public static int freezeChunkTickets(ChunkPos chunkPos, ServerLevel level) {
         try {
@@ -176,5 +179,27 @@ public class ChunkCache {
         } catch (Exception e) {
             return 0;
         }
+    }
+    
+    // ================== 辅助方法 ==================
+    
+    /**
+     * 根据tickets推断区块状态
+     */
+    private static ChunkState getChunkState(ResourceLocation dimension, ChunkPos pos, SortedArraySet<Ticket<?>> ticketSet) {
+        // 检查是否物品冻结
+        if (itemFrozenChunks.getOrDefault(dimension, Collections.emptyMap()).containsKey(pos)) {
+            return ChunkState.ITEM_FROZEN;
+        }
+        
+        // 检查是否被我们管理
+        boolean hasOurTicket = ticketSet.stream()
+            .anyMatch(ticket -> ticket.getType() == RECYCLING_SERVICE_TICKET);
+        
+        if (hasOurTicket) {
+            return ChunkState.MANAGED;
+        }
+        
+        return ChunkState.UNMANAGED;
     }
 }

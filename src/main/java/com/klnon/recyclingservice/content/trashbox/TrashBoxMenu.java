@@ -32,12 +32,29 @@ public class TrashBoxMenu extends ChestMenu {
     private final TrashBox trashBox;
     private final int trashSlots;
 
+    /**
+     * 垃圾箱菜单提供者
+     */
+    private record TrashBoxMenuProvider(TrashBox trashBox, Component title) implements MenuProvider {
+        @Override
+        public @Nonnull Component getDisplayName() {
+            return title;
+        }
+
+        @Override
+        public AbstractContainerMenu createMenu(int containerId, @Nonnull Inventory playerInventory,
+                                                @Nonnull Player player) {
+            return new TrashBoxMenu(containerId, playerInventory, trashBox);
+        }
+    }
+
+
     public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
         super(UiHelper.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.GAMEPLAY.trashBoxRows.get());
         this.trashBox = trashBox;
         this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;
     }
-    
+
     // === 静态工具方法：打开垃圾箱UI ===
     
     /**
@@ -66,22 +83,6 @@ public class TrashBoxMenu extends ChestMenu {
     }
     
     // === 内部MenuProvider实现 ===
-    
-    /**
-     * 垃圾箱菜单提供者
-     */
-    private record TrashBoxMenuProvider(TrashBox trashBox, Component title) implements MenuProvider {
-        @Override
-        public @Nonnull Component getDisplayName() {
-            return title;
-        }
-
-        @Override
-        public AbstractContainerMenu createMenu(int containerId, @Nonnull Inventory playerInventory, 
-                                               @Nonnull Player player) {
-            return new TrashBoxMenu(containerId, playerInventory, trashBox);
-        }
-    }
 
     @Override
     public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {

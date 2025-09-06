@@ -50,14 +50,14 @@ public class TrashBox implements Container {
     /**
      * 添加物品到垃圾箱
      */
-    public boolean addItem(ItemStack item) {
+    public void addItem(ItemStack item) {
         // 1. 尝试合并到相同物品槽位
         if (tryMergeToExisting(item)) {
-            return true;
+            return;
         }
         
         // 2. 放入空槽位
-        return tryAddToEmptySlot(item,-1);
+        tryAddToEmptySlot(item, -1);
     }
 
     public boolean tryMergeToExisting(ItemStack item) {

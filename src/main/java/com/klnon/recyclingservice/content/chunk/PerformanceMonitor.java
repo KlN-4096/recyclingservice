@@ -43,11 +43,4 @@ public class PerformanceMonitor {
             return 50.0;
         }
     }
-    
-    /**
-     * 计算当前TPS
-     */
-    public static double calculateTPS(double averageTickTime) {
-        return Math.min(20.0, 1000.0 / averageTickTime);
-    }
 }

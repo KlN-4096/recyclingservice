@@ -27,7 +27,7 @@ public class AutoCleanupEvent {
         if (++ticks < Config.getCleanIntervalTicks()) {
             if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
                 //检查并发送警告（仅在特定时间点）
-                int remainingSeconds = (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;;
+                int remainingSeconds = (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;
 
                 // 使用配置的倒计时开始时间
                 if (remainingSeconds <= Config.GAMEPLAY.warningCountdownStart.get() && remainingSeconds > 0) {
