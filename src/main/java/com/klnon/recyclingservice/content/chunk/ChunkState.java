@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.chunk.management.storage;
+package com.klnon.recyclingservice.content.chunk;
 
 /**
  * 区块状态枚举

@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.cleanup.signal;
+package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import net.minecraft.server.MinecraftServer;

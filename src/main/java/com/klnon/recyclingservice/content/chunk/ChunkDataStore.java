@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.chunk.management.storage;
+package com.klnon.recyclingservice.content.chunk;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.DistanceManager;

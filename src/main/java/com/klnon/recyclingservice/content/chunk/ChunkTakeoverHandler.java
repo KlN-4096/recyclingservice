@@ -1,9 +1,7 @@
-package com.klnon.recyclingservice.content.chunk.management.startup;
+package com.klnon.recyclingservice.content.chunk;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.content.chunk.management.storage.ChunkDataStore;
-import com.klnon.recyclingservice.content.chunk.management.storage.ChunkState;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -107,7 +105,7 @@ public class ChunkTakeoverHandler {
                     } else {
                         // 不值得管理，标记为未管理状态
                         ChunkDataStore.updateChunk(dimension, 
-                            new com.klnon.recyclingservice.content.chunk.management.storage.ChunkInfo(
+                            new ChunkInfo(
                                 chunkPos, ChunkState.UNMANAGED, blockEntityCount));
                     }
                 }

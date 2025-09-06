@@ -1,11 +1,9 @@
-package com.klnon.recyclingservice.content.trashbox.ui;
+package com.klnon.recyclingservice.content.trashbox;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
-import com.klnon.recyclingservice.content.trashbox.payment.TrashPaymentSystem;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.world.MenuProvider;

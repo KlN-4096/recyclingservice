@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.chunk.performance;
+package com.klnon.recyclingservice.content.chunk;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.resources.ResourceLocation;

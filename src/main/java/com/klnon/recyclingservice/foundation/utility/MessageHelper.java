@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice.foundation.utility;
 
-import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
+import com.klnon.recyclingservice.content.cleanup.CleanupService;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;

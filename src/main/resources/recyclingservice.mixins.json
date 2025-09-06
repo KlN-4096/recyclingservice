@@ -3,8 +3,8 @@
   "package": "com.klnon.recyclingservice.content.cleanup.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ItemEntityReportMixin",
-    "ProjectileReportMixin"
+    "com.klnon.recyclingservice.mixin.ItemEntityReportMixin",
+    "com.klnon.recyclingservice.mixin.ProjectileReportMixin"
   ],
   "injectors": {
     "defaultRequire": 1

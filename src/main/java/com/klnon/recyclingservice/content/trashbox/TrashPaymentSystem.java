@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.trashbox.payment;
+package com.klnon.recyclingservice.content.trashbox;
 
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.core.registries.BuiltInRegistries;

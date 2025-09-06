@@ -2,7 +2,7 @@ package com.klnon.recyclingservice.foundation.events;
 
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
-import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
+import com.klnon.recyclingservice.content.cleanup.CleanupService;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.chat.Component;
