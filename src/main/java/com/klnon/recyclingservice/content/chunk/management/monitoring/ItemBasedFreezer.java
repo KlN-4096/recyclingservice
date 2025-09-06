@@ -5,7 +5,7 @@ import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkDataStore;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkInfo;
 import com.klnon.recyclingservice.content.chunk.management.storage.ChunkState;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -29,7 +29,7 @@ public class ItemBasedFreezer {
         }
         
         try {
-            List<ChunkPos> overloadedChunks = EntityReportCache.getOverloadedChunks(dimensionId);
+            List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimensionId);
             
             for (ChunkPos chunkPos : overloadedChunks) {
                 processOverloadedChunk(dimensionId, chunkPos, level);
@@ -83,8 +83,7 @@ public class ItemBasedFreezer {
                 }
                 
                 // 检查已冻结的区块是否应该解冻
-                unfrozenCount += com.klnon.recyclingservice.content.chunk.management.ChunkLifecycleManager
-                    .unfreezeExpiredChunks(server);
+                unfrozenCount += unfreezeExpiredChunks(server);
             }
             
             if (frozenCount > 0 || unfrozenCount > 0) {
@@ -134,7 +133,7 @@ public class ItemBasedFreezer {
     }
     
     private static int getChunkItemCount(ResourceLocation dimension, ChunkPos pos) {
-        return EntityReportCache.getEntityCountByChunk(dimension).getOrDefault(pos, 0);
+        return CleanupManager.getEntityCountByChunk(dimension).getOrDefault(pos, 0);
     }
     
     private static boolean shouldFreezeForItems(int itemCount) {
@@ -166,5 +165,26 @@ public class ItemBasedFreezer {
             MessageHelper.sendChatMessage(level.getServer(), warningMessage);
         } catch (Exception ignored) {
         }
+    }
+    
+    /**
+     * 检查并解冻到期的区块
+     */
+    private static int unfreezeExpiredChunks(MinecraftServer server) {
+        int unfrozen = 0;
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceLocation dimension = level.dimension().location();
+            Map<ChunkPos, ChunkInfo> chunks = ChunkDataStore.getDimensionChunks(dimension);
+            
+            for (ChunkInfo info : chunks.values()) {
+                if (info.shouldUnfreeze()) {
+                    if (ChunkDataStore.transitionChunkState(dimension, info.chunkPos(), 
+                                                          ChunkState.MANAGED, level)) {
+                        unfrozen++;
+                    }
+                }
+            }
+        }
+        return unfrozen;
     }
 }

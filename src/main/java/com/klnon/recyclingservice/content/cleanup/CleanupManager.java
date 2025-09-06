@@ -6,10 +6,14 @@ import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import com.klnon.recyclingservice.content.cleanup.service.CleanupService;
 import com.klnon.recyclingservice.content.cleanup.service.CleanupService.CleanupResult;
 import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
+
+import java.util.*;
 
 /**
  * 清理管理器 - 接口层
@@ -23,16 +27,16 @@ public class CleanupManager {
      * 上报实体到清理缓存
      * @param entity 要上报的实体
      */
-    public static void reportEntity(Entity entity) {
-        EntityReportCache.report(entity);
+    public static void reportEntity(ResourceLocation dimension, UUID uuid, Entity entity) {
+        EntityReportCache.addEntity(dimension, entity.getUUID(), entity);
     }
     
     /**
      * 从清理缓存中移除实体
      * @param entity 要移除的实体
      */
-    public static void removeReportedEntity(Entity entity) {
-        EntityReportCache.remove(entity);
+    public static void removeReportedEntity(ResourceLocation dimension, Entity entity) {
+        EntityReportCache.removeEntity(dimension,entity.getUUID());
     }
     
     /**
@@ -77,7 +81,29 @@ public class CleanupManager {
     public static String generateComplexItemKey(ItemStack stack) {
         return EntityMerger.generateComplexItemKey(stack);
     }
-    
+
+    /**
+     * 清理无效实体
+     */
+    public static void removeInvalidEntities(ResourceLocation dimension) {
+        EntityReportCache.removeInvalidEntities(dimension);
+    }
+
+    /**
+     * 获取维度的所有实体报告
+     */
+    public static List<EntityReportCache.EntityReport> getReportedEntries(ResourceLocation dimension) {
+        return EntityReportCache.getReportedEntries(dimension);
+    }
+
+    public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
+        return EntityReportCache.getEntityCountByChunk(dimension);
+    }
+
+    public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
+        return  EntityReportCache.getOverloadedChunks(dimension);
+    }
+
     // === 核心清理功能 ===
     
     /**

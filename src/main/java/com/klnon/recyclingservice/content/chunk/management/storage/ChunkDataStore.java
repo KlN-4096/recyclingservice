@@ -244,4 +244,21 @@ public class ChunkDataStore {
             return 0;
         }
     }
+    
+    /**
+     * 获取区块状态
+     */
+    public static ChunkState getChunkState(ResourceLocation dimension, ChunkPos pos) {
+        ChunkInfo info = getChunk(dimension, pos);
+        return info != null ? info.state() : ChunkState.UNMANAGED;
+    }
+    
+    /**
+     * 获取指定状态的区块数量
+     */
+    public static int getChunkCountByState(ChunkState state) {
+        return getChunksByState(state).values().stream()
+                .mapToInt(Set::size)
+                .sum();
+    }
 }

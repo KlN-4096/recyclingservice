@@ -25,7 +25,5 @@ public class RecyclingserviceClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         // 一些客户端设置代码
-        Recyclingservice.LOGGER.info("HELLO FROM CLIENT SETUP");
-        Recyclingservice.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
     }
 }

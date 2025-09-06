@@ -3,6 +3,7 @@ package com.klnon.recyclingservice.content.cleanup.service;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityReportCache;
 import com.klnon.recyclingservice.content.cleanup.signal.GlobalDeleteSignal;
@@ -37,7 +38,7 @@ public class CleanupService {
             
             try {
                 // 直接从缓存获取并统计
-                List<EntityReportCache.EntityReport> reports = EntityReportCache.getReportedEntries(dimensionId);
+                List<EntityReportCache.EntityReport> reports = CleanupManager.getReportedEntries(dimensionId);
                 int itemCount = 0;
                 int projectileCount = 0;
                 
@@ -62,7 +63,7 @@ public class CleanupService {
                 }
                 
                 // 清理缓存
-                EntityReportCache.removeInvalidEntities(dimensionId);
+                CleanupManager.removeInvalidEntities(dimensionId);
                 
                 // 记录统计
                 if (itemCount > 0 || projectileCount > 0) {
