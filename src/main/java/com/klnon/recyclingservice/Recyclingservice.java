@@ -67,7 +67,7 @@ public class Recyclingservice {
         
         // 执行启动区块接管
         if (Config.TECHNICAL.enableChunkManagement.get()) {
-            ChunkManager.performStartupTakeover(event.getServer());
+            ChunkManager.performTakeover(event.getServer());
         }
     }
     

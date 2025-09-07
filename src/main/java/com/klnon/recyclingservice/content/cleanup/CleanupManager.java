@@ -87,6 +87,13 @@ public class CleanupManager {
         EntityCache.removeInvalidEntities(dimension);
     }
 
+    /**
+     * 清理无效实体
+     */
+    public static void removeInvalidEntities() {
+        EntityCache.removeInvalidEntities();
+    }
+
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
         return EntityCache.getEntityCountByChunk(dimension);
     }

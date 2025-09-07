@@ -36,9 +36,6 @@ public class CleanupService {
                 int totalCount = EntityCache.getReportedCount(dimensionId);
                 int projectileCount = totalCount - itemCount; // 弹射物数量 = 总数 - 物品数量
                 
-                // 清理缓存
-                CleanupManager.removeInvalidEntities(dimensionId);
-                
                 // 记录统计
                 if (itemCount > 0 || projectileCount > 0) {
                     dimensionStats.put(dimensionId, new DimensionCleanupStats(itemCount, projectileCount, "OK"));

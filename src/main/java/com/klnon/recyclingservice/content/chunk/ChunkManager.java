@@ -11,8 +11,8 @@ public class ChunkManager {
     /**
      * 执行启动区块接管
      */
-    public static void performStartupTakeover(MinecraftServer server) {
-        ChunkService.handleStartupTakeover(server);
+    public static void performTakeover(MinecraftServer server) {
+        ChunkService.handleTakeover(server);
     }
 
     

@@ -33,7 +33,7 @@ public class ChunkService {
     /**
      * 服务器启动时接管区块
      */
-    public static void handleStartupTakeover(MinecraftServer server) {
+    public static void handleTakeover(MinecraftServer server) {
         try {
             int managedCount = 0;
             for (ServerLevel level : server.getAllLevels()) {

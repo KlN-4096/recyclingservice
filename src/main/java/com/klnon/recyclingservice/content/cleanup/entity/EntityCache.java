@@ -76,6 +76,13 @@ public class EntityCache {
             }
         }
     }
+
+    /**
+     * 清理所有维度无效实体
+     */
+    public static void removeInvalidEntities() {
+        entities.keySet().forEach(EntityCache::removeInvalidEntities);
+    }
     
     /**
      * 获取区块实体数量统计（按需计算）

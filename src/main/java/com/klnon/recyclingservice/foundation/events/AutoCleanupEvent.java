@@ -49,6 +49,12 @@ public class AutoCleanupEvent {
             ChunkManager.performPerformanceAdjustment(event.getServer());
         if (Config.TECHNICAL.enableItemBasedFreezing.get())
             ChunkManager.performItemMonitoring(event.getServer());
+        if (Config.TECHNICAL.enableChunkManagement.get()) {
+            ChunkManager.performTakeover(event.getServer());
+        }
+
+        // 清理缓存,在所有监控和清理结束后再清理,防止数据出错
+        CleanupManager.removeInvalidEntities();
     }
 
     /**
