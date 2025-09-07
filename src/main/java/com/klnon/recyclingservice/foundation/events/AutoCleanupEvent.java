@@ -44,17 +44,16 @@ public class AutoCleanupEvent {
 
         cleaning = true;
         doCleanup(event.getServer());
-        //同步管理区块,物品过多监控
+        //同步区块接管,管理区块,物品过多监控
+        if (Config.TECHNICAL.enableChunkManagement.get())
+            ChunkManager.performTakeover(event.getServer());
         if (Config.TECHNICAL.enableChunkManagement.get())
             ChunkManager.performPerformanceAdjustment(event.getServer());
         if (Config.TECHNICAL.enableItemBasedFreezing.get())
             ChunkManager.performItemMonitoring(event.getServer());
-        if (Config.TECHNICAL.enableChunkManagement.get()) {
-            ChunkManager.performTakeover(event.getServer());
-        }
 
         // 清理缓存,在所有监控和清理结束后再清理,防止数据出错
-        CleanupManager.removeInvalidEntities();
+        CleanupManager.removeAllInvalidEntities();
     }
 
     /**

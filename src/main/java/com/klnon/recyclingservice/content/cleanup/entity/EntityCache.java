@@ -80,7 +80,7 @@ public class EntityCache {
     /**
      * 清理所有维度无效实体
      */
-    public static void removeInvalidEntities() {
+    public static void removeAllInvalidEntities() {
         entities.keySet().forEach(EntityCache::removeInvalidEntities);
     }
     

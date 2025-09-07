@@ -90,8 +90,8 @@ public class CleanupManager {
     /**
      * 清理无效实体
      */
-    public static void removeInvalidEntities() {
-        EntityCache.removeInvalidEntities();
+    public static void removeAllInvalidEntities() {
+        EntityCache.removeAllInvalidEntities();
     }
 
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
