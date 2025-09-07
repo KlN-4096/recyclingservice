@@ -59,11 +59,17 @@ public class ChunkService {
             // 直接使用 DistanceManager 的 tickets 字段
             var tickets = distanceManager.tickets;
 
-            // 使用 Stream API 简化逻辑，避免中间集合
+            // 使用 Stream API 简化逻辑，避免中间集合，排除已接管区块
             var chunksToManage = tickets.long2ObjectEntrySet()
                     .stream()
-                    .filter(entry -> entry.getValue().stream()
-                            .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType())))
+                    .filter(entry -> {
+                        var ticketSet = entry.getValue();
+                        boolean hasNonWhitelist = ticketSet.stream()
+                            .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+                        boolean alreadyManaged = ticketSet.stream()
+                            .anyMatch(ticket -> ticket.getType() == ChunkCache.RECYCLING_SERVICE_TICKET);
+                        return hasNonWhitelist && !alreadyManaged;
+                    })
                     .mapToLong(Long2ObjectMap.Entry::getLongKey)
                     .toArray();
 

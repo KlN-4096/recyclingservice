@@ -37,7 +37,7 @@ public class ChunkCache {
 
     
     /**
-     * 获取维度中指定状态的区块列表（基于tickets推断）
+     * 获取维度中指定状态的区块列表（基于tickets推断，过滤白名单区块）
      */
     public static List<ChunkPos> getChunksByState(ResourceLocation dimension, ChunkState state, ServerLevel level) {
         List<ChunkPos> result = new ArrayList<>();
@@ -47,6 +47,14 @@ public class ChunkCache {
             Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = distanceManager.tickets;
             
             tickets.forEach((encodedPos, ticketSet) -> {
+                // 过滤掉只有白名单ticket的区块（对管理系统无意义）
+                boolean hasNonWhitelistTicket = ticketSet.stream()
+                    .anyMatch(ticket -> !WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+                
+                if (!hasNonWhitelistTicket) {
+                    return; // 跳过只有白名单ticket的区块
+                }
+                
                 ChunkPos chunkPos = new ChunkPos(encodedPos);
                 ChunkState currentState = getChunkState(dimension, chunkPos, ticketSet);
                 

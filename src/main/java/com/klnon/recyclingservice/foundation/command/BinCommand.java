@@ -3,6 +3,9 @@ package com.klnon.recyclingservice.foundation.command;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
+import com.klnon.recyclingservice.content.chunk.ChunkManager;
+import com.klnon.recyclingservice.content.chunk.ChunkCache;
+import com.klnon.recyclingservice.content.chunk.ChunkState;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.mojang.brigadier.CommandDispatcher;
@@ -20,6 +23,9 @@ import net.minecraft.resources.ResourceKey;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
@@ -58,6 +64,20 @@ public class BinCommand {
                         .then(Commands.argument("x", IntegerArgumentType.integer())
                                 .then(Commands.argument("z", IntegerArgumentType.integer())
                                         .executes(BinCommand::showChunkTickets))))
+                .then(Commands.literal("chunks")
+                        .requires(ADMIN_PERMISSION)
+                        .executes(BinCommand::listChunks)
+                        .then(Commands.argument("state", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .suggests(BinCommand::suggestChunkStates)
+                                .executes(BinCommand::listChunks)
+                                .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                                        .executes(BinCommand::listChunks))))
+                .then(Commands.literal("takeover")
+                        .requires(ADMIN_PERMISSION)
+                        .executes(BinCommand::manualTakeover))
+                .then(Commands.literal("reload")
+                        .requires(ADMIN_PERMISSION)
+                        .executes(BinCommand::reloadConfig))
                 .executes(BinCommand::showHelp));
     }
     
@@ -70,6 +90,13 @@ public class BinCommand {
         String[] helpMessages = Config.MESSAGE.cmdHelpMessages.get().toArray(new String[0]);
         for (String message : helpMessages) {
             source.sendSuccess(() -> Component.literal(message), false);
+        }
+        
+        // 添加新命令帮助（管理员权限检查）
+        if (source.hasPermission(2)) {
+            source.sendSuccess(() -> Component.literal("§e/bin chunks [state] [page] §7- List managed chunks by state"), false);
+            source.sendSuccess(() -> Component.literal("§e/bin takeover §7- Manually takeover unmanaged chunks"), false);
+            source.sendSuccess(() -> Component.literal("§e/bin reload §7- Reload configuration"), false);
         }
         
         return 1;
@@ -237,5 +264,213 @@ public class BinCommand {
             source.sendFailure(Component.literal("§cAn error occurred while retrieving chunk tickets: " + e.getMessage()));
             return 0;
         }
+    }
+    
+    // === 新增命令实现 ===
+    
+    /**
+     * 列出区块状态
+     */
+    private static int listChunks(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        
+        return ErrorHelper.handleCommandOperation(player, "列出区块状态", () -> {
+            // 获取参数，带默认值
+            String stateFilter = "ALL";
+            int page = 1;
+            
+            try {
+                stateFilter = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "state");
+            } catch (Exception ignored) {}
+            
+            try {
+                page = IntegerArgumentType.getInteger(context, "page");
+            } catch (Exception ignored) {}
+            
+            MinecraftServer server = source.getServer();
+            List<Component> allChunks = new ArrayList<>();
+            
+            // 收集所有区块信息
+            for (ServerLevel level : server.getAllLevels()) {
+                ResourceLocation dimension = level.dimension().location();
+                
+                // 如果指定了状态过滤，获取指定状态的区块
+                if (!"ALL".equals(stateFilter)) {
+                    try {
+                        ChunkState filterState = ChunkState.valueOf(stateFilter.toUpperCase());
+                        List<ChunkPos> chunks = ChunkCache.getChunksByState(dimension, filterState, level);
+                        for (ChunkPos pos : chunks) {
+                            Component chunkInfo = formatChunkInfo(dimension, pos, level);
+                            allChunks.add(chunkInfo);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        source.sendFailure(Component.literal("§cInvalid state: " + stateFilter));
+                        return false;
+                    }
+                } else {
+                    // 获取所有状态的区块
+                    for (ChunkState state : ChunkState.values()) {
+                        List<ChunkPos> chunks = ChunkCache.getChunksByState(dimension, state, level);
+                        for (ChunkPos pos : chunks) {
+                            Component chunkInfo = formatChunkInfo(dimension, pos, level);
+                            allChunks.add(chunkInfo);
+                        }
+                    }
+                }
+            }
+            
+            // 分页显示
+            int pageSize = 10;
+            int totalPages = (allChunks.size() + pageSize - 1) / pageSize;
+            if (page > totalPages) page = totalPages;
+            if (page < 1) page = 1;
+            
+            // 显示头部信息
+            String finalStateFilter = stateFilter;
+            int finalPage = page;
+            source.sendSuccess(() -> Component.literal(
+                String.format("§6=== Chunks (%s) - Page %d/%d (%d total) ===",
+                        finalStateFilter, finalPage, totalPages, allChunks.size())), false);
+            
+            // 显示当前页的区块
+            int startIndex = (page - 1) * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, allChunks.size());
+            
+            for (int i = startIndex; i < endIndex; i++) {
+                final Component chunkInfo = allChunks.get(i);
+                source.sendSuccess(() -> chunkInfo, false);
+            }
+            
+            return true;
+        });
+    }
+    
+    /**
+     * 格式化区块信息（带点击传送功能）
+     */
+    private static Component formatChunkInfo(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
+        try {
+            // 获取区块状态
+            ChunkState state = getChunkStateForDisplay(dimension, pos, level);
+            
+            // 获取ticket等级
+            int ticketLevel = getChunkTicketLevel(pos, level);
+            
+            // 简化维度名显示
+            String dimName = dimension.getPath();
+            
+            // 计算世界坐标（区块中心）
+            int worldX = pos.x * 16 + 8;
+            int worldZ = pos.z * 16 + 8;
+            
+            // 创建基础信息文本
+            MutableComponent baseInfo = Component.literal(
+                String.format("§f%s §7(%d,%d) §e%s §7Ticket:%d ", 
+                    dimName, pos.x, pos.z, state.name(), ticketLevel));
+            
+            // 创建可点击的传送按钮
+            MutableComponent teleportButton = Component.literal("§a[TP]")
+                .withStyle(style -> style
+                    .withClickEvent(new ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND,
+                        "/tp @s " + worldX + " ~ " + worldZ))
+                    .withHoverEvent(new HoverEvent(
+                        HoverEvent.Action.SHOW_TEXT,
+                        Component.literal("§7Click to teleport to chunk center\n" +
+                                        "§7World coordinate: " + worldX + ", " + worldZ + "\n" +
+                                        "§7Chunk coordinate: " + pos.x + ", " + pos.z)))
+                );
+            
+            // 组合返回
+            return baseInfo.append(teleportButton);
+            
+        } catch (Exception e) {
+            return Component.literal(String.format("§f%s §7(%d,%d) §cERROR", 
+                dimension.getPath(), pos.x, pos.z));
+        }
+    }
+    
+    /**
+     * 获取区块状态用于显示
+     */
+    private static ChunkState getChunkStateForDisplay(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
+        // 检查是否物品冻结
+        if (ChunkCache.getItemFrozenChunks(dimension).contains(pos)) {
+            return ChunkState.ITEM_FROZEN;
+        }
+        
+        // 检查是否被我们管理
+        DistanceManager distanceManager = level.getChunkSource().distanceManager;
+        var tickets = distanceManager.tickets.get(pos.toLong());
+        if (tickets != null && tickets.stream().anyMatch(t -> t.getType() == ChunkCache.RECYCLING_SERVICE_TICKET)) {
+            return ChunkState.MANAGED;
+        }
+        
+        return ChunkState.UNMANAGED;
+    }
+    
+    /**
+     * 获取区块最低ticket等级
+     */
+    private static int getChunkTicketLevel(ChunkPos pos, ServerLevel level) {
+        try {
+            DistanceManager distanceManager = level.getChunkSource().distanceManager;
+            var tickets = distanceManager.tickets.get(pos.toLong());
+            if (tickets != null && !tickets.isEmpty()) {
+                return tickets.stream().mapToInt(Ticket::getTicketLevel).min().orElse(33);
+            }
+        } catch (Exception ignored) {}
+        return 33; // 默认未加载等级
+    }
+    
+    /**
+     * 手动接管命令
+     */
+    private static int manualTakeover(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        
+        return ErrorHelper.handleCommandOperation(player, "手动接管", () -> {
+            source.sendSuccess(() -> Component.literal("§6[Manual Takeover] Starting chunk takeover..."), false);
+            
+            // 调用现有接管方法
+            ChunkManager.performTakeover(source.getServer());
+            
+            source.sendSuccess(() -> Component.literal("§a[Manual Takeover] Takeover operation completed"), false);
+            return true;
+        });
+    }
+    
+    /**
+     * 重载配置命令
+     */
+    private static int reloadConfig(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = (ServerPlayer) source.getEntity();
+        
+        return ErrorHelper.handleCommandOperation(player, "重载配置", () -> {
+            // 重新加载配置缓存
+            Config.updateCaches();
+            
+            source.sendSuccess(() -> Component.literal("§a[Config Reload] Configuration reloaded successfully"), false);
+            return true;
+        });
+    }
+    
+    /**
+     * 区块状态补全
+     */
+    private static java.util.concurrent.CompletableFuture<Suggestions> suggestChunkStates(
+            CommandContext<CommandSourceStack> context, 
+            SuggestionsBuilder builder) {
+        
+        List<String> states = new ArrayList<>();
+        states.add("ALL");
+        for (ChunkState state : ChunkState.values()) {
+            states.add(state.name());
+        }
+        
+        return SharedSuggestionProvider.suggest(states, builder);
     }
 }
