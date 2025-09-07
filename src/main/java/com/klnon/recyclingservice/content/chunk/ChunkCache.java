@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.content.chunk;
 
+import com.klnon.recyclingservice.Recyclingservice;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
@@ -8,6 +9,7 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.util.SortedArraySet;
 import net.minecraft.world.level.ChunkPos;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.neoforged.neoforge.common.ticket.ChunkTicketManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,10 +31,17 @@ public class ChunkCache {
     
     // 自定义ticket类型
     public static final TicketType<ChunkPos> RECYCLING_SERVICE_TICKET = 
-        TicketType.create("recycling_service_chunk", Comparator.comparingLong(ChunkPos::toLong), 600);
+        TicketType.create("recycling_service_chunk", Comparator.comparingLong(ChunkPos::toLong));
     
     // 主存储：维度 -> 区块信息列表
     private static final Map<ResourceLocation, List<ChunkInfo>> managedChunks = new ConcurrentHashMap<>();
+
+    /**
+     * 清空所有管理的区块缓存（服务器停止时调用）
+     */
+    public static void clearAll() {
+        managedChunks.clear();
+    }
 
     
     /**
@@ -46,15 +55,28 @@ public class ChunkCache {
         long itemFreezeTime
     ) {
         // 状态常量
+        public static final int UNIMPORTANT = 0;
         public static final int MANAGED = 1;
         public static final int ITEM_FROZEN = 2;
         public static final int PERFORMANCE_FROZEN = 3;
         
         public String getStateName() {
             return switch (state) {
+                case UNIMPORTANT -> "UNIMPORTANT";
                 case ITEM_FROZEN -> "ITEM_FROZEN";
                 case PERFORMANCE_FROZEN -> "PERFORMANCE_FROZEN";
                 default -> "MANAGED";
+            };
+        }
+        /**
+         * 根据状态名称获取状态值
+         */
+        public static int getStateByName(String name) {
+            return switch (name.toUpperCase()) {
+                case "UNIMPORTANT" -> ChunkCache.ChunkInfo.UNIMPORTANT;
+                case "ITEM_FROZEN" -> ChunkCache.ChunkInfo.ITEM_FROZEN;
+                case "PERFORMANCE_FROZEN" -> ChunkCache.ChunkInfo.PERFORMANCE_FROZEN;
+                default -> ChunkCache.ChunkInfo.MANAGED;
             };
         }
     }
@@ -62,10 +84,18 @@ public class ChunkCache {
     // ================== 核心存储方法 ==================
     
     /**
-     * 设置维度的管理区块列表
+     * 增量添加管理区块列表（只添加新区块，保持现有区块）
      */
-    public static void setManagedChunks(ResourceLocation dimension, List<ChunkInfo> chunks) {
-        managedChunks.put(dimension, new ArrayList<>(chunks));
+    public static void setManagedChunks(ResourceLocation dimension, List<ChunkInfo> newChunks) {
+        if (newChunks.isEmpty()) {
+            return; // 没有新区块，直接返回，保持现有状态
+        }
+        
+        List<ChunkInfo> existingChunks = managedChunks.computeIfAbsent(dimension, k -> new ArrayList<>());
+        existingChunks.addAll(newChunks);
+        
+        // 按方块实体数量重新排序（从大到小）
+        existingChunks.sort((a, b) -> Integer.compare(b.blockEntityCount(), a.blockEntityCount()));
     }
     
     /**
@@ -114,7 +144,7 @@ public class ChunkCache {
             int frozenTickets = freezeChunkTickets(pos, level);
             
             if (frozenTickets > 0) {
-                updateChunkState(dimension, pos, newState, unfreezeTime);
+                updateChunkState(dimension, pos, newState, System.currentTimeMillis() + unfreezeTime * 60 * 1000L);
                 return true;
             }
         } catch (Exception e) {
@@ -170,6 +200,7 @@ public class ChunkCache {
         try {
             DistanceManager distanceManager = level.getChunkSource().distanceManager;
             distanceManager.addTicket(RECYCLING_SERVICE_TICKET, pos, 31, pos);
+//            Recyclingservice.LOGGER.info("Ticket added to distance manager{}",pos);
             return true;
         } catch (Exception e) {
             return false;
@@ -199,6 +230,7 @@ public class ChunkCache {
             
             for (Ticket<?> ticket : ticketsToRemove) {
                 distanceManager.removeTicket(chunkKey, ticket);
+//                Recyclingservice.LOGGER.info("Ticket removed from {} distance manager{}",chunkPos,ticket);
             }
             
             return ticketsToRemove.size();

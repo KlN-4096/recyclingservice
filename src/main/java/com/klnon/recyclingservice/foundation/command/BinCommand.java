@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.foundation.command;
 
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
@@ -221,7 +222,7 @@ public class BinCommand {
                 // 如果指定了状态过滤，获取指定状态的区块
                 if (!"ALL".equals(stateFilter)) {
                     try {
-                        int filterState = getStateByName(stateFilter);
+                        int filterState = CleanupManager.getStateByName(stateFilter);
                         List<ChunkCache.ChunkInfo> chunks = ChunkCache.getChunksByState(dimension, filterState);
                         for (ChunkCache.ChunkInfo chunkInfo : chunks) {
                             Component chunkInfoComponent = formatChunkInfo(chunkInfo);
@@ -233,7 +234,8 @@ public class BinCommand {
                     }
                 } else {
                     // 获取所有状态的区块
-                    int[] states = {ChunkCache.ChunkInfo.MANAGED, ChunkCache.ChunkInfo.ITEM_FROZEN, ChunkCache.ChunkInfo.PERFORMANCE_FROZEN};
+                    int[] states = {ChunkCache.ChunkInfo.UNIMPORTANT,ChunkCache.ChunkInfo.MANAGED,
+                                    ChunkCache.ChunkInfo.ITEM_FROZEN, ChunkCache.ChunkInfo.PERFORMANCE_FROZEN};
                     for (int state : states) {
                         List<ChunkCache.ChunkInfo> chunks = ChunkCache.getChunksByState(dimension, state);
                         for (ChunkCache.ChunkInfo chunkInfo : chunks) {
@@ -276,7 +278,7 @@ public class BinCommand {
     private static Component formatChunkInfo(ChunkCache.ChunkInfo chunkInfo) {
         try {
             // 获取区块状态名称
-            String stateName = chunkInfo.getStateName();
+            String stateName = CleanupManager.getStateName(chunkInfo);
             
             // 简化维度名显示
             String dimName = chunkInfo.dimension().getPath();
@@ -287,7 +289,7 @@ public class BinCommand {
             
             // 创建基础信息文本（包含方块实体数量）
             MutableComponent baseInfo = Component.literal(
-                String.format("§f%s §7(%d,%d) §e%s §6BE:%d ", 
+                String.format("§f%s §7(%d,%d) §e%s §6BlockEntities:%d ",
                     dimName, chunkInfo.pos().x, chunkInfo.pos().z, stateName, chunkInfo.blockEntityCount()));
             
             // 创建可点击的传送按钮
@@ -313,16 +315,7 @@ public class BinCommand {
         }
     }
     
-    /**
-     * 根据状态名称获取状态值
-     */
-    private static int getStateByName(String name) {
-        return switch (name.toUpperCase()) {
-            case "ITEM_FROZEN" -> ChunkCache.ChunkInfo.ITEM_FROZEN;
-            case "PERFORMANCE_FROZEN" -> ChunkCache.ChunkInfo.PERFORMANCE_FROZEN;
-            default -> ChunkCache.ChunkInfo.MANAGED;
-        };
-    }
+
     
     /**
      * 重载配置命令
@@ -421,7 +414,7 @@ public class BinCommand {
             CommandContext<CommandSourceStack> context, 
             SuggestionsBuilder builder) {
         
-        List<String> states = List.of("ALL", "MANAGED", "ITEM_FROZEN", "PERFORMANCE_FROZEN");
+        List<String> states = List.of("ALL", "UNIMPORTANT", "MANAGED", "ITEM_FROZEN", "PERFORMANCE_FROZEN");
         return SharedSuggestionProvider.suggest(states, builder);
     }
 }

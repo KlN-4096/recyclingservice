@@ -29,7 +29,7 @@ public class GlobalDeleteSignal {
         }
         
         // 检查关闭条件
-        boolean timeOut = (server.getTickCount() - signalStartTick) > 200; // 10秒=200tick
+        boolean timeOut = (server.getTickCount() - signalStartTick) > 100; // 5秒=100tick
         boolean cacheEmpty = EntityCache.getTotalReportedCount() == 0;
         
         if (timeOut || cacheEmpty) {

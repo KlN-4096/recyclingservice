@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice;
 
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
+import com.klnon.recyclingservice.content.chunk.ChunkCache;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.command.BinCommand;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
@@ -69,6 +71,13 @@ public class Recyclingservice {
         if (Config.TECHNICAL.enableChunkManagement.get()) {
             ChunkManager.performTakeover(event.getServer());
         }
+    }
+    
+    // 服务器停止事件 - 清空区块缓存
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        LOGGER.info("Server stopping, clearing chunk cache");
+        ChunkCache.clearAll();
     }
     
     // 注册命令事件

@@ -15,6 +15,7 @@ import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.*;
@@ -42,12 +43,10 @@ public class ChunkService {
                 
                 managedCount += takeoverDimensionChunks(dimension, level, distanceManager);
             }
-            
-            if (managedCount > 0) {
-                Recyclingservice.LOGGER.info("Startup takeover complete: managed {} chunks", managedCount);
-            }
+
+            Recyclingservice.LOGGER.info("Takeover complete: managed {} chunks", managedCount);
         } catch (Exception e) {
-            Recyclingservice.LOGGER.error("Failed to perform startup chunk takeover", e);
+            Recyclingservice.LOGGER.error("Failed to perform chunk takeover", e);
         }
     }
 
@@ -77,7 +76,11 @@ public class ChunkService {
                     ChunkCache.freezeChunkTickets(chunkPos, level);
                     LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
                     //先判断区块方块实体数量是否满足配置条件,再添加我们的ticket
-                    if (chunk.getBlockEntities().size()>Config.TECHNICAL.chunkEntityThreshold.get() && ChunkCache.addManagementTicket(chunkPos, level)) {
+                    if (chunk.getBlockEntities().size()<Config.TECHNICAL.chunkEntityThreshold.get()) {
+                        //方块实体数量小于配置项目时纳入管理,但不添加我们的ticket
+                        newChunks.add(new ChunkCache.ChunkInfo(dimension, chunkPos, blockEntityCount, ChunkCache.ChunkInfo.UNIMPORTANT, 0));
+                    }
+                    else if(ChunkCache.addManagementTicket(chunkPos, level)){
                         newChunks.add(new ChunkCache.ChunkInfo(dimension, chunkPos, blockEntityCount, ChunkCache.ChunkInfo.MANAGED, 0));
                     }
                 }
@@ -88,6 +91,7 @@ public class ChunkService {
             
             // 批量设置到缓存
             ChunkCache.setManagedChunks(dimension, newChunks);
+
             
             return newChunks.size();
             
@@ -159,9 +163,7 @@ public class ChunkService {
                 }
             }
 
-            if (processedCount > 0) {
-                Recyclingservice.LOGGER.info("Performance: {} {} chunks", action, processedCount);
-            }
+            Recyclingservice.LOGGER.info("Performance: {} {} chunks", action, processedCount);
 
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to {} chunks for performance", action.toLowerCase(), e);
@@ -203,11 +205,9 @@ public class ChunkService {
                 // 检查已冻结的区块是否应该解冻
                 unfrozenCount += unfreezeExpiredChunks(dimension, level);
             }
-            
-            if (totalFrozenCount > 0 || unfrozenCount > 0) {
-                Recyclingservice.LOGGER.info("Item monitoring completed: {} frozen, {} unfrozen", 
-                    totalFrozenCount, unfrozenCount);
-            }
+
+            Recyclingservice.LOGGER.info("Item monitoring completed: {} frozen, {} unfrozen",
+                totalFrozenCount, unfrozenCount);
             
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to perform item monitoring", e);

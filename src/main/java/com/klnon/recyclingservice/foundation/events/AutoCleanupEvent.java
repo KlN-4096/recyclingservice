@@ -19,9 +19,18 @@ public class AutoCleanupEvent {
     private static final int TICKS_PER_SECOND = 20;
     private static int ticks = 0;
     private static boolean cleaning = false;
+    private static boolean chunkOperationPending = false; // 区块操作待执行信号
 
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post event) {
+        
+        // 检查区块操作执行条件：全局信号false + 区块操作信号true
+        if (!CleanupManager.shouldDeleteEntity(event.getServer()) && chunkOperationPending) {
+            performChunkOperations(event.getServer());
+            chunkOperationPending = false; // 执行完后重置
+            cleaning = false; // 整个清理流程完成
+            return;
+        }
 
         // 清理逻辑
         if (++ticks < Config.getCleanIntervalTicks()) {
@@ -44,16 +53,7 @@ public class AutoCleanupEvent {
 
         cleaning = true;
         doCleanup(event.getServer());
-        //同步区块接管,管理区块,物品过多监控
-        if (Config.TECHNICAL.enableChunkManagement.get())
-            ChunkManager.performTakeover(event.getServer());
-        if (Config.TECHNICAL.enableChunkManagement.get())
-            ChunkManager.performPerformanceAdjustment(event.getServer());
-        if (Config.TECHNICAL.enableItemBasedFreezing.get())
-            ChunkManager.performItemMonitoring(event.getServer());
-
-        // 清理缓存,在所有监控和清理结束后再清理,防止数据出错
-        CleanupManager.removeAllInvalidEntities();
+        chunkOperationPending = true; // 设置区块操作待执行信号
     }
 
     /**
@@ -71,12 +71,35 @@ public class AutoCleanupEvent {
 
         } catch (Exception e) {
             MessageHelper.showActionBar(server, Config.MESSAGE.errorCleanupFailed.get(), MessageHelper.MessageType.ERROR.getColor());
-        } finally {
+            // 出错时重置所有信号
+            chunkOperationPending = false;
             cleaning = false;
         }
+        // 注意：成功时不在这里重置cleaning，等区块操作完成后再重置
     }
 
     // === 公共API方法 ===
+
+    /**
+     * 执行区块操作
+     */
+    private static void performChunkOperations(MinecraftServer server) {
+        try {
+            //同步区块接管,管理区块,物品过多监控
+            if (Config.TECHNICAL.enableChunkManagement.get()) {
+                ChunkManager.performTakeover(server);
+                ChunkManager.performPerformanceAdjustment(server);
+            }
+            if (Config.TECHNICAL.enableItemBasedFreezing.get()) {
+                ChunkManager.performItemMonitoring(server);
+            }
+
+            // 清理缓存,在所有监控和清理结束后再清理,防止数据出错
+            CleanupManager.removeAllInvalidEntities();
+        } catch (Exception e) {
+            // 区块操作出错时的处理
+        }
+    }
 
     /**
      * 手动触发清理
@@ -85,6 +108,7 @@ public class AutoCleanupEvent {
         if (!cleaning) {
             cleaning = true;
             doCleanup(server);
+            chunkOperationPending = true; // 手动清理也要设置区块操作信号
         }
     }
 }

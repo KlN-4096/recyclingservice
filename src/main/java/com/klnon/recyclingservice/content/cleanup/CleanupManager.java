@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.content.cleanup;
 
+import com.klnon.recyclingservice.content.chunk.ChunkCache;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
@@ -102,6 +103,14 @@ public class CleanupManager {
         return  EntityCache.getOverloadedChunks(dimension);
     }
 
+
+    public static String getStateName(ChunkCache.ChunkInfo chunkInfo) {
+        return chunkInfo.getStateName();
+    }
+
+    public static int getStateByName(String name) {
+        return ChunkCache.ChunkInfo.getStateByName(name);
+    }
     // === 核心清理功能 ===
     
     /**
