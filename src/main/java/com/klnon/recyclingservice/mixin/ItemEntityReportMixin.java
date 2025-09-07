@@ -34,7 +34,7 @@ public class ItemEntityReportMixin {
             boolean shouldReport = recyclingservice$shouldReport(self);
             ResourceLocation dimension = self.level().dimension().location();
             
-            if (shouldReport && !alreadyReported) {
+            if (shouldReport && !alreadyReported && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 // 应该上报且未上报 -> 上报
                 CleanupManager.reportEntity(dimension,self.getUUID(),self);
             } else if (!shouldReport && alreadyReported && !self.level().isClientSide()) {
@@ -47,7 +47,7 @@ public class ItemEntityReportMixin {
                 CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 // 添加物品到垃圾箱
                 TrashBoxManager.addItemToDimension(dimension,self.getItem());
-                CleanupManager.removeReportedEntity(dimension,self);
+//                CleanupManager.removeReportedEntity(dimension,self);
                 self.discard();
             }
         } catch (Exception e) {

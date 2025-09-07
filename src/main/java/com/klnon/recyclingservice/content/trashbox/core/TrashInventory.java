@@ -65,7 +65,9 @@ public class TrashInventory {
     /**
      * 删除所有垃圾箱
      */
-    public void clearAll() {
-        dimensionBoxes.clear();
+    public void clearAllItems() {
+        dimensionBoxes.values().forEach(boxes ->
+                boxes.forEach(TrashBox::clearContent)
+        );
     }
 }

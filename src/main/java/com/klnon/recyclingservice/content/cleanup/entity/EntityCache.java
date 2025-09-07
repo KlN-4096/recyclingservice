@@ -3,6 +3,7 @@ package com.klnon.recyclingservice.content.cleanup.entity;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.*;
@@ -77,20 +78,6 @@ public class EntityCache {
     }
     
     /**
-     * 获取维度的所有实体报告
-     */
-    public static List<EntityReport> getReportedEntries(ResourceLocation dimension) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        if (dimensionEntities == null) return new ArrayList<>();
-        
-        List<EntityReport> reports = new ArrayList<>();
-        for (EntityRecord record : dimensionEntities.values()) {
-            reports.add(new EntityReport(record.entity(), record.chunkPos(), dimension));
-        }
-        return reports;
-    }
-    
-    /**
      * 获取区块实体数量统计（按需计算）
      */
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
@@ -102,6 +89,32 @@ public class EntityCache {
             chunkCounts.merge(record.chunkPos(), 1, Integer::sum);
         }
         return chunkCounts;
+    }
+
+    /**
+     * 获取指定维度中指定类型实体的数量
+     */
+    public static int getEntityCount(ResourceLocation dimension, EntityType<?> entityType) {
+        removeInvalidEntities(dimension);
+        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
+        if (dimensionEntities == null) return 0;
+        
+        return dimensionEntities.values().stream()
+            .mapToInt(record -> {
+                Entity entity = record.entity();
+                return (entity != null && entity.isAlive() && !entity.isRemoved() &&
+                        entity.getType() == entityType) ? 1 : 0;
+            })
+            .sum();
+    }
+
+    /**
+     * 获取指定维度缓存的实体总数
+     */
+    public static int getReportedCount(ResourceLocation dimension) {
+        removeInvalidEntities(dimension);
+        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
+        return dimensionEntities != null ? dimensionEntities.size() : 0;
     }
 
     /**
@@ -132,9 +145,5 @@ public class EntityCache {
      * 实体存储记录
      */
     private record EntityRecord(Entity entity, ChunkPos chunkPos, long reportTime) {}
-    
-    /**
-     * 实体上报记录（公共API返回格式）
-     */
-    public record EntityReport(Entity entity, ChunkPos chunkPos, ResourceLocation dimension) {}
+
 }

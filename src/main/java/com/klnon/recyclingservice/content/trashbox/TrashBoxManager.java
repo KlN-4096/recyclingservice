@@ -51,7 +51,7 @@ public class TrashBoxManager {
      * 清空所有垃圾箱
      */
     public static void clearAll() {
-        trashStorage.clearAll();
+        trashStorage.clearAllItems();
     }
     
     // === UI辅助功能 ===

@@ -1,13 +1,11 @@
 package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.Recyclingservice;
-import com.klnon.recyclingservice.content.cleanup.entity.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.server.level.ServerLevel;
 
 import javax.annotation.Nonnull;
@@ -33,25 +31,10 @@ public class CleanupService {
             ResourceLocation dimensionId = level.dimension().location();
             
             try {
-                // 直接从缓存获取并统计
-                List<EntityCache.EntityReport> reports = CleanupManager.getReportedEntries(dimensionId);
-                int itemCount = 0;
-                int projectileCount = 0;
-                
-                for (EntityCache.EntityReport report : reports) {
-                    try {
-                        Entity entity = report.entity();
-                        if (entity.isRemoved() || !entity.isAlive()) continue;
-                        
-                        if (entity instanceof ItemEntity) {
-                            itemCount++;
-                        } else if (EntityFilter.shouldCleanProjectile(entity)) {
-                            projectileCount++;
-                        }
-                    } catch (Exception e) {
-                        // 单个实体出错就跳过
-                    }
-                }
+                // 直接统计各类实体数量，无需创建EntityReport对象
+                int itemCount = EntityCache.getEntityCount(dimensionId, EntityType.ITEM);
+                int totalCount = EntityCache.getReportedCount(dimensionId);
+                int projectileCount = totalCount - itemCount; // 弹射物数量 = 总数 - 物品数量
                 
                 // 清理缓存
                 CleanupManager.removeInvalidEntities(dimensionId);
@@ -62,7 +45,6 @@ public class CleanupService {
                     totalItemsCleaned += itemCount;
                     totalProjectilesCleaned += projectileCount;
                 }
-                
             } catch (Exception e) {
                 Recyclingservice.LOGGER.debug("Failed to cleanup dimension {}: {}", dimensionId, e.getMessage());
                 dimensionStats.put(dimensionId, new DimensionCleanupStats(0, 0, "Failed"));

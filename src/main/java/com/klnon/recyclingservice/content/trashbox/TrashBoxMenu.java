@@ -99,9 +99,13 @@ public class TrashBoxMenu extends ChestMenu {
                 && slotId < trashSlots)
                 return;
         }
-        
+
         // 处理垃圾箱槽位的点击
-        handleTrashBoxSlotClick(slotId, button, clickType, player);
+        if (slotId >= 0 && slotId < trashSlots) {
+            handleTrashBoxSlotClick(slotId, button, clickType, player);
+            return;
+        }
+        super.clicked(slotId, button, clickType, player);
     }
     
     /**
@@ -156,17 +160,17 @@ public class TrashBoxMenu extends ChestMenu {
             return result;
             
         } else if (!carried.isEmpty()) {
-            // 放物品到垃圾箱 - 使用TrashBox的优化方法
+            // 放物品到垃圾箱
             if (slotItem.isEmpty()) {
                 // 空槽位：左键放全部，右键放一个
-                ItemStack toAdd = isLeftClick ? carried.copy() : carried.copyWithCount(1);
+                ItemStack toAdd = isLeftClick ? carried : carried.copyWithCount(1);
                 if (trashBox.tryAddToEmptySlot(toAdd, slot.index)) {
                     carried.shrink(toAdd.getCount());
                     return carried.isEmpty() ? ItemStack.EMPTY : carried;
                 }
             } else if (TrashBoxManager.isSameItem(carried, slotItem)) {
                 // 相同物品：尝试合并
-                ItemStack mergeItem = isLeftClick ? carried.copy() : carried.copyWithCount(1);
+                ItemStack mergeItem = isLeftClick ? carried : carried.copyWithCount(1);
                 if (trashBox.tryMergeToExisting(mergeItem)) {
                     carried.shrink(isLeftClick ? carried.getCount() - mergeItem.getCount() : 1);
                     return carried.isEmpty() ? ItemStack.EMPTY : carried;
@@ -191,7 +195,7 @@ public class TrashBoxMenu extends ChestMenu {
     private ItemStack handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem, 
                                     int button, Player player) {
         if (slotItem.isEmpty() && !swapItem.isEmpty()) {
-            if (trashBox.tryAddToEmptySlot(swapItem.copy(), slot.index)) {
+            if (trashBox.tryAddToEmptySlot(swapItem, slot.index)) {
                 player.getInventory().setItem(button, ItemStack.EMPTY);
                 return ItemStack.EMPTY;
             }
@@ -297,17 +301,16 @@ public class TrashBoxMenu extends ChestMenu {
         // 移动到垃圾箱的特殊处理
         if (startIndex == 0 && endIndex <= trashSlots) {
             if (stack.isEmpty()) return false;
-            
-            ItemStack remaining = stack.copy();
-            trashBox.addItem(remaining);
+
+            trashBox.addItem(stack);
             
             // 检查是否完全添加
-            if (remaining.isEmpty()) {
+            if (stack.isEmpty()) {
                 stack.setCount(0);
                 return true;
             } else {
                 // 部分添加，更新原始栈的数量
-                stack.setCount(remaining.getCount());
+                stack.setCount(stack.getCount());
                 return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功
             }
         }

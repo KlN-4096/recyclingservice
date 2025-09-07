@@ -36,7 +36,7 @@ public class ProjectileReportMixin {
             boolean shouldReport = recyclingservice$shouldReport(self);
             ResourceLocation dimension = self.level().dimension().location();
             
-            if (shouldReport && !alreadyReported && !self.level().isClientSide()) {
+            if (shouldReport && !alreadyReported && !self.level().isClientSide() && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 // 应该上报且未上报 -> 上报
                 CleanupManager.reportEntity(dimension,self.getUUID(),self);
             }
@@ -44,6 +44,7 @@ public class ProjectileReportMixin {
             // 检查全局删除信号，如果激活且在缓存中则自删除
             if (!self.level().isClientSide() && alreadyReported && 
                 CleanupManager.shouldDeleteEntity(self.level().getServer())) {
+//                CleanupManager.removeReportedEntity(dimension,self);
                 self.discard();
             }
         } catch (Exception e) {

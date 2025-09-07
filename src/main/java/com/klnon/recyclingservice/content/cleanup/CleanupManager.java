@@ -87,13 +87,6 @@ public class CleanupManager {
         EntityCache.removeInvalidEntities(dimension);
     }
 
-    /**
-     * 获取维度的所有实体报告
-     */
-    public static List<EntityCache.EntityReport> getReportedEntries(ResourceLocation dimension) {
-        return EntityCache.getReportedEntries(dimension);
-    }
-
     public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
         return EntityCache.getEntityCountByChunk(dimension);
     }
