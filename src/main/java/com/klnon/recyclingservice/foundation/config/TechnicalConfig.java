@@ -11,17 +11,16 @@ public class TechnicalConfig {
     public final ModConfigSpec.BooleanValue enableChunkItemWarning;
     public final ModConfigSpec.IntValue tooManyItemsWarning;
     public final ModConfigSpec.IntValue chunkFreezingSearchRadius;
-    public final ModConfigSpec.BooleanValue enableStartupChunkCleanup;
-    public final ModConfigSpec.IntValue chunkEntityThreshold;
     // 动态区块管理
-    public final ModConfigSpec.BooleanValue enableDynamicChunkManagement;
+    public final ModConfigSpec.BooleanValue enableChunkManagement;
+    public final ModConfigSpec.IntValue chunkEntityThreshold;
     public final ModConfigSpec.DoubleValue msptThresholdSuspend;
     public final ModConfigSpec.DoubleValue msptThresholdRestore;
     public final ModConfigSpec.IntValue chunkOperationCount;
     
     // 物品监控配置  
     public final ModConfigSpec.BooleanValue enableItemBasedFreezing;
-    public final ModConfigSpec.IntValue itemFreezeHours;
+    public final ModConfigSpec.IntValue itemFreezeMinutes;
     
     // === 调试设置 ===
     public final ModConfigSpec.BooleanValue enableDebugLogs;
@@ -40,15 +39,12 @@ public class TechnicalConfig {
         chunkFreezingSearchRadius = builder
                 .comment("Search radius for chunk loader freezing")
                 .defineInRange("freeze_radius", 8, 2, 16);
-        enableStartupChunkCleanup = builder
-                .comment("Enable startup chunk cleanup based on block entity count")
-                .define("enable_startup_cleanup", false);
+        enableChunkManagement = builder
+                .comment("Enable chunk management including startup cleanup and dynamic management based on server performance")
+                .define("enable_chunk_management", false);
         chunkEntityThreshold = builder
                 .comment("Block entity count threshold for keeping chunk loaded (unload if below)")
-                .defineInRange("chunk_entity_threshold", 100, 10, 10000);
-        enableDynamicChunkManagement = builder
-                .comment("Enable dynamic chunk management based on server performance")
-                .define("enable_dynamic_management", false);
+                .defineInRange("chunk_entity_threshold", 50, 5, 10000);
         msptThresholdSuspend = builder
                 .comment("MSPT threshold for suspending chunks (suspend when MSPT > threshold)")
                 .defineInRange("mspt_suspend_threshold", 45.0, 30.0, 100.0);
@@ -65,9 +61,9 @@ public class TechnicalConfig {
         enableItemBasedFreezing = builder
                 .comment("Enable item-based chunk freezing")
                 .define("enable_item_freezing", true);
-        itemFreezeHours = builder
-                .comment("Hours to freeze chunks with too many items")
-                .defineInRange("freeze_hours", 1, 1, 24);
+        itemFreezeMinutes = builder
+                .comment("Minutes to freeze chunks with too many items")
+                .defineInRange("freeze_minutes", 60, 1, 14400);
         builder.pop();
         
         // 调试

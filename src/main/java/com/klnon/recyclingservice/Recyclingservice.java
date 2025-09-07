@@ -66,7 +66,9 @@ public class Recyclingservice {
         LOGGER.info("Server fully started, performing startup chunk cleanup");
         
         // 执行启动区块接管
-        ChunkManager.performStartupTakeover(event.getServer());
+        if (Config.TECHNICAL.enableChunkManagement.get()) {
+            ChunkManager.performStartupTakeover(event.getServer());
+        }
     }
     
     // 注册命令事件

@@ -73,7 +73,7 @@ public class ChunkCache {
             
             if (frozenTickets > 0) {
                 // 记录解冻时间
-                long unfreezeTime = System.currentTimeMillis() + Config.TECHNICAL.itemFreezeHours.get() * 3600_000L;
+                long unfreezeTime = System.currentTimeMillis() + Config.TECHNICAL.itemFreezeMinutes.get() * 60_000L;
                 itemFrozenChunks.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
                     .put(pos, unfreezeTime);
                 return true;

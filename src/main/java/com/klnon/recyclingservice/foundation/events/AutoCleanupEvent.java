@@ -45,7 +45,7 @@ public class AutoCleanupEvent {
         cleaning = true;
         doCleanup(event.getServer());
         //同步管理区块,物品过多监控
-        if (Config.TECHNICAL.enableDynamicChunkManagement.get())
+        if (Config.TECHNICAL.enableChunkManagement.get())
             ChunkManager.performPerformanceAdjustment(event.getServer());
         if (Config.TECHNICAL.enableItemBasedFreezing.get())
             ChunkManager.performItemMonitoring(event.getServer());

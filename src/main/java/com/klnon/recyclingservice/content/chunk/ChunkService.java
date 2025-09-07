@@ -15,7 +15,6 @@ import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.*;
@@ -35,10 +34,6 @@ public class ChunkService {
      * 服务器启动时接管区块
      */
     public static void handleStartupTakeover(MinecraftServer server) {
-        if (!Config.TECHNICAL.enableStartupChunkCleanup.get()) {
-            return;
-        }
-        
         try {
             int managedCount = 0;
             for (ServerLevel level : server.getAllLevels()) {
@@ -93,10 +88,6 @@ public class ChunkService {
      * 基于性能调整区块
      */
     public static void adjustChunksBasedOnPerformance(MinecraftServer server) {
-        if (!Config.TECHNICAL.enableDynamicChunkManagement.get()) {
-            return;
-        }
-
         double mspt = PerformanceMonitor.getAverageTickTime(server);
 
         if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
@@ -125,7 +116,7 @@ public class ChunkService {
 
                     // 简化的状态转换：MANAGED <-> PERFORMANCE_FROZEN
                     boolean success = false;
-                    LevelChunk chunk = (LevelChunk)level.getChunk(pos.x, pos.z);
+                    LevelChunk chunk = level.getChunk(pos.x, pos.z);
                     if ((fromState == ChunkState.MANAGED && toState == ChunkState.PERFORMANCE_FROZEN)||chunk.getBlockEntities().size()<Config.TECHNICAL.chunkEntityThreshold.get()){
                         success = ChunkCache.removeManagementTicket(pos, level);
                     } else if (fromState == ChunkState.PERFORMANCE_FROZEN && toState == ChunkState.MANAGED) {
