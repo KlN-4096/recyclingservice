@@ -5,7 +5,6 @@ import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -53,39 +52,47 @@ public class ChunkService {
 
     private static int takeoverDimensionChunks(ResourceLocation dimension, ServerLevel level,
                                                DistanceManager distanceManager) {
-        int managedCount = 0;
-
         try {
-            // 直接使用 DistanceManager 的 tickets 字段
-            var tickets = distanceManager.tickets;
-
-            // 使用 Stream API 简化逻辑，避免中间集合，排除已接管区块
-            var chunksToManage = tickets.long2ObjectEntrySet()
-                    .stream()
-                    .filter(entry -> {
-                        var ticketSet = entry.getValue();
-                        boolean hasNonWhitelist = ticketSet.stream()
-                            .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
-                        boolean alreadyManaged = ticketSet.stream()
-                            .anyMatch(ticket -> ticket.getType() == ChunkCache.RECYCLING_SERVICE_TICKET);
-                        return hasNonWhitelist && !alreadyManaged;
-                    })
-                    .mapToLong(Long2ObjectMap.Entry::getLongKey)
-                    .toArray();
-
-            // 批量处理区块状态转换
-            for (long encodedPos : chunksToManage) {
-                ChunkPos chunkPos = new ChunkPos(encodedPos);
-                if (ChunkCache.addManagementTicket(chunkPos, level)) {
-                    managedCount++;
+            List<ChunkCache.ChunkInfo> newChunks = new ArrayList<>();
+            
+            // 扫描所有ticket区块
+            distanceManager.tickets.long2ObjectEntrySet().forEach(entry -> {
+                var ticketSet = entry.getValue();
+                ChunkPos chunkPos = new ChunkPos(entry.getLongKey());
+                
+                // 检查是否有非白名单ticket且未被我们管理
+                boolean hasNonWhitelist = ticketSet.stream()
+                    .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+                boolean alreadyManaged = ticketSet.stream()
+                    .anyMatch(ticket -> ticket.getType() == ChunkCache.RECYCLING_SERVICE_TICKET);
+                
+                if (hasNonWhitelist && !alreadyManaged) {
+                    // 计算方块实体数量
+                    int blockEntityCount = 0;
+                    try {
+                        LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
+                        blockEntityCount = chunk.getBlockEntities().size();
+                    } catch (Exception ignored) {}
+                    
+                    // 添加管理ticket
+                    if (ChunkCache.addManagementTicket(chunkPos, level)) {
+                        newChunks.add(new ChunkCache.ChunkInfo(dimension, chunkPos, blockEntityCount, ChunkCache.ChunkInfo.MANAGED, 0));
+                    }
                 }
-            }
-
+            });
+            
+            // 按方块实体数量排序（从大到小）
+            newChunks.sort((a, b) -> Integer.compare(b.blockEntityCount(), a.blockEntityCount()));
+            
+            // 批量设置到缓存
+            ChunkCache.setManagedChunks(dimension, newChunks);
+            
+            return newChunks.size();
+            
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to takeover chunks for dimension {}", dimension, e);
+            return 0;
         }
-
-        return managedCount;
     }
 
     // ================== 性能控制功能 ==================
@@ -97,15 +104,15 @@ public class ChunkService {
         double mspt = PerformanceMonitor.getAverageTickTime(server);
 
         if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
-            adjustChunksByPerformance(server, ChunkState.MANAGED, ChunkState.PERFORMANCE_FROZEN, "Frozen");
+            adjustChunksByPerformance(server, ChunkCache.ChunkInfo.MANAGED, ChunkCache.ChunkInfo.PERFORMANCE_FROZEN, "Frozen");
         } else if (mspt < Config.TECHNICAL.msptThresholdRestore.get()) {
-            adjustChunksByPerformance(server, ChunkState.PERFORMANCE_FROZEN, ChunkState.MANAGED, "Unfrozen");
+            adjustChunksByPerformance(server, ChunkCache.ChunkInfo.PERFORMANCE_FROZEN, ChunkCache.ChunkInfo.MANAGED, "Unfrozen");
         }
     }
 
     private static void adjustChunksByPerformance(MinecraftServer server,
-                                                  ChunkState fromState,
-                                                  ChunkState toState,
+                                                  int fromState,
+                                                  int toState,
                                                   String action) {
         try {
             int targetCount = Config.TECHNICAL.chunkOperationCount.get();
@@ -115,18 +122,33 @@ public class ChunkService {
                 if (processedCount >= targetCount) break;
 
                 ResourceLocation dimension = level.dimension().location();
-                List<ChunkPos> targetChunks = ChunkCache.getChunksByState(dimension, fromState, level);
+                List<ChunkCache.ChunkInfo> targetChunks;
+                
+                if (fromState == ChunkCache.ChunkInfo.MANAGED && toState == ChunkCache.ChunkInfo.PERFORMANCE_FROZEN) {
+                    // 冻结：从实体多的开始（已排序，直接取前N个）
+                    targetChunks = ChunkCache.getChunksByState(dimension, fromState)
+                                           .stream()
+                                           .limit(targetCount - processedCount)
+                                           .toList();
+                } else {
+                    // 解冻：从实体少的开始（需要重新排序）
+                    targetChunks = ChunkCache.getChunksByState(dimension, fromState)
+                                           .stream()
+                                           .sorted((a, b) -> Integer.compare(a.blockEntityCount(), b.blockEntityCount()))
+                                           .limit(targetCount - processedCount)
+                                           .toList();
+                }
 
-                for (ChunkPos pos : targetChunks) {
+                for (ChunkCache.ChunkInfo chunkInfo : targetChunks) {
                     if (processedCount >= targetCount) break;
 
-                    // 简化的状态转换：MANAGED <-> PERFORMANCE_FROZEN
                     boolean success = false;
-                    LevelChunk chunk = level.getChunk(pos.x, pos.z);
-                    if ((fromState == ChunkState.MANAGED && toState == ChunkState.PERFORMANCE_FROZEN)||chunk.getBlockEntities().size()<Config.TECHNICAL.chunkEntityThreshold.get()){
-                        success = ChunkCache.removeManagementTicket(pos, level);
-                    } else if (fromState == ChunkState.PERFORMANCE_FROZEN && toState == ChunkState.MANAGED) {
-                        success = ChunkCache.addManagementTicket(pos, level);
+                    if (toState == ChunkCache.ChunkInfo.PERFORMANCE_FROZEN) {
+                        // 性能冻结：使用通用freezeChunk方法，unfreezeTime=0
+                        success = ChunkCache.freezeChunk(dimension, chunkInfo.pos(), level, toState, 0);
+                    } else if (toState == ChunkCache.ChunkInfo.MANAGED) {
+                        // 解冻：使用unfreezeChunk方法
+                        success = ChunkCache.unfreezeChunk(dimension, chunkInfo.pos(), level);
                     }
 
                     if (success) {
@@ -136,7 +158,7 @@ public class ChunkService {
             }
 
             if (processedCount > 0) {
-                Recyclingservice.LOGGER.info("Performance: {} {} chunks",action, processedCount);
+                Recyclingservice.LOGGER.info("Performance: {} {} chunks", action, processedCount);
             }
 
         } catch (Exception e) {
@@ -268,7 +290,7 @@ public class ChunkService {
         
         try {
             // 首先冻结中心区块
-            if (ChunkCache.freezeChunkForItems(dimension, centerChunk, level)) {
+            if (ChunkCache.freezeChunk(dimension, centerChunk,level,ChunkCache.ChunkInfo.ITEM_FROZEN,Config.TECHNICAL.itemFreezeMinutes.get())) {
                 frozenCount++;
                 Recyclingservice.LOGGER.debug("Frozen overloaded chunk ({}, {}) due to items", 
                     centerChunk.x, centerChunk.z);
@@ -295,7 +317,7 @@ public class ChunkService {
                         
                         if (hasNonWhitelistTicket) {
                             // 冻结该区块
-                            if (ChunkCache.freezeChunkForItems(dimension, chunkPos, level)) {
+                            if (ChunkCache.freezeChunk(dimension,chunkPos,level,ChunkCache.ChunkInfo.ITEM_FROZEN,Config.TECHNICAL.itemFreezeMinutes.get())) {
                                 frozenCount++;
                                 Recyclingservice.LOGGER.debug("Frozen adjacent chunk ({}, {}) within radius {} of overloaded chunk", 
                                     chunkPos.x, chunkPos.z, radius);

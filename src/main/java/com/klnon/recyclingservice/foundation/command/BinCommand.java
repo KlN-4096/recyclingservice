@@ -3,9 +3,7 @@ package com.klnon.recyclingservice.foundation.command;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
-import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.content.chunk.ChunkCache;
-import com.klnon.recyclingservice.content.chunk.ChunkState;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.utility.ErrorHelper;
 import com.mojang.brigadier.CommandDispatcher;
@@ -72,9 +70,6 @@ public class BinCommand {
                                 .executes(BinCommand::listChunks)
                                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                         .executes(BinCommand::listChunks))))
-                .then(Commands.literal("takeover")
-                        .requires(ADMIN_PERMISSION)
-                        .executes(BinCommand::manualTakeover))
                 .then(Commands.literal("reload")
                         .requires(ADMIN_PERMISSION)
                         .executes(BinCommand::reloadConfig))
@@ -94,6 +89,7 @@ public class BinCommand {
         
         // 添加新命令帮助（管理员权限检查）
         if (source.hasPermission(2)) {
+            source.sendSuccess(() -> Component.literal("§e/bin tickets <x> <z> §7- Show chunk tickets info"), false);
             source.sendSuccess(() -> Component.literal("§e/bin chunks [state] [page] §7- List managed chunks by state"), false);
             source.sendSuccess(() -> Component.literal("§e/bin takeover §7- Manually takeover unmanaged chunks"), false);
             source.sendSuccess(() -> Component.literal("§e/bin reload §7- Reload configuration"), false);
@@ -116,79 +112,6 @@ public class BinCommand {
                 // 打开垃圾箱
                 return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber);
             });
-    }
-    
-    /**
-     * 智能补全维度ID
-     * 只显示服务器实际已加载的维度
-     * @param context 命令上下文
-     * @param builder 补全建议构建器
-     * @return CompletableFuture包装的补全建议
-     */
-    private static java.util.concurrent.CompletableFuture<Suggestions> suggestDimensions(
-            CommandContext<CommandSourceStack> context, 
-            SuggestionsBuilder builder) {
-        
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestDimensions", () -> {
-            try {
-                // 获取服务器所有已加载的维度
-                MinecraftServer server = context.getSource().getServer();
-                List<String> dimensionIds = server.levelKeys().stream()
-                    .map(ResourceKey::location)
-                    .map(ResourceLocation::toString)
-                    .toList();
-
-                return SharedSuggestionProvider.suggest(dimensionIds, builder).join();
-
-            } catch (Exception e) {
-                // 如果无法获取服务器信息，fallback到常用维度
-                List<String> fallbackDimensions = List.of(
-                    "minecraft:overworld",
-                    "minecraft:the_nether",
-                    "minecraft:the_end"
-                );
-                return SharedSuggestionProvider.suggest(fallbackDimensions, builder).join();
-            }
-        }, SharedSuggestionProvider.suggest(List.of("minecraft:overworld"), builder).join()));
-    }
-    
-    /**
-     * 智能补全垃圾箱编号
-     * 根据指定维度现有的垃圾箱情况，动态提供编号建议
-     * @param context 命令上下文
-     * @param builder 补全建议构建器
-     * @return CompletableFuture包装的补全建议
-     */
-    private static java.util.concurrent.CompletableFuture<Suggestions> suggestBoxNumbers(
-            CommandContext<CommandSourceStack> context, 
-            SuggestionsBuilder builder) {
-        
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestBoxNumbers", () -> {
-            try {
-                // 尝试获取维度ID
-                ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
-                List<TrashBox> existingBoxes = TrashBoxManager.getDimensionTrashBoxes(dimensionId);
-
-                List<String> suggestions = new ArrayList<>();
-
-                // 只添加已存在的垃圾箱编号
-                for (int i = 1; i <= existingBoxes.size(); i++) {
-                    suggestions.add(String.valueOf(i));
-                }
-
-                // 如果没有任何垃圾箱，显示1号（防止空白补全）
-                if (suggestions.isEmpty()) {
-                    suggestions.add("1");
-                }
-
-                return SharedSuggestionProvider.suggest(suggestions, builder).join();
-
-            } catch (Exception e) {
-                // 如果无法获取维度信息，fallback到静态补全
-                List<String> fallbackSuggestions = List.of("1", "2", "3", "4", "5");
-                return SharedSuggestionProvider.suggest(fallbackSuggestions, builder).join();
-            }
-        }, SharedSuggestionProvider.suggest(List.of("1"), builder).join()));
     }
     
     /**
@@ -298,11 +221,11 @@ public class BinCommand {
                 // 如果指定了状态过滤，获取指定状态的区块
                 if (!"ALL".equals(stateFilter)) {
                     try {
-                        ChunkState filterState = ChunkState.valueOf(stateFilter.toUpperCase());
-                        List<ChunkPos> chunks = ChunkCache.getChunksByState(dimension, filterState, level);
-                        for (ChunkPos pos : chunks) {
-                            Component chunkInfo = formatChunkInfo(dimension, pos, level);
-                            allChunks.add(chunkInfo);
+                        int filterState = getStateByName(stateFilter);
+                        List<ChunkCache.ChunkInfo> chunks = ChunkCache.getChunksByState(dimension, filterState);
+                        for (ChunkCache.ChunkInfo chunkInfo : chunks) {
+                            Component chunkInfoComponent = formatChunkInfo(chunkInfo);
+                            allChunks.add(chunkInfoComponent);
                         }
                     } catch (IllegalArgumentException e) {
                         source.sendFailure(Component.literal("§cInvalid state: " + stateFilter));
@@ -310,11 +233,12 @@ public class BinCommand {
                     }
                 } else {
                     // 获取所有状态的区块
-                    for (ChunkState state : ChunkState.values()) {
-                        List<ChunkPos> chunks = ChunkCache.getChunksByState(dimension, state, level);
-                        for (ChunkPos pos : chunks) {
-                            Component chunkInfo = formatChunkInfo(dimension, pos, level);
-                            allChunks.add(chunkInfo);
+                    int[] states = {ChunkCache.ChunkInfo.MANAGED, ChunkCache.ChunkInfo.ITEM_FROZEN, ChunkCache.ChunkInfo.PERFORMANCE_FROZEN};
+                    for (int state : states) {
+                        List<ChunkCache.ChunkInfo> chunks = ChunkCache.getChunksByState(dimension, state);
+                        for (ChunkCache.ChunkInfo chunkInfo : chunks) {
+                            Component chunkInfoComponent = formatChunkInfo(chunkInfo);
+                            allChunks.add(chunkInfoComponent);
                         }
                     }
                 }
@@ -349,25 +273,22 @@ public class BinCommand {
     /**
      * 格式化区块信息（带点击传送功能）
      */
-    private static Component formatChunkInfo(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
+    private static Component formatChunkInfo(ChunkCache.ChunkInfo chunkInfo) {
         try {
-            // 获取区块状态
-            ChunkState state = getChunkStateForDisplay(dimension, pos, level);
-            
-            // 获取ticket等级
-            int ticketLevel = getChunkTicketLevel(pos, level);
+            // 获取区块状态名称
+            String stateName = chunkInfo.getStateName();
             
             // 简化维度名显示
-            String dimName = dimension.getPath();
+            String dimName = chunkInfo.dimension().getPath();
             
             // 计算世界坐标（区块中心）
-            int worldX = pos.x * 16 + 8;
-            int worldZ = pos.z * 16 + 8;
+            int worldX = chunkInfo.pos().x * 16 + 8;
+            int worldZ = chunkInfo.pos().z * 16 + 8;
             
-            // 创建基础信息文本
+            // 创建基础信息文本（包含方块实体数量）
             MutableComponent baseInfo = Component.literal(
-                String.format("§f%s §7(%d,%d) §e%s §7Ticket:%d ", 
-                    dimName, pos.x, pos.z, state.name(), ticketLevel));
+                String.format("§f%s §7(%d,%d) §e%s §6BE:%d ", 
+                    dimName, chunkInfo.pos().x, chunkInfo.pos().z, stateName, chunkInfo.blockEntityCount()));
             
             // 创建可点击的传送按钮
             MutableComponent teleportButton = Component.literal("§a[TP]")
@@ -379,7 +300,8 @@ public class BinCommand {
                         HoverEvent.Action.SHOW_TEXT,
                         Component.literal("§7Click to teleport to chunk center\n" +
                                         "§7World coordinate: " + worldX + ", " + worldZ + "\n" +
-                                        "§7Chunk coordinate: " + pos.x + ", " + pos.z)))
+                                        "§7Chunk coordinate: " + chunkInfo.pos().x + ", " + chunkInfo.pos().z + "\n" +
+                                        "§7Block Entities: " + chunkInfo.blockEntityCount())))
                 );
             
             // 组合返回
@@ -387,59 +309,19 @@ public class BinCommand {
             
         } catch (Exception e) {
             return Component.literal(String.format("§f%s §7(%d,%d) §cERROR", 
-                dimension.getPath(), pos.x, pos.z));
+                chunkInfo.dimension().getPath(), chunkInfo.pos().x, chunkInfo.pos().z));
         }
     }
     
     /**
-     * 获取区块状态用于显示
+     * 根据状态名称获取状态值
      */
-    private static ChunkState getChunkStateForDisplay(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
-        // 检查是否物品冻结
-        if (ChunkCache.getItemFrozenChunks(dimension).contains(pos)) {
-            return ChunkState.ITEM_FROZEN;
-        }
-        
-        // 检查是否被我们管理
-        DistanceManager distanceManager = level.getChunkSource().distanceManager;
-        var tickets = distanceManager.tickets.get(pos.toLong());
-        if (tickets != null && tickets.stream().anyMatch(t -> t.getType() == ChunkCache.RECYCLING_SERVICE_TICKET)) {
-            return ChunkState.MANAGED;
-        }
-        
-        return ChunkState.UNMANAGED;
-    }
-    
-    /**
-     * 获取区块最低ticket等级
-     */
-    private static int getChunkTicketLevel(ChunkPos pos, ServerLevel level) {
-        try {
-            DistanceManager distanceManager = level.getChunkSource().distanceManager;
-            var tickets = distanceManager.tickets.get(pos.toLong());
-            if (tickets != null && !tickets.isEmpty()) {
-                return tickets.stream().mapToInt(Ticket::getTicketLevel).min().orElse(33);
-            }
-        } catch (Exception ignored) {}
-        return 33; // 默认未加载等级
-    }
-    
-    /**
-     * 手动接管命令
-     */
-    private static int manualTakeover(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = (ServerPlayer) source.getEntity();
-        
-        return ErrorHelper.handleCommandOperation(player, "手动接管", () -> {
-            source.sendSuccess(() -> Component.literal("§6[Manual Takeover] Starting chunk takeover..."), false);
-            
-            // 调用现有接管方法
-            ChunkManager.performTakeover(source.getServer());
-            
-            source.sendSuccess(() -> Component.literal("§a[Manual Takeover] Takeover operation completed"), false);
-            return true;
-        });
+    private static int getStateByName(String name) {
+        return switch (name.toUpperCase()) {
+            case "ITEM_FROZEN" -> ChunkCache.ChunkInfo.ITEM_FROZEN;
+            case "PERFORMANCE_FROZEN" -> ChunkCache.ChunkInfo.PERFORMANCE_FROZEN;
+            default -> ChunkCache.ChunkInfo.MANAGED;
+        };
     }
     
     /**
@@ -459,18 +341,87 @@ public class BinCommand {
     }
     
     /**
+     * 智能补全维度ID
+     * 只显示服务器实际已加载的维度
+     * @param context 命令上下文
+     * @param builder 补全建议构建器
+     * @return CompletableFuture包装的补全建议
+     */
+    private static java.util.concurrent.CompletableFuture<Suggestions> suggestDimensions(
+            CommandContext<CommandSourceStack> context, 
+            SuggestionsBuilder builder) {
+        
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestDimensions", () -> {
+            try {
+                // 获取服务器所有已加载的维度
+                MinecraftServer server = context.getSource().getServer();
+                List<String> dimensionIds = server.levelKeys().stream()
+                    .map(ResourceKey::location)
+                    .map(ResourceLocation::toString)
+                    .toList();
+
+                return SharedSuggestionProvider.suggest(dimensionIds, builder).join();
+
+            } catch (Exception e) {
+                // 如果无法获取服务器信息，fallback到常用维度
+                List<String> fallbackDimensions = List.of(
+                    "minecraft:overworld",
+                    "minecraft:the_nether",
+                    "minecraft:the_end"
+                );
+                return SharedSuggestionProvider.suggest(fallbackDimensions, builder).join();
+            }
+        }, SharedSuggestionProvider.suggest(List.of("minecraft:overworld"), builder).join()));
+    }
+    
+    /**
+     * 智能补全垃圾箱编号
+     * 根据指定维度现有的垃圾箱情况，动态提供编号建议
+     * @param context 命令上下文
+     * @param builder 补全建议构建器
+     * @return CompletableFuture包装的补全建议
+     */
+    private static java.util.concurrent.CompletableFuture<Suggestions> suggestBoxNumbers(
+            CommandContext<CommandSourceStack> context, 
+            SuggestionsBuilder builder) {
+        
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> ErrorHelper.handleOperation(null, "suggestBoxNumbers", () -> {
+            try {
+                // 尝试获取维度ID
+                ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
+                List<TrashBox> existingBoxes = TrashBoxManager.getDimensionTrashBoxes(dimensionId);
+
+                List<String> suggestions = new ArrayList<>();
+
+                // 只添加已存在的垃圾箱编号
+                for (int i = 1; i <= existingBoxes.size(); i++) {
+                    suggestions.add(String.valueOf(i));
+                }
+
+                // 如果没有任何垃圾箱，显示1号（防止空白补全）
+                if (suggestions.isEmpty()) {
+                    suggestions.add("1");
+                }
+
+                return SharedSuggestionProvider.suggest(suggestions, builder).join();
+
+            } catch (Exception e) {
+                // 如果无法获取维度信息，fallback到静态补全
+                List<String> fallbackSuggestions = List.of("1", "2", "3", "4", "5");
+                return SharedSuggestionProvider.suggest(fallbackSuggestions, builder).join();
+            }
+        }, SharedSuggestionProvider.suggest(List.of("1"), builder).join()));
+    }
+    
+
+    /**
      * 区块状态补全
      */
     private static java.util.concurrent.CompletableFuture<Suggestions> suggestChunkStates(
             CommandContext<CommandSourceStack> context, 
             SuggestionsBuilder builder) {
         
-        List<String> states = new ArrayList<>();
-        states.add("ALL");
-        for (ChunkState state : ChunkState.values()) {
-            states.add(state.name());
-        }
-        
+        List<String> states = List.of("ALL", "MANAGED", "ITEM_FROZEN", "PERFORMANCE_FROZEN");
         return SharedSuggestionProvider.suggest(states, builder);
     }
 }
