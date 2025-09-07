@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.Ticket;
@@ -63,8 +64,7 @@ public class ChunkService {
                 // 检查是否有非白名单ticket且未被我们管理
                 boolean hasNonWhitelist = ticketSet.stream()
                     .anyMatch(ticket -> !ChunkCache.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
-                boolean alreadyManaged = ticketSet.stream()
-                    .anyMatch(ticket -> ticket.getType() == ChunkCache.RECYCLING_SERVICE_TICKET);
+                boolean alreadyManaged = ChunkCache.isChunkManaged(dimension, chunkPos);
                 
                 if (hasNonWhitelist && !alreadyManaged) {
                     // 计算方块实体数量
@@ -73,9 +73,11 @@ public class ChunkService {
                         LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
                         blockEntityCount = chunk.getBlockEntities().size();
                     } catch (Exception ignored) {}
-                    
-                    // 添加管理ticket
-                    if (ChunkCache.addManagementTicket(chunkPos, level)) {
+                    // 添加管理ticket,先移除非白名单,再添加我们自己的ticket
+                    ChunkCache.freezeChunkTickets(chunkPos, level);
+                    LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
+                    //先判断区块方块实体数量是否满足配置条件,再添加我们的ticket
+                    if (chunk.getBlockEntities().size()>Config.TECHNICAL.chunkEntityThreshold.get() && ChunkCache.addManagementTicket(chunkPos, level)) {
                         newChunks.add(new ChunkCache.ChunkInfo(dimension, chunkPos, blockEntityCount, ChunkCache.ChunkInfo.MANAGED, 0));
                     }
                 }

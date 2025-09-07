@@ -94,6 +94,14 @@ public class ChunkCache {
         }
         return false;
     }
+
+    public static boolean isChunkManaged(ResourceLocation dimension, ChunkPos pos) {
+      List<ChunkInfo> chunks = managedChunks.get(dimension);
+      if (chunks == null) return false;
+
+      return chunks.stream()
+                  .anyMatch(info -> info.pos().equals(pos));
+    }
     
     // ================== 物品冻结管理 ==================
     
