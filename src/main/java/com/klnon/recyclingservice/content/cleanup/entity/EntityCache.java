@@ -51,7 +51,7 @@ public class EntityCache {
         ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
         return dimensionEntities != null && dimensionEntities.containsKey(entity.getUUID());
     }
-    
+
     /**
      * 清理无效实体
      */
@@ -74,7 +74,6 @@ public class EntityCache {
                 iterator.remove();
             }
         }
-
     }
     
     /**

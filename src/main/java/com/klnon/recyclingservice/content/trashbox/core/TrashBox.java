@@ -91,6 +91,7 @@ public class TrashBox implements Container {
         if (emptySlots != null && !emptySlots.isEmpty()) {
             Integer emptySlot = emptySlots.removeLast();
             setItem(emptySlot, item.copy());
+            item.shrink(item.getCount());
             return true;
         }
         return false;

@@ -47,6 +47,7 @@ public class ItemEntityReportMixin {
                 CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 // 添加物品到垃圾箱
                 TrashBoxManager.addItemToDimension(dimension,self.getItem());
+                CleanupManager.removeReportedEntity(dimension,self);
                 self.discard();
             }
         } catch (Exception e) {

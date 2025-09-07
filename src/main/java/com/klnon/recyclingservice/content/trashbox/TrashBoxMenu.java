@@ -101,12 +101,7 @@ public class TrashBoxMenu extends ChestMenu {
         }
         
         // 处理垃圾箱槽位的点击
-        if (slotId >= 0 && slotId < trashSlots) {
-            handleTrashBoxSlotClick(slotId, button, clickType, player);
-            return;
-        }
-
-        super.clicked(slotId, button, clickType, player);
+        handleTrashBoxSlotClick(slotId, button, clickType, player);
     }
     
     /**
