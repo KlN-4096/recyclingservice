@@ -1,13 +1,16 @@
 package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.chunk.ChunkCache;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import java.util.UUID;
 
 /**
  * Projectile上报Mixin
@@ -29,22 +32,27 @@ public class ProjectileReportMixin {
                 return;
             }
             
+            ResourceLocation dimension = self.level().dimension().location();
+            UUID uuid = self.getUUID();
+            ChunkPos chunkPos = new ChunkPos(self.blockPosition());
+            
             // 检查是否已在缓存中
-            boolean alreadyReported = CleanupManager.isEntityReported(self);
+            boolean alreadyReported = CleanupManager.isProjectileReported(dimension, uuid);
             
             // 检查是否应该上报
             boolean shouldReport = recyclingservice$shouldReport(self);
-            ResourceLocation dimension = self.level().dimension().location();
             
             if (shouldReport && !alreadyReported && !self.level().isClientSide() && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 // 应该上报且未上报 -> 上报
-                CleanupManager.reportEntity(dimension,self.getUUID(),self);
-            }
+                CleanupManager.reportProjectile(dimension, uuid);
+                // 增加区块计数
+                ChunkCache.incrementEntityCount(dimension, chunkPos);
+            } 
             
             // 检查全局删除信号，如果激活且在缓存中则自删除
             if (!self.level().isClientSide() && alreadyReported && 
                 CleanupManager.shouldDeleteEntity(self.level().getServer())) {
-//                CleanupManager.removeReportedEntity(dimension,self);
+                // discard钩子会处理计数减少和缓存移除
                 self.discard();
             }
         } catch (Exception e) {
@@ -59,6 +67,31 @@ public class ProjectileReportMixin {
                    CleanupManager.shouldCleanProjectile(self);
         } catch (Exception e) {
             return false;
+        }
+    }
+    
+    /**
+     * 监听实体discard事件，确保计数器正确减少
+     */
+    @Inject(method = "discard", at = @At("HEAD"))
+    private void onDiscard(CallbackInfo ci) {
+        try {
+            Entity self = (Entity)(Object)this;
+            ResourceLocation dimension = self.level().dimension().location();
+            UUID uuid = self.getUUID();
+            
+            // 检查是否已上报
+            if (CleanupManager.isProjectileReported(dimension, uuid)) {
+                ChunkPos chunkPos = new ChunkPos(self.blockPosition());
+                
+                // 减少计数
+                ChunkCache.decrementEntityCount(dimension, chunkPos);
+                
+                // 从缓存中移除
+                CleanupManager.removeReportedProjectile(dimension, uuid);
+            }
+        } catch (Exception e) {
+            // 出错跳过
         }
     }
 }

@@ -195,7 +195,7 @@ public class ChunkService {
                 ResourceLocation dimension = level.dimension().location();
                 
                 // 获取超载区块
-                List<ChunkPos> overloadedChunks = CleanupManager.getOverloadedChunks(dimension);
+                List<ChunkPos> overloadedChunks = ChunkCache.getOverloadedChunks(dimension, Config.TECHNICAL.tooManyItemsWarning.get());
                 
                 // 发送警告消息（如果启用）
                 if (Config.TECHNICAL.enableChunkItemWarning.get()) {
@@ -252,7 +252,7 @@ public class ChunkService {
         
         try {
             // 获取该维度所有区块的实体数量统计
-            Map<ChunkPos, Integer> entityCountMap = CleanupManager.getEntityCountByChunk(dimension);
+            Map<ChunkPos, Integer> entityCountMap = ChunkCache.getEntityCountByChunk(dimension);
             ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, dimension));
             DistanceManager distanceManager = level != null ? level.getChunkSource().chunkMap.getDistanceManager() : null;
             

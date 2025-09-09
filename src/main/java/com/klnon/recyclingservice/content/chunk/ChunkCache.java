@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 区块缓存
@@ -36,6 +37,9 @@ public class ChunkCache {
     
     // 快速索引：维度 -> (区块位置 -> 区块信息)
     private static final Map<ResourceLocation, Map<ChunkPos, ChunkInfo>> dimensionIndexes = new ConcurrentHashMap<>();
+    
+    // 实体计数缓存：维度 -> (区块位置 -> 实体数量)
+    private static final Map<ResourceLocation, Map<ChunkPos, AtomicInteger>> entityCounts = new ConcurrentHashMap<>();
 
     /**
      * 清空所有管理的区块缓存（服务器停止时调用）
@@ -43,6 +47,7 @@ public class ChunkCache {
     public static void clearAll() {
         managedChunks.clear();
         dimensionIndexes.clear();
+        entityCounts.clear();
     }
 
     
@@ -254,5 +259,81 @@ public class ChunkCache {
         } catch (Exception e) {
             return 0;
         }
+    }
+    
+    // ================== 实体计数管理 ==================
+    
+    /**
+     * 增加指定区块的实体计数
+     */
+    public static void incrementEntityCount(ResourceLocation dimension, ChunkPos pos) {
+        entityCounts.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(pos, k -> new AtomicInteger())
+                    .incrementAndGet();
+    }
+    
+    /**
+     * 减少指定区块的实体计数
+     */
+    public static void decrementEntityCount(ResourceLocation dimension, ChunkPos pos) {
+        Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
+        if (dimensionCounts != null) {
+            AtomicInteger count = dimensionCounts.get(pos);
+            if (count != null && count.decrementAndGet() <= 0) {
+                // 当计数为0时，移除该区块的计数器以节省内存
+                dimensionCounts.remove(pos);
+                if (dimensionCounts.isEmpty()) {
+                    entityCounts.remove(dimension);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 获取指定区块的实体数量
+     */
+    public static int getEntityCount(ResourceLocation dimension, ChunkPos pos) {
+        Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
+        if (dimensionCounts != null) {
+            AtomicInteger count = dimensionCounts.get(pos);
+            return count != null ? count.get() : 0;
+        }
+        return 0;
+    }
+    
+    /**
+     * 获取指定维度所有区块的实体数量统计
+     */
+    public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
+        Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
+        if (dimensionCounts == null) {
+            return new HashMap<>();
+        }
+        
+        Map<ChunkPos, Integer> result = new HashMap<>();
+        dimensionCounts.forEach((pos, count) -> result.put(pos, count.get()));
+        return result;
+    }
+    
+    /**
+     * 获取超载区块列表（实体数量超过阈值）
+     */
+    public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension, int threshold) {
+        Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
+        if (dimensionCounts == null) {
+            return new ArrayList<>();
+        }
+        
+        return dimensionCounts.entrySet().stream()
+                             .filter(entry -> entry.getValue().get() >= threshold)
+                             .map(Map.Entry::getKey)
+                             .toList();
+    }
+    
+    /**
+     * 清空指定维度的实体计数
+     */
+    public static void clearEntityCounts(ResourceLocation dimension) {
+        entityCounts.remove(dimension);
     }
 }

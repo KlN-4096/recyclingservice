@@ -10,7 +10,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ChunkPos;
 
 import java.util.*;
 
@@ -23,28 +22,59 @@ public class CleanupManager {
     // === 公共API：实体上报管理（供Mixin使用） ===
     
     /**
-     * 上报实体到清理缓存
-     * @param entity 要上报的实体
+     * 上报物品实体到清理缓存
+     * @param dimension 维度
+     * @param uuid 实体UUID
      */
-    public static void reportEntity(ResourceLocation dimension, UUID uuid, Entity entity) {
-        EntityCache.addEntity(dimension, uuid, entity);
+    public static void reportItem(ResourceLocation dimension, UUID uuid) {
+        EntityCache.addItem(dimension, uuid);
     }
     
     /**
-     * 从清理缓存中移除实体
-     * @param entity 要移除的实体
+     * 上报弹射物到清理缓存
+     * @param dimension 维度
+     * @param uuid 实体UUID
      */
-    public static void removeReportedEntity(ResourceLocation dimension, Entity entity) {
-        EntityCache.removeEntity(dimension,entity.getUUID());
+    public static void reportProjectile(ResourceLocation dimension, UUID uuid) {
+        EntityCache.addProjectile(dimension, uuid);
     }
     
     /**
-     * 检查实体是否已在清理缓存中
-     * @param entity 要检查的实体
+     * 从清理缓存中移除物品实体
+     * @param dimension 维度
+     * @param uuid 实体UUID
+     */
+    public static void removeReportedItem(ResourceLocation dimension, UUID uuid) {
+        EntityCache.removeItem(dimension, uuid);
+    }
+    
+    /**
+     * 从清理缓存中移除弹射物
+     * @param dimension 维度
+     * @param uuid 实体UUID
+     */
+    public static void removeReportedProjectile(ResourceLocation dimension, UUID uuid) {
+        EntityCache.removeProjectile(dimension, uuid);
+    }
+    
+    /**
+     * 检查物品实体是否已在清理缓存中
+     * @param dimension 维度
+     * @param uuid 实体UUID
      * @return 是否已上报
      */
-    public static boolean isEntityReported(Entity entity) {
-        return EntityCache.isEntityReported(entity);
+    public static boolean isItemReported(ResourceLocation dimension, UUID uuid) {
+        return EntityCache.isItemReported(dimension, uuid);
+    }
+    
+    /**
+     * 检查弹射物是否已在清理缓存中
+     * @param dimension 维度
+     * @param uuid 实体UUID
+     * @return 是否已上报
+     */
+    public static boolean isProjectileReported(ResourceLocation dimension, UUID uuid) {
+        return EntityCache.isProjectileReported(dimension, uuid);
     }
     
     /**
@@ -80,22 +110,6 @@ public class CleanupManager {
     public static String generateComplexItemKey(ItemStack stack) {
         return EntityMerger.generateComplexItemKey(stack);
     }
-
-    /**
-     * 清理无效实体
-     */
-    public static void removeAllInvalidEntities() {
-        EntityCache.removeAllInvalidEntities();
-    }
-
-    public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
-        return EntityCache.getEntityCountByChunk(dimension);
-    }
-
-    public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
-        return  EntityCache.getOverloadedChunks(dimension);
-    }
-
 
     public static String getStateName(ChunkCache.ChunkInfo chunkInfo) {
         return chunkInfo.getStateName();

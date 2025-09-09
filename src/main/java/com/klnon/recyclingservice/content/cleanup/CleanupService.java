@@ -5,7 +5,6 @@ import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.server.level.ServerLevel;
 
 import javax.annotation.Nonnull;
@@ -31,10 +30,9 @@ public class CleanupService {
             ResourceLocation dimensionId = level.dimension().location();
             
             try {
-                // 直接统计各类实体数量，无需创建EntityReport对象
-                int itemCount = EntityCache.getEntityCount(dimensionId, EntityType.ITEM);
-                int totalCount = EntityCache.getReportedCount(dimensionId);
-                int projectileCount = totalCount - itemCount; // 弹射物数量 = 总数 - 物品数量
+                // 直接使用新的统计方法
+                int itemCount = EntityCache.getItemCount(dimensionId);
+                int projectileCount = EntityCache.getProjectileCount(dimensionId);
                 
                 // 记录统计
                 if (itemCount > 0 || projectileCount > 0) {

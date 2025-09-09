@@ -1,154 +1,127 @@
 package com.klnon.recyclingservice.content.cleanup.entity;
 
-import com.klnon.recyclingservice.Config;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.ChunkPos;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 主动上报缓存系统 - UUID统一操作的简化版本
- * 核心理念：所有操作都基于UUID，提供Entity便捷方法
+ * 轻量级实体上报缓存系统
+ * 仅存储UUID，分别管理物品和弹射物
  */
 public class EntityCache {
     
-    // 统一主存储：维度 -> UUID -> 实体记录
-    private static final ConcurrentHashMap<ResourceLocation, ConcurrentHashMap<UUID, EntityRecord>> entities 
-        = new ConcurrentHashMap<>();
+    // 分别存储物品和弹射物的UUID集合
+    private static final Map<ResourceLocation, Set<UUID>> reportedItems = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, Set<UUID>> reportedProjectiles = new ConcurrentHashMap<>();
     
-    // === 核心存储方法 ===
+    // === 物品管理 ===
     
     /**
-     * 添加实体到缓存
+     * 添加物品到缓存
      */
-    public static void addEntity(ResourceLocation dimension, UUID uuid, Entity entity) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = 
-            entities.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
-        
-        EntityRecord record = new EntityRecord(entity, new ChunkPos(entity.blockPosition()), System.currentTimeMillis());
-        dimensionEntities.putIfAbsent(uuid, record);
+    public static void addItem(ResourceLocation dimension, UUID uuid) {
+        reportedItems.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet()).add(uuid);
     }
     
     /**
-     * 从缓存中移除实体
+     * 从缓存中移除物品
      */
-    public static void removeEntity(ResourceLocation dimension, UUID uuid) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        if (dimensionEntities != null) {
-            dimensionEntities.remove(uuid);
-        }
-    }
-    
-    // === 公共API方法 ===
-
-    /**
-     * 检查实体是否已上报
-     */
-    public static boolean isEntityReported(Entity entity) {
-        ResourceLocation dimension = entity.level().dimension().location();
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        return dimensionEntities != null && dimensionEntities.containsKey(entity.getUUID());
-    }
-
-    /**
-     * 清理无效实体
-     */
-    public static void removeInvalidEntities(ResourceLocation dimension) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        if (dimensionEntities == null) return;
-
-        Iterator<Map.Entry<UUID, EntityRecord>> iterator = dimensionEntities.entrySet().iterator();
-        
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, EntityRecord> entry = iterator.next();
-            EntityRecord record = entry.getValue();
-            
-            try {
-                Entity entity = record.entity();
-                if (entity == null || entity.isRemoved() || !entity.isAlive()) {
-                    iterator.remove();
-                }
-            } catch (Exception e) {
-                iterator.remove();
+    public static void removeItem(ResourceLocation dimension, UUID uuid) {
+        Set<UUID> items = reportedItems.get(dimension);
+        if (items != null) {
+            items.remove(uuid);
+            if (items.isEmpty()) {
+                reportedItems.remove(dimension);
             }
         }
     }
-
+    
     /**
-     * 清理所有维度无效实体
+     * 检查物品是否已上报
      */
-    public static void removeAllInvalidEntities() {
-        entities.keySet().forEach(EntityCache::removeInvalidEntities);
+    public static boolean isItemReported(ResourceLocation dimension, UUID uuid) {
+        Set<UUID> items = reportedItems.get(dimension);
+        return items != null && items.contains(uuid);
     }
     
     /**
-     * 获取区块实体数量统计（按需计算）
+     * 获取指定维度的物品数量
      */
-    public static Map<ChunkPos, Integer> getEntityCountByChunk(ResourceLocation dimension) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        if (dimensionEntities == null) return new HashMap<>();
-        
-        Map<ChunkPos, Integer> chunkCounts = new HashMap<>();
-        for (EntityRecord record : dimensionEntities.values()) {
-            chunkCounts.merge(record.chunkPos(), 1, Integer::sum);
+    public static int getItemCount(ResourceLocation dimension) {
+        Set<UUID> items = reportedItems.get(dimension);
+        return items != null ? items.size() : 0;
+    }
+    
+    // === 弹射物管理 ===
+    
+    /**
+     * 添加弹射物到缓存
+     */
+    public static void addProjectile(ResourceLocation dimension, UUID uuid) {
+        reportedProjectiles.computeIfAbsent(dimension, k -> ConcurrentHashMap.newKeySet()).add(uuid);
+    }
+    
+    /**
+     * 从缓存中移除弹射物
+     */
+    public static void removeProjectile(ResourceLocation dimension, UUID uuid) {
+        Set<UUID> projectiles = reportedProjectiles.get(dimension);
+        if (projectiles != null) {
+            projectiles.remove(uuid);
+            if (projectiles.isEmpty()) {
+                reportedProjectiles.remove(dimension);
+            }
         }
-        return chunkCounts;
     }
-
+    
     /**
-     * 获取指定维度中指定类型实体的数量
+     * 检查弹射物是否已上报
      */
-    public static int getEntityCount(ResourceLocation dimension, EntityType<?> entityType) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        if (dimensionEntities == null) return 0;
-        
-        return dimensionEntities.values().stream()
-            .mapToInt(record -> {
-                Entity entity = record.entity();
-                return (entity != null && entity.isAlive() && !entity.isRemoved() &&
-                        entity.getType() == entityType) ? 1 : 0;
-            })
-            .sum();
+    public static boolean isProjectileReported(ResourceLocation dimension, UUID uuid) {
+        Set<UUID> projectiles = reportedProjectiles.get(dimension);
+        return projectiles != null && projectiles.contains(uuid);
     }
-
+    
     /**
-     * 获取指定维度缓存的实体总数
+     * 获取指定维度的弹射物数量
      */
-    public static int getReportedCount(ResourceLocation dimension) {
-        ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
-        return dimensionEntities != null ? dimensionEntities.size() : 0;
+    public static int getProjectileCount(ResourceLocation dimension) {
+        Set<UUID> projectiles = reportedProjectiles.get(dimension);
+        return projectiles != null ? projectiles.size() : 0;
     }
-
+    
+    // === 通用方法 ===
+    
+    /**
+     * 获取指定维度的总实体数量
+     */
+    public static int getTotalCount(ResourceLocation dimension) {
+        return getItemCount(dimension) + getProjectileCount(dimension);
+    }
+    
     /**
      * 获取所有维度缓存的实体总数
      */
     public static int getTotalReportedCount() {
-        return entities.values().stream()
-            .mapToInt(Map::size)
-            .sum();
+        int itemTotal = reportedItems.values().stream().mapToInt(Set::size).sum();
+        int projectileTotal = reportedProjectiles.values().stream().mapToInt(Set::size).sum();
+        return itemTotal + projectileTotal;
     }
-
-    /**
-     * 获取超载区块列表（按需计算）
-     */
-    public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
-        Map<ChunkPos, Integer> chunkCounts = getEntityCountByChunk(dimension);
-        int threshold = Config.TECHNICAL.tooManyItemsWarning.get();
-
-        return chunkCounts.entrySet().stream()
-                .filter(entry -> entry.getValue() >= threshold)
-                .map(Map.Entry::getKey)
-                .toList();
-    }
-
-    // === 辅助记录类 ===
     
     /**
-     * 实体存储记录
+     * 清空指定维度的所有缓存
      */
-    private record EntityRecord(Entity entity, ChunkPos chunkPos, long reportTime) {}
-
+    public static void clearDimension(ResourceLocation dimension) {
+        reportedItems.remove(dimension);
+        reportedProjectiles.remove(dimension);
+    }
+    
+    /**
+     * 清空所有缓存
+     */
+    public static void clearAll() {
+        reportedItems.clear();
+        reportedProjectiles.clear();
+    }
 }

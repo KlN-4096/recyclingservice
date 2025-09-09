@@ -1,8 +1,10 @@
 package com.klnon.recyclingservice.foundation.events;
 
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
+import com.klnon.recyclingservice.content.chunk.ChunkCache;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.cleanup.CleanupService;
+import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.chat.Component;
@@ -52,8 +54,6 @@ public class AutoCleanupEvent {
         if (cleaning) return;
 
         cleaning = true;
-        // 清理无效实体
-        CleanupManager.removeAllInvalidEntities();
         doCleanup(event.getServer());
         chunkOperationPending = true; // 设置区块操作待执行信号
     }
@@ -87,6 +87,14 @@ public class AutoCleanupEvent {
      */
     private static void performChunkOperations(MinecraftServer server) {
         try {
+            // 清空所有维度的区块实体计数（清理已完成）
+            server.getAllLevels().forEach(level -> 
+                ChunkCache.clearEntityCounts(level.dimension().location())
+            );
+            
+            // 清空EntityCache（清理已完成，不再需要UUID记录）
+            EntityCache.clearAll();
+            
             //同步区块接管,管理区块,物品过多监控
             if (Config.TECHNICAL.enableChunkManagement.get()) {
                 ChunkManager.performTakeover(server);
