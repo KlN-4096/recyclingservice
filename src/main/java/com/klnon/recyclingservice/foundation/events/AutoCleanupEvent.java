@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.Recyclingservice;
 
 /**
  * 自动清理事件处理器 - 定时触发清理并显示警告
@@ -87,24 +88,28 @@ public class AutoCleanupEvent {
      */
     private static void performChunkOperations(MinecraftServer server) {
         try {
-            // 清空所有维度的区块实体计数（清理已完成）
-            server.getAllLevels().forEach(level -> 
-                ChunkCache.clearEntityCounts(level.dimension().location())
-            );
+            // 1. 先执行需要实体计数数据的操作
+            if (Config.TECHNICAL.enableItemBasedFreezing.get()) {
+                ChunkManager.performItemMonitoring(server);
+            }
             
-            // 清空EntityCache（清理已完成，不再需要UUID记录）
-            EntityCache.clearAll();
-            
-            //同步区块接管,管理区块,物品过多监控
+            // 2. 执行区块管理操作（不依赖实体计数）
             if (Config.TECHNICAL.enableChunkManagement.get()) {
                 ChunkManager.performTakeover(server);
                 ChunkManager.performPerformanceAdjustment(server);
             }
-            if (Config.TECHNICAL.enableItemBasedFreezing.get()) {
-                ChunkManager.performItemMonitoring(server);
-            }
+            
+            // 3. 最后清空缓存（所有操作完成后）
+            server.getAllLevels().forEach(level -> 
+                ChunkCache.clearEntityCounts(level.dimension().location())
+            );
+            EntityCache.clearAll();
+            
         } catch (Exception e) {
-            // 区块操作出错时的处理
+            Recyclingservice.LOGGER.error("Chunk operations failed", e);
+            // 出错时重置清理状态，避免卡死
+            chunkOperationPending = false;
+            cleaning = false;
         }
     }
 
