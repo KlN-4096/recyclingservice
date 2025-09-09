@@ -27,8 +27,8 @@ public class ProjectileReportMixin {
         try {
             Entity self = (Entity)(Object)this;
             
-            // 4秒检查一次
-            if (self.tickCount % (20 * 4) != 0) {
+            // 10秒检查一次
+            if (self.tickCount % (20 * 10) != 0) {
                 return;
             }
             

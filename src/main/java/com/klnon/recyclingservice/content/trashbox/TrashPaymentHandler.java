@@ -48,6 +48,8 @@ public class TrashPaymentHandler {
         
         // 单次遍历完成检查和扣除
         for (ItemStack stack : player.getInventory().items) {
+            if (remaining <= 0) break; // 提前退出，避免不必要的循环
+            
             if (isPaymentItem(stack, paymentItem)) {
                 int stackCount = stack.getCount();
                 totalFound += stackCount;

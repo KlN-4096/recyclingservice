@@ -25,8 +25,8 @@ public class ItemEntityReportMixin {
         try {
             ItemEntity self = (ItemEntity)(Object)this;
             
-            // 4秒检查一次，分散检查时间避免同时计算
-            if (self.tickCount % (20*4) != (self.getId() % 20)) {
+            // 10秒检查一次，分散检查时间避免同时计算
+            if (self.tickCount % (20*10) != (self.getId() % 20)) {
                 return;
             }
             

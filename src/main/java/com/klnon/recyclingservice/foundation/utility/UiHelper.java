@@ -70,7 +70,7 @@ public class UiHelper {
         // 保留非我们添加的lore
         if (existingLore != null) {
             for (Component line : existingLore.lines()) {
-                if (isOurLoreLine(line)) {
+                if (!isOurLoreLine(line)) {
                     loreLines.add(line);
                 }
             }
@@ -96,7 +96,7 @@ public class UiHelper {
         String text = line.getString();
 
         // 检查是否同时包含我们的前缀和后缀
-        return !text.startsWith(LORE_PREFIX) || !text.endsWith(LORE_SUFFIX);
+        return text.startsWith(LORE_PREFIX) && text.endsWith(LORE_SUFFIX);
     }
 
     /**
@@ -117,7 +117,7 @@ public class UiHelper {
 
         // 过滤掉我们的lore行，保留其他lore
         List<Component> filteredLines = existingLore.lines().stream()
-                .filter(UiHelper::isOurLoreLine)
+                .filter(line -> !isOurLoreLine(line))
                 .toList();
 
         // 无论过滤后是否为空，都保持LORE组件以维持组件数量一致
