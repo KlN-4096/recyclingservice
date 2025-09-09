@@ -10,12 +10,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.*;
@@ -66,18 +64,25 @@ public class ChunkService {
                 boolean alreadyManaged = ChunkCache.isChunkManaged(dimension, chunkPos);
                 
                 if (hasNonWhitelist && !alreadyManaged) {
-                    // 计算方块实体数量
-                    int blockEntityCount = 0;
-                    try {
-                        LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
-                        blockEntityCount = chunk.getBlockEntities().size();
-                    } catch (Exception ignored) {}
-                    // 添加管理ticket,先移除非白名单,再添加我们自己的ticket
+                    // 优化：先从缓存获取方块实体数量，避免重复计算
+                    ChunkCache.ChunkInfo existingInfo = ChunkCache.getChunkInfo(dimension, chunkPos);
+                    int blockEntityCount = existingInfo != null ? existingInfo.blockEntityCount() : 0;
+                    
+                    // 如果缓存中没有，才进行实际计算
+                    if (blockEntityCount == 0) {
+                        try {
+                            LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
+                            blockEntityCount = chunk.getBlockEntities().size();
+                        } catch (Exception ignored) {
+                            Recyclingservice.LOGGER.error("Failed to find chunk entity count for dimension {}", dimension);
+                        }
+                    }
+                    
+                    // 移除非白名单ticket
                     ChunkCache.freezeChunkTickets(chunkPos, level);
-                    LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
-                    //先判断区块方块实体数量是否满足配置条件,再添加我们的ticket
-                    if (chunk.getBlockEntities().size()<Config.TECHNICAL.chunkEntityThreshold.get()) {
-                        //方块实体数量小于配置项目时纳入管理,但不添加我们的ticket
+                    
+                    // 根据方块实体数量决定管理方式
+                    if (blockEntityCount < Config.TECHNICAL.chunkEntityThreshold.get()) {
                         newChunks.add(new ChunkCache.ChunkInfo(dimension, chunkPos, blockEntityCount, ChunkCache.ChunkInfo.UNIMPORTANT, 0));
                     }
                     else if(ChunkCache.addManagementTicket(chunkPos, level)){
@@ -140,7 +145,7 @@ public class ChunkService {
                     // 解冻：从实体少的开始（需要重新排序）
                     targetChunks = ChunkCache.getChunksByState(dimension, fromState)
                                            .stream()
-                                           .sorted((a, b) -> Integer.compare(a.blockEntityCount(), b.blockEntityCount()))
+                                           .sorted(Comparator.comparingInt(ChunkCache.ChunkInfo::blockEntityCount))
                                            .limit(targetCount - processedCount)
                                            .toList();
                 }
@@ -150,8 +155,8 @@ public class ChunkService {
 
                     boolean success = false;
                     if (toState == ChunkCache.ChunkInfo.PERFORMANCE_FROZEN) {
-                        // 性能冻结：使用通用freezeChunk方法，unfreezeTime=0
-                        success = ChunkCache.freezeChunk(dimension, chunkInfo.pos(), level, toState, 0);
+                        // 性能冻结：统一使用扩散冻结，避免破坏机器
+                        success = (freezeChunkWithRadius(dimension, chunkInfo.pos(), level) > 0);
                     } else if (toState == ChunkCache.ChunkInfo.MANAGED) {
                         // 解冻：使用unfreezeChunk方法
                         success = ChunkCache.unfreezeChunk(dimension, chunkInfo.pos(), level);

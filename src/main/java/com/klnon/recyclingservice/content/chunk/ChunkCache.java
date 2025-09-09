@@ -1,6 +1,5 @@
 package com.klnon.recyclingservice.content.chunk;
 
-import com.klnon.recyclingservice.Recyclingservice;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
@@ -9,7 +8,6 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.util.SortedArraySet;
 import net.minecraft.world.level.ChunkPos;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import net.neoforged.neoforge.common.ticket.ChunkTicketManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,12 +33,16 @@ public class ChunkCache {
     
     // 主存储：维度 -> 区块信息列表
     private static final Map<ResourceLocation, List<ChunkInfo>> managedChunks = new ConcurrentHashMap<>();
+    
+    // 快速索引：维度 -> (区块位置 -> 区块信息)
+    private static final Map<ResourceLocation, Map<ChunkPos, ChunkInfo>> dimensionIndexes = new ConcurrentHashMap<>();
 
     /**
      * 清空所有管理的区块缓存（服务器停止时调用）
      */
     public static void clearAll() {
         managedChunks.clear();
+        dimensionIndexes.clear();
     }
 
     
@@ -92,7 +94,14 @@ public class ChunkCache {
         }
         
         List<ChunkInfo> existingChunks = managedChunks.computeIfAbsent(dimension, k -> new ArrayList<>());
+        Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
+        
         existingChunks.addAll(newChunks);
+        
+        // 同时更新索引
+        for (ChunkInfo chunk : newChunks) {
+            dimensionIndex.put(chunk.pos(), chunk);
+        }
         
         // 按方块实体数量重新排序（从大到小）
         existingChunks.sort((a, b) -> Integer.compare(b.blockEntityCount(), a.blockEntityCount()));
@@ -113,12 +122,15 @@ public class ChunkCache {
      */
     public static boolean updateChunkState(ResourceLocation dimension, ChunkPos pos, int newState, long freezeTime) {
         List<ChunkInfo> chunks = managedChunks.get(dimension);
-        if (chunks == null) return false;
+        Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
+        if (chunks == null || dimensionIndex == null) return false;
         
         for (int i = 0; i < chunks.size(); i++) {
             ChunkInfo info = chunks.get(i);
             if (info.pos.equals(pos)) {
-                chunks.set(i, new ChunkInfo(dimension, pos, info.blockEntityCount, newState, freezeTime));
+                ChunkInfo newInfo = new ChunkInfo(dimension, pos, info.blockEntityCount, newState, freezeTime);
+                chunks.set(i, newInfo);
+                dimensionIndex.put(pos, newInfo); // 同时更新索引
                 return true;
             }
         }
@@ -126,11 +138,16 @@ public class ChunkCache {
     }
 
     public static boolean isChunkManaged(ResourceLocation dimension, ChunkPos pos) {
-      List<ChunkInfo> chunks = managedChunks.get(dimension);
-      if (chunks == null) return false;
-
-      return chunks.stream()
-                  .anyMatch(info -> info.pos().equals(pos));
+        Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
+        return dimensionIndex != null && dimensionIndex.containsKey(pos);
+    }
+    
+    /**
+     * 快速获取区块信息（O(1)复杂度）
+     */
+    public static ChunkInfo getChunkInfo(ResourceLocation dimension, ChunkPos pos) {
+        Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
+        return dimensionIndex != null ? dimensionIndex.get(pos) : null;
     }
     
     // ================== 物品冻结管理 ==================

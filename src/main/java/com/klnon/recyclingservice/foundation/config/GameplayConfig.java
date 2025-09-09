@@ -112,17 +112,19 @@ public class GameplayConfig {
                 .comment("Cost for cross-dimension access")
                 .defineInRange("cross_dimension_cost", 1, 1, 64);
         insertPaymentMode = builder
-                .comment("Insert operation payment mode configuration:\n" +
-                        "- all_dimensions_pay: All dimensions require payment\n" +
-                        "- current_dimension_free: Current dimension is free, others require payment\n" +
-                        "- all_free: All dimensions are free")
+                .comment("""
+                        Insert operation payment mode configuration:
+                        - all_dimensions_pay: All dimensions require payment
+                        - current_dimension_free: Current dimension is free, others require payment
+                        - all_free: All dimensions are free""")
                 .defineInList("insert_mode", "current_dimension_free",
                         Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
         extractPaymentMode = builder
-                .comment("Extract operation payment mode configuration:\n" +
-                        "- all_dimensions_pay: All dimensions require payment\n" +
-                        "- current_dimension_free: Current dimension is free, others require payment\n" +
-                        "- all_free: All dimensions are free")
+                .comment("""
+                        Extract operation payment mode configuration:
+                        - all_dimensions_pay: All dimensions require payment
+                        - current_dimension_free: Current dimension is free, others require payment
+                        - all_free: All dimensions are free""")
                 .defineInList("extract_mode", "current_dimension_free",
                         Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
         dimensionMultipliers = builder

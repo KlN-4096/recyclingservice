@@ -84,13 +84,6 @@ public class CleanupManager {
     /**
      * 清理无效实体
      */
-    public static void removeInvalidEntities(ResourceLocation dimension) {
-        EntityCache.removeInvalidEntities(dimension);
-    }
-
-    /**
-     * 清理无效实体
-     */
     public static void removeAllInvalidEntities() {
         EntityCache.removeAllInvalidEntities();
     }

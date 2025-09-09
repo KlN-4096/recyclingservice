@@ -52,6 +52,8 @@ public class AutoCleanupEvent {
         if (cleaning) return;
 
         cleaning = true;
+        // 清理无效实体
+        CleanupManager.removeAllInvalidEntities();
         doCleanup(event.getServer());
         chunkOperationPending = true; // 设置区块操作待执行信号
     }
@@ -93,9 +95,6 @@ public class AutoCleanupEvent {
             if (Config.TECHNICAL.enableItemBasedFreezing.get()) {
                 ChunkManager.performItemMonitoring(server);
             }
-
-            // 清理缓存,在所有监控和清理结束后再清理,防止数据出错
-            CleanupManager.removeAllInvalidEntities();
         } catch (Exception e) {
             // 区块操作出错时的处理
         }

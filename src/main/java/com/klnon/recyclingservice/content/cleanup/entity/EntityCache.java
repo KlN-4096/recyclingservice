@@ -102,7 +102,6 @@ public class EntityCache {
      * 获取指定维度中指定类型实体的数量
      */
     public static int getEntityCount(ResourceLocation dimension, EntityType<?> entityType) {
-        removeInvalidEntities(dimension);
         ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
         if (dimensionEntities == null) return 0;
         
@@ -119,7 +118,6 @@ public class EntityCache {
      * 获取指定维度缓存的实体总数
      */
     public static int getReportedCount(ResourceLocation dimension) {
-        removeInvalidEntities(dimension);
         ConcurrentHashMap<UUID, EntityRecord> dimensionEntities = entities.get(dimension);
         return dimensionEntities != null ? dimensionEntities.size() : 0;
     }

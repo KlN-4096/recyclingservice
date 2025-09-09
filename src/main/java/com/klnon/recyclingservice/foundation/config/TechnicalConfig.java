@@ -38,7 +38,7 @@ public class TechnicalConfig {
                 .defineInRange("warning_threshold", 50, 5, 10000);
         chunkFreezingSearchRadius = builder
                 .comment("Search radius for chunk loader freezing")
-                .defineInRange("freeze_radius", 8, 2, 16);
+                .defineInRange("freeze_radius", 2, 1, 10);
         enableChunkManagement = builder
                 .comment("Enable chunk management including startup cleanup and dynamic management based on server performance")
                 .define("enable_chunk_management", false);
