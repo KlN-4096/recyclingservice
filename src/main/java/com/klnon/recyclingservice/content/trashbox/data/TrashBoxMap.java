@@ -65,5 +65,6 @@ public class TrashBoxMap {
         dimensionBoxes.values().forEach(boxes ->
                 boxes.forEach(TrashBox::clearContent)
         );
+        dimensionBoxes.clear();
     }
 }

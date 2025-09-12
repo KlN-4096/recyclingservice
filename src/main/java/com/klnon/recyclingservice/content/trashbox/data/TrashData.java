@@ -97,6 +97,7 @@ public class TrashData {
 
         Integer emptySlot = emptySlots.removeLast();
         items.set(emptySlot, item.copy());
+        updateIndex(emptySlot, ItemStack.EMPTY, item);
         item.shrink(item.getCount());
         return true;
     }

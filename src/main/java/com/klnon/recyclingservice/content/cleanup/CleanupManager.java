@@ -125,4 +125,8 @@ public class CleanupManager {
     public static void clearAll() {
         EntityCache.clearAll();
     }
+
+    public static boolean isDeleteSignalActive() {
+        return CleanupController.isDeleteSignalActive();
+    }
 }

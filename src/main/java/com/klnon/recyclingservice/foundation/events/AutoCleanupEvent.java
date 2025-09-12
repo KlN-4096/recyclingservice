@@ -24,6 +24,10 @@ public class AutoCleanupEvent {
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post event) {
         try{
+            // 检查区块操作执行条件：全局信号false + cleaning信号表示在清扫后进行
+            if (!CleanupManager.shouldDeleteEntity(event.getServer()) && cleaning) {
+                performChunkOperations(event.getServer());
+            }
             // 倒计时
             if (++ticks < Config.getCleanIntervalTicks()) {
                 if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
@@ -43,10 +47,6 @@ public class AutoCleanupEvent {
             ticks = 0;
             if (!cleaning)
                 doCleanup(event.getServer());
-            // 检查区块操作执行条件：全局信号false + cleaning信号表示在清扫后进行
-            if (!CleanupManager.shouldDeleteEntity(event.getServer()) && cleaning) {
-                performChunkOperations(event.getServer());
-            }
         }catch (Exception e){
             Recyclingservice.LOGGER.error("RecyclingService failed", e);
             // 出错时重置清理状态，避免卡死
@@ -70,8 +70,6 @@ public class AutoCleanupEvent {
                 Component message = MessageHelper.getDetailedCleanupMessage(server);
                 MessageHelper.sendChatToAll(server, message);
             }
-            //onDiscard中已经mixin了,所以clearAll可有可无
-            CleanupManager.clearAll();
         }
     }
 

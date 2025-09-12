@@ -25,10 +25,17 @@ public class ItemEntityReportMixin {
         try {
             ItemEntity self = (ItemEntity)(Object)this;
             
-            // 10秒检查一次，分散检查时间避免同时计算
-            if (self.tickCount % (20*10) != (self.getId() % 20)) {
-                return;
+            // 10秒检查一次，分散检查时间避免同时计算,清扫时1秒检查一次
+            if(CleanupManager.isDeleteSignalActive()){
+                if (self.tickCount % 20 != (self.getId() % 20)) {
+                    return;
+                }
+            }else {
+                if (self.tickCount % (20 * 10) != (self.getId() % 20)) {
+                    return;
+                }
             }
+
             
             ResourceLocation dimension = self.level().dimension().location();
             UUID uuid = self.getUUID();

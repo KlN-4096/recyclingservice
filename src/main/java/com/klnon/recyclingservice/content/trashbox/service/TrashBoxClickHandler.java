@@ -41,8 +41,7 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         } else if (clickType == ClickType.QUICK_MOVE) {
             result = menu.quickMoveStack(player, slotId);
         } else if (clickType == ClickType.THROW && menu.getCarried().isEmpty()) {
-            handleThrowClick(slot, button, player);
-            return;
+            result = handleThrowClick(slot, button, player);
         } else {
             // 委托给父类处理
             menu.superClicked(slotId, button, clickType, player);
@@ -111,7 +110,7 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
                 player.getInventory().setItem(button, ItemStack.EMPTY);
                 return ItemStack.EMPTY;
             }
-        } else if (!slotItem.isEmpty()) {
+        } else if (!slotItem.isEmpty() && swapItem.isEmpty()) {
             // 有物品：交换
             int moveCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
             ItemStack result = slotItem.copyWithCount(moveCount);
@@ -164,12 +163,12 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
     /**
      * 处理丢弃物品的点击
      */
-    private void handleThrowClick(Slot slot, int button, Player player) {
+    private ItemStack handleThrowClick(Slot slot, int button, Player player) {
         ItemStack result = slot.getItem();
         int throwCount = button == 0 ? 1 : result.getCount();
-        UiHelper.cleanItemStack(result);
         result = slot.safeTake(throwCount, Integer.MAX_VALUE, player);
         player.drop(result, true);
+        return result;
     }
 
     /**
@@ -183,8 +182,6 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
             slot.set(ItemStack.EMPTY);
         } else{
             slotItem.shrink(moveCount);
-            UiHelper.updateTooltip(slotItem);
-            slot.set(slotItem);
         }
     }
 

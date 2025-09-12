@@ -21,12 +21,16 @@ import java.util.List;
  * 接管所有非白名单Ticket导致的强加载区块
  */
 public class ChunkTakeover {
+
+    // 强加载区块的ticket level阈值
+    private static final int FORCE_LOADED_THRESHOLD = 31;
+
     public static void handleTakeover(MinecraftServer server) {
         try {
             for (ServerLevel level : server.getAllLevels()) {
                 int managedCount = takeoverDimensionChunks(level);
-                Recyclingservice.LOGGER.info("Takeover {} complete: managed {} chunks"
-                        ,level.dimension().location(),managedCount);
+                Recyclingservice.LOGGER.info("Takeover {} complete: managed {} chunks",
+                        level.dimension().location(), managedCount);
             }
         } catch (Exception e) {
             Recyclingservice.LOGGER.error("Failed to perform chunk takeover", e);
@@ -39,23 +43,25 @@ public class ChunkTakeover {
 
         // 扫描所有ticket区块
         level.getChunkSource().chunkMap.getDistanceManager().tickets.long2ObjectEntrySet()
-                                                .forEach(entry -> {
-            var ticketSet = entry.getValue();
-            ChunkPos chunkPos = new ChunkPos(entry.getLongKey());
+                .forEach(entry -> {
+                    var ticketSet = entry.getValue();
+                    ChunkPos chunkPos = new ChunkPos(entry.getLongKey());
 
-            if (shouldSkipChunk(chunkPos, ticketSet, dimension)) return;
+                    if (shouldSkipChunk(chunkPos, ticketSet, dimension)) return;
 
-            LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
-            short blockEntityCount = (short) chunk.getBlockEntities().size();
+                    LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
+                    short blockEntityCount = (short) chunk.getBlockEntities().size();
 
-            // 根据方块实体数量决定管理方式
-            byte state = blockEntityCount < Config.TECHNICAL.chunkEntityThreshold.get() ?
-                        ChunkDataCache.UNIMPORTANT: ChunkDataCache.MANAGED;
-            // 移除非白名单ticket
-            if(state== ChunkDataCache.UNIMPORTANT)
-                TicketManager.removeManagementTicket(chunkPos, level);
-            newChunks.add(new ChunkDataCache.ChunkInfo(dimension, chunkPos, blockEntityCount, state, 0));
-        });
+                    // 根据方块实体数量决定管理方式
+                    byte state = blockEntityCount < Config.TECHNICAL.chunkEntityThreshold.get() ?
+                            ChunkDataCache.UNIMPORTANT : ChunkDataCache.MANAGED;
+
+                    // 移除非白名单ticket
+                    if (state == ChunkDataCache.UNIMPORTANT)
+                        TicketManager.removeManagementTicket(chunkPos, level);
+
+                    newChunks.add(new ChunkDataCache.ChunkInfo(dimension, chunkPos, blockEntityCount, state, 0));
+                });
 
         // 按方块实体数量排序（从大到小）
         newChunks.sort((a, b) -> Integer.compare(b.blockEntityCount(), a.blockEntityCount()));
@@ -65,15 +71,32 @@ public class ChunkTakeover {
     }
 
     /**
-     * 未被我们管理(已经管理的话,直接跳过后2个判断,优化性能)
-     * 检查是否不含玩家ticket(即玩家正在捣鼓机器的时候周围的强加载不管理)
-     * 只要有非白名单ticket
+     * 判断是否应该跳过此区块
+     * 跳过条件：
+     * 1. 已经被我们管理
+     * 2. 包含玩家ticket（玩家正在操作）
+     * 3. 不是强加载区块（所有tickets的level都 > 31）
+     * 4. 只有白名单ticket
      */
     private static boolean shouldSkipChunk(ChunkPos chunkPos,
                                            SortedArraySet<Ticket<?>> ticketSet,
                                            ResourceLocation dimension) {
-        return ChunkDataCache.getChunkInfo(dimension, chunkPos) != null ||
-                ticketSet.stream().anyMatch(ticket -> ticket.getType() == TicketType.PLAYER) ||
-                ticketSet.stream().allMatch(ticket -> TicketManager.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+        // 已经被管理，跳过
+        if (ChunkDataCache.getChunkInfo(dimension, chunkPos) != null) {
+            return true;
+        }
+
+        // 包含玩家ticket，跳过
+        if (ticketSet.stream().anyMatch(ticket -> ticket.getType() == TicketType.PLAYER)) {
+            return true;
+        }
+
+        // 不是强加载区块，跳过
+        if (ticketSet.stream().noneMatch(ticket -> ticket.getTicketLevel() <= FORCE_LOADED_THRESHOLD)) {
+            return true;
+        }
+
+        // 只有白名单ticket，跳过
+        return ticketSet.stream().allMatch(ticket -> TicketManager.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
     }
 }

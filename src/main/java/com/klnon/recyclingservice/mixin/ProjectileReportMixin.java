@@ -27,9 +27,15 @@ public class ProjectileReportMixin {
         try {
             Entity self = (Entity)(Object)this;
             
-            // 10秒检查一次
-            if (self.tickCount % (20 * 10) != 0) {
-                return;
+            // 10秒检查一次,清扫时1秒检查一次
+            if(!CleanupManager.isDeleteSignalActive()){
+                if (self.tickCount % 20 != 0) {
+                    return;
+                }
+            }else {
+                if (self.tickCount % (20 * 10) != 0) {
+                    return;
+                }
             }
             
             ResourceLocation dimension = self.level().dimension().location();
