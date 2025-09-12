@@ -1,7 +1,7 @@
 package com.klnon.recyclingservice;
 
+import com.klnon.recyclingservice.content.chunk.ChunkDataCache;
 import com.klnon.recyclingservice.content.chunk.ChunkManager;
-import com.klnon.recyclingservice.content.chunk.ChunkCache;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.command.BinCommand;
 import org.slf4j.Logger;
@@ -67,7 +67,7 @@ public class Recyclingservice {
     public void onServerStarted(ServerStartedEvent event) {
         LOGGER.info("Server fully started, performing startup chunk cleanup");
         
-        // 执行启动区块接管
+        // 建立distanceManager与维度映射表,方便区块接管
         if (Config.TECHNICAL.enableChunkManagement.get()) {
             ChunkManager.performTakeover(event.getServer());
         }
@@ -77,7 +77,7 @@ public class Recyclingservice {
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         LOGGER.info("Server stopping, clearing chunk cache");
-        ChunkCache.clearAll();
+        ChunkDataCache.clearAll();
     }
     
     // 注册命令事件

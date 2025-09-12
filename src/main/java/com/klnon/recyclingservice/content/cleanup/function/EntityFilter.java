@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.cleanup.entity;
+package com.klnon.recyclingservice.content.cleanup.function;
 
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.Entity;
@@ -31,7 +31,6 @@ public class EntityFilter {
             ? !Config.whitelistCache.contains(itemId)  // 白名单模式：不在保留列表中的都清理
             : Config.blacklistCache.contains(itemId);  // 黑名单模式：只清理黑名单中的
     }
-
 
     /**
      * 检查弹射物是否应该被清理

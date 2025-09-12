@@ -10,11 +10,14 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemLore;
 
 public class UiHelper {
+
+    // 我们的lore标识符 - 前后空格作为唯一标识
+    private static final String LORE_PREFIX = "  ";
+    private static final String LORE_SUFFIX = " ";
 
     /**
      * 根据配置的行数获取对应的菜单类型
@@ -31,49 +34,22 @@ public class UiHelper {
     }
 
     /**
-     * 在物品交换完毕后更新垃圾箱内物品数量
-     */
-    public static void updateSlotAfterMove(Slot slot, int moveCount) {
-        ItemStack slotItem = slot.getItem();
-        //这里检查一下是否是原版的最大数量上限,比如药水,护甲等
-        moveCount = Math.min(moveCount, slotItem.getMaxStackSize());
-        if (slotItem.getCount() <= moveCount) {
-            slot.set(ItemStack.EMPTY);
-        } else{
-            slotItem.shrink(moveCount);
-            updateTooltip(slotItem);
-            slot.set(slotItem);
-        }
-    }
-
-    // 我们的lore标识符 - 前后空格作为唯一标识
-    private static final String LORE_PREFIX = "  "; // 2个空格前缀
-    private static final String LORE_SUFFIX = " "; // 1个空格后缀
-
-    /**
      * 增强物品Tooltip显示真实数量
      * 使用1.21.1的DataComponent系统添加Lore信息,先清除再添加
      *
      * @param stack 原始物品堆
      */
     public static void updateTooltip(ItemStack stack) {
-        // 先精确清除我们的LORE并确保数量大于64
-        if (stack.getCount() <= stack.getMaxStackSize()) {
-            cleanItemStack(stack);
-            return;
-        }
-
-        // 获取现有lore（如果有）
+        // 先清理现有的我们添加的lore，然后获取干净的lore
+        cleanItemStack(stack);
+        if (stack.getCount() <= stack.getMaxStackSize()) return;
+        // 获取清理后的lore（如果有）
         ItemLore existingLore = stack.get(DataComponents.LORE);
         List<Component> loreLines = new ArrayList<>();
 
-        // 保留非我们添加的lore
+        // 保留现有的其他lore
         if (existingLore != null) {
-            for (Component line : existingLore.lines()) {
-                if (!isOurLoreLine(line)) {
-                    loreLines.add(line);
-                }
-            }
+            loreLines.addAll(existingLore.lines());
         }
 
         // 添加我们的真实数量信息（带标识符）
@@ -90,19 +66,7 @@ public class UiHelper {
     }
 
     /**
-     * 检查是否是我们添加的lore行 - 通过前后空格标识符识别
-     */
-    private static boolean isOurLoreLine(Component line) {
-        String text = line.getString();
-
-        // 检查是否同时包含我们的前缀和后缀
-        return text.startsWith(LORE_PREFIX) && text.endsWith(LORE_SUFFIX);
-    }
-
-    /**
      * 精确清理ItemStack的Lore，只移除我们添加的内容
-     * KISS原则：最简单的解决方案
-     *
      * @param item 可能包含自定义Lore的物品
      */
     public static void cleanItemStack(ItemStack item) {
@@ -122,5 +86,14 @@ public class UiHelper {
 
         // 无论过滤后是否为空，都保持LORE组件以维持组件数量一致
         item.set(DataComponents.LORE, new ItemLore(filteredLines));
+    }
+
+    /**
+     * 检查是否是我们添加的lore行 - 通过前后空格标识符识别
+     */
+    private static boolean isOurLoreLine(Component line) {
+        String text = line.getString();
+        // 检查是否同时包含我们的前缀和后缀
+        return text.startsWith(LORE_PREFIX) && text.endsWith(LORE_SUFFIX);
     }
 }

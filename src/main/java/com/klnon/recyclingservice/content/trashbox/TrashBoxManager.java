@@ -1,8 +1,7 @@
 package com.klnon.recyclingservice.content.trashbox;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityMerger;
-import com.klnon.recyclingservice.content.trashbox.core.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.core.TrashInventory;
+import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
+import com.klnon.recyclingservice.content.trashbox.data.TrashBoxMap;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -13,9 +12,6 @@ import java.util.List;
  * 对外提供垃圾箱创建、物品存储等核心功能
  */
 public class TrashBoxManager {
-    
-    private static final TrashInventory trashStorage = new TrashInventory();
-    
     /**
      * 获取或创建指定维度的垃圾箱
      * 
@@ -24,7 +20,7 @@ public class TrashBoxManager {
      * @return 垃圾箱实例
      */
     public static TrashBox getOrCreateTrashBox(ResourceLocation dimensionId, int boxNumber) {
-        return trashStorage.getOrCreateTrashBox(dimensionId, boxNumber);
+        return TrashBoxMap.getOrCreateTrashBox(dimensionId, boxNumber);
     }
     
     /**
@@ -34,7 +30,7 @@ public class TrashBoxManager {
      * @param item 要添加的物品
      */
     public static void addItemToDimension(ResourceLocation dimensionId, ItemStack item) {
-        trashStorage.addItemToDimension(dimensionId, item);
+        TrashBoxMap.addItemToDimension(dimensionId, item);
     }
     
     /**
@@ -44,25 +40,13 @@ public class TrashBoxManager {
      * @return 垃圾箱列表
      */
     public static List<TrashBox> getDimensionTrashBoxes(ResourceLocation dimensionId) {
-        return trashStorage.getDimensionTrashBoxes(dimensionId);
+        return TrashBoxMap.getDimensionTrashBoxes(dimensionId);
     }
     
     /**
      * 清空所有垃圾箱
      */
     public static void clearAll() {
-        trashStorage.clearAllItems();
-    }
-    
-    // === UI辅助功能 ===
-    
-    /**
-     * 检查两个物品是否为同一种物品（用于UI操作中的物品比较）
-     * @param stack1 第一个物品
-     * @param stack2 第二个物品
-     * @return 是否为同一种物品
-     */
-    public static boolean isSameItem(ItemStack stack1, ItemStack stack2) {
-        return EntityMerger.isSameItem(stack1, stack2);
+        TrashBoxMap.clearAllItems();
     }
 }

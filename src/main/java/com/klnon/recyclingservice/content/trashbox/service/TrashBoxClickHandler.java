@@ -1,0 +1,198 @@
+package com.klnon.recyclingservice.content.trashbox.service;
+
+import com.klnon.recyclingservice.Config;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
+import com.klnon.recyclingservice.foundation.utility.UiHelper;
+import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
+
+/**
+ * 垃圾箱点击处理器 - 处理所有点击相关的逻辑
+ */
+public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
+
+
+
+    /**
+     * 处理垃圾箱槽位的点击事件
+     */
+    public void handleTrashBoxSlotClick(int slotId, int button, ClickType clickType, Player player) {
+        Slot slot = menu.slots.get(slotId);
+        ItemStack carried = menu.getCarried();
+        ItemStack slotItem = slot.getItem();
+        ItemStack result;
+
+        // 直接处理各种点击类型的逻辑
+        if (clickType == ClickType.PICKUP && slotItem.getCount() >= slotItem.getMaxStackSize()) {
+            result = handlePickupClick(slot, slotItem, carried, button == 0);
+            menu.setCarried(result);
+        } else if (clickType == ClickType.SWAP && slotItem.getCount() > slotItem.getMaxStackSize()) {
+            result = handleSwapClick(slot, slotItem, player.getInventory().getItem(button),
+                    button, player);
+        } else if (clickType == ClickType.PICKUP_ALL) {
+            result = handleDoubleClick(slotItem, carried);
+            menu.setCarried(result);
+        } else if (clickType == ClickType.QUICK_MOVE) {
+            result = menu.quickMoveStack(player, slotId);
+        } else if (clickType == ClickType.THROW && menu.getCarried().isEmpty()) {
+            handleThrowClick(slot, button, player);
+            return;
+        } else {
+            // 委托给父类处理
+            menu.superClicked(slotId, button, clickType, player);
+            return;
+        }
+
+        // 统一更新受影响的物品
+        UiHelper.updateTooltip(slotItem);
+        UiHelper.updateTooltip(result);
+    }
+
+    /**
+     * 处理拾取点击（左键/右键点击）
+     */
+    private ItemStack handlePickupClick(Slot slot, ItemStack slotItem, ItemStack carried,
+                                        boolean isLeftClick) {
+        if (carried.isEmpty() && !slotItem.isEmpty()) {
+            // 从垃圾箱取物品
+            int maxMove = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
+            int moveCount = isLeftClick ? maxMove : (slotItem.getCount() == 1 ? 1 :
+                    (slotItem.getCount() >= slotItem.getMaxStackSize() ?
+                            slotItem.getMaxStackSize() / 2 : (slotItem.getCount() + 1) / 2));
+
+            ItemStack result = slotItem.copyWithCount(moveCount);
+            updateSlotAfterMove(slot, moveCount);
+            trashBox.setChanged();
+            return result;
+
+        } else if (!carried.isEmpty()) {
+            // 放物品到垃圾箱
+            if (slotItem.isEmpty()) {
+                // 空槽位：左键放全部，右键放一个
+                ItemStack toAdd = isLeftClick ? carried : carried.copyWithCount(1);
+                if (trashBox.addItem(toAdd, slot.index)) {
+                    carried.shrink(toAdd.getCount());
+                    return carried.isEmpty() ? ItemStack.EMPTY : carried;
+                }
+            } else if (CleanupManager.isSameItem(carried, slotItem)) {
+                // 相同物品：尝试合并
+                ItemStack mergeItem = isLeftClick ? carried : carried.copyWithCount(1);
+                if (trashBox.addItem(mergeItem, -1)) {
+                    carried.shrink(isLeftClick ? carried.getCount() - mergeItem.getCount() : 1);
+                    return carried.isEmpty() ? ItemStack.EMPTY : carried;
+                }
+            } else {
+                // 不同物品：交换
+                if (slotItem.getCount() <= slotItem.getMaxStackSize()) {
+                    ItemStack result = slotItem.copy();
+                    slot.set(carried.copy());
+                    return result;
+                }
+            }
+            return carried;
+        }
+
+        return carried;
+    }
+
+    /**
+     * 处理数字键交换点击
+     */
+    private ItemStack handleSwapClick(Slot slot, ItemStack slotItem, ItemStack swapItem,
+                                      int button, Player player) {
+        if (slotItem.isEmpty() && !swapItem.isEmpty()) {
+            if (trashBox.addItem(swapItem, slot.index)) {
+                player.getInventory().setItem(button, ItemStack.EMPTY);
+                return ItemStack.EMPTY;
+            }
+        } else if (!slotItem.isEmpty()) {
+            // 有物品：交换
+            int moveCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
+            ItemStack result = slotItem.copyWithCount(moveCount);
+            player.getInventory().setItem(button, result);
+            updateSlotAfterMove(slot, moveCount);
+            return result;
+        }
+
+        return swapItem;
+    }
+
+    /**
+     * 处理双击收集
+     */
+    private ItemStack handleDoubleClick(ItemStack clickedItem, ItemStack carried) {
+        ItemStack result = carried;
+
+        if (carried.isEmpty()) {
+            result = clickedItem.copyWithCount(0);
+        }
+
+        if (!CleanupManager.isSameItem(result, clickedItem) && !clickedItem.isEmpty()) {
+            return result;
+        }
+
+        // 收集垃圾箱内所有相同物品
+        int maxStackSize = result.getMaxStackSize();
+        List<Integer> sameItemSlots = trashBox.getData().getSameItemSlots(result);
+
+        for (Integer slotIndex : sameItemSlots) {
+            if (result.getCount() >= maxStackSize) break;
+
+            ItemStack slotItem = trashBox.getItem(slotIndex);
+            int maxTake = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
+            int canAdd = maxStackSize - result.getCount();
+            int takeAmount = Math.min(maxTake, canAdd);
+
+            if (takeAmount > 0) {
+                result.grow(takeAmount);
+                Slot tempSlot = new Slot(trashBox, slotIndex, 0, 0) {
+                };
+                updateSlotAfterMove(tempSlot, takeAmount);
+            }
+        }
+
+        trashBox.setChanged();
+        return result;
+    }
+
+    /**
+     * 处理丢弃物品的点击
+     */
+    private void handleThrowClick(Slot slot, int button, Player player) {
+        ItemStack result = slot.getItem();
+        int throwCount = button == 0 ? 1 : result.getCount();
+        UiHelper.cleanItemStack(result);
+        result = slot.safeTake(throwCount, Integer.MAX_VALUE, player);
+        player.drop(result, true);
+    }
+
+    /**
+     * 在物品交换完毕后更新垃圾箱内物品数量
+     */
+    public void updateSlotAfterMove(Slot slot, int moveCount) {
+        ItemStack slotItem = slot.getItem();
+        //这里检查一下是否是原版的最大数量上限,比如药水,护甲等
+        moveCount = Math.min(moveCount, slotItem.getMaxStackSize());
+        if (slotItem.getCount() <= moveCount) {
+            slot.set(ItemStack.EMPTY);
+        } else{
+            slotItem.shrink(moveCount);
+            UiHelper.updateTooltip(slotItem);
+            slot.set(slotItem);
+        }
+    }
+
+    /**
+     * 检查当前维度是否允许玩家主动放入物品到垃圾箱
+     */
+    public boolean isAllowedToPutIn(Player player) {
+        return Config.isDimensionAllowPutIn(trashBox.getData().getDimensionId().toString(),
+                player.level().dimension().location().toString());
+    }
+}

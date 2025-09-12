@@ -1,12 +1,16 @@
-package com.klnon.recyclingservice.content.trashbox;
+package com.klnon.recyclingservice.content.trashbox.service;
 
+import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
 import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.List;
 import java.util.Map;
 
 import com.klnon.recyclingservice.Config;
@@ -53,12 +57,10 @@ public class TrashPaymentHandler {
             if (isPaymentItem(stack, paymentItem)) {
                 int stackCount = stack.getCount();
                 totalFound += stackCount;
-                
-                if (remaining > 0) {
-                    int deduct = Math.min(remaining, stackCount);
-                    stack.shrink(deduct);
-                    remaining -= deduct;
-                }
+
+                int deduct = Math.min(remaining, stackCount);
+                stack.shrink(deduct);
+                remaining -= deduct;
             }
         }
         
@@ -173,5 +175,58 @@ public class TrashPaymentHandler {
         int baseCost = Config.GAMEPLAY.crossDimensionAccessCost.get();
         double multiplier = Config.getDimensionMultiplier(trashDim.toString());
         return (int) Math.ceil(baseCost * multiplier);
+    }
+
+    /**
+     * 验证并处理支付
+     */
+    public static boolean validateAndProcessPayment(TrashBoxMenu menu, int slotId, int button,
+                                                    ClickType clickType, Player player) {
+        String operation = getOperationType(menu.getTrashSlots(),slotId, button, clickType, player, menu.slots, menu.getCarried());
+        if (operation == null) return true; // 不涉及邮费的操作
+
+        ResourceLocation playerDim = player.level().dimension().location();
+        ResourceLocation trashDim = menu.getTrashBox().getData().getDimensionId();
+
+        int cost = TrashPaymentHandler.calculateOperationCost(playerDim, trashDim, operation);
+        if (cost <= 0) return true;
+
+        return TrashPaymentHandler.checkAndDeductPayment(player, cost);
+    }
+
+    /**
+     * 判断操作类型
+     */
+    public static String getOperationType(int trashSlots,int slotId, int button, ClickType clickType,
+                                   Player player, List<Slot> slots, ItemStack carriedItem) {
+        if (slotId >= 0 && slotId < trashSlots) {
+            ItemStack slotItem = slots.get(slotId).getItem();
+
+            if (!carriedItem.isEmpty() && clickType == ClickType.PICKUP) {
+                return "insert";
+            }
+            if (!player.getInventory().getItem(button).isEmpty() && clickType == ClickType.SWAP) {
+                return "insert";
+            }
+            if (carriedItem.isEmpty() && !slotItem.isEmpty() && clickType == ClickType.PICKUP) {
+                return "extract";
+            }
+            if (clickType == ClickType.SWAP && !slotItem.isEmpty()) {
+                return "extract";
+            }
+            if (clickType == ClickType.QUICK_MOVE && !slotItem.isEmpty()) {
+                return "extract";
+            }
+            if (clickType == ClickType.PICKUP_ALL) {
+                return "extract";
+            }
+            if (clickType == ClickType.THROW && carriedItem.isEmpty() && !slotItem.isEmpty()) {
+                return "extract";
+            }
+        } else if (slotId >= trashSlots && !slots.get(slotId).getItem().isEmpty() &&
+                clickType == ClickType.QUICK_MOVE) {
+            return "insert";
+        }
+        return null;
     }
 }

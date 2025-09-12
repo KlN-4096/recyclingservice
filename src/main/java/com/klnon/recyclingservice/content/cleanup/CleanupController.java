@@ -1,16 +1,24 @@
 package com.klnon.recyclingservice.content.cleanup;
 
-import com.klnon.recyclingservice.content.cleanup.entity.EntityCache;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.server.MinecraftServer;
 
 /**
  * 全局删除信号 - KISS原则实现
  */
-public class GlobalDeleteSignal {
+public class CleanupController {
     
     private static volatile boolean deleteSignalActive = false;
     private static volatile long signalStartTick = 0;
-    
+
+    /**
+     * 执行自动清理
+     */
+    public static void performAutoCleanup(MinecraftServer server) {
+        TrashBoxManager.clearAll();
+        activate(server);
+    }
+
     /**
      * 激活删除信号
      */
@@ -21,7 +29,7 @@ public class GlobalDeleteSignal {
     
     /**
      * 检查是否应该删除
-     * 双重条件：缓存清空 OR 5秒超时
+     * 双重条件：缓存清空 OR 15秒超时
      */
     public static boolean shouldDelete(MinecraftServer server) {
         if (!deleteSignalActive) {
@@ -29,8 +37,8 @@ public class GlobalDeleteSignal {
         }
         
         // 检查关闭条件
-        boolean timeOut = (server.getTickCount() - signalStartTick) > 100; // 5秒=100tick
-        boolean cacheEmpty = EntityCache.getTotalReportedCount() == 0;
+        boolean timeOut = (server.getTickCount() - signalStartTick) > 300; // 15秒=300tick
+        boolean cacheEmpty = CleanupManager.getTotalReportedCount() == 0;
         
         if (timeOut || cacheEmpty) {
             deleteSignalActive = false;

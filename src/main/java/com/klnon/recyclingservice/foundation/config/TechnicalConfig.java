@@ -53,7 +53,7 @@ public class TechnicalConfig {
                 .defineInRange("mspt_restore_threshold", 30.0, 20.0, 40.0);
         chunkOperationCount = builder
                 .comment("Number of chunks to suspend/restore per operation")
-                .defineInRange("chunk_operation_count", 10, 1, 100);
+                .defineInRange("chunk_operation_count", 5, 1, 30);
         builder.pop();
         
         // 物品监控

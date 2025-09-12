@@ -1,4 +1,4 @@
-package com.klnon.recyclingservice.content.chunk;
+package com.klnon.recyclingservice.content.chunk.function;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.resources.ResourceLocation;

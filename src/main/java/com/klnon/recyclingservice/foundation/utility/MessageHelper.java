@@ -1,6 +1,6 @@
 package com.klnon.recyclingservice.foundation.utility;
 
-import com.klnon.recyclingservice.content.cleanup.CleanupService;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -9,6 +9,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.ChatFormatting;
 
@@ -24,32 +25,13 @@ public class MessageHelper {
     /**
      * 消息类型枚举 - 定义消息颜色
      */
-    public enum MessageType {
-        SUCCESS(0x55FF55),      // 绿色
-        ERROR(0xFF5555),        // 红色
-        WARNING(0xFFAA00),      // 黄色
-        DEFAULT(0xFFFFFF);      // 白色
-        
-        private final int color;
-        
-        MessageType(int color) {
-            this.color = color;
-        }
-        
-        public int getColor() {
-            return color;
-        }
-    }
-    
-    /**
-     * 发送目标枚举
-     */
-    public enum Target {
-        ACTION_BAR,    // 发送到ActionBar
-        CHAT          // 发送到聊天框
-    }
+    public static final int WARNING = 0xFFAA00;
     
     // === 消息格式化功能 ===
+
+    public static int toWorldPos(int chunkPos) {
+        return chunkPos*16+8;
+    }
     
     /**
      * 统一的字符串模板处理工具
@@ -76,12 +58,11 @@ public class MessageHelper {
     /**
      * 获取格式化的物品过多警告消息（支持点击传送）
      */
-    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ, int ticketLevel) {
+    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ) {
         String message = formatTemplate(Config.MESSAGE.tooManyItemsWarningMessage.get(), Map.of(
             "count", String.valueOf(itemCount),
             "x", String.valueOf(worldX),
-            "z", String.valueOf(worldZ),
-            "ticket", String.valueOf(ticketLevel)
+            "z", String.valueOf(worldZ)
         ));
         
         return Component.literal(message)
@@ -92,124 +73,86 @@ public class MessageHelper {
                         "/tp @s " + worldX + " ~ " + worldZ))
                     .withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7Click to teleport (OP required)\n" +
-                                        "§7Coordinate: " + worldX + ", " + worldZ + "\n" +
-                                        "§7Ticket Level: " + ticketLevel)))
-                );
+                        Component.literal("§7TP (" + worldX + ", " + worldZ + ")\n"))
+                ));
     }
 
     /**
      * 构建详细清理完成消息
      */
-    public static Component getDetailedCleanupMessage(Map<ResourceLocation, ?> dimensionStats) {
+    public static Component getDetailedCleanupMessage(MinecraftServer server) {
         MutableComponent mainComponent = Component.literal(Config.MESSAGE.cleanupResultHeader.get());
-        
-        // 按字典序排序处理所有维度
-        dimensionStats.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey(ResourceLocation::compareTo))
-            .forEach(entry -> {
-                Component dimensionEntry = formatDimensionEntry(entry.getKey(), entry.getValue());
-                if (dimensionEntry != null) {
-                    mainComponent.append(Component.literal("\n")).append(dimensionEntry);
-                }
-            });
-        
+
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceLocation dimensionId = level.dimension().location();
+
+            int itemCount = CleanupManager.getEntityCount(CleanupManager.ITEM,dimensionId);
+            int projectileCount = CleanupManager.getEntityCount(CleanupManager.PROJECTILE, dimensionId);
+
+            // 只有有实体的维度才添加到消息中
+            if (itemCount > 0 || projectileCount > 0) {
+                Component dimensionEntry = formatDimensionEntry(dimensionId, itemCount, projectileCount);
+                mainComponent.append(Component.literal("\n")).append(dimensionEntry);
+            }
+        }
+
         return mainComponent;
     }
 
     /**
      * 格式化单个维度的清理条目
      */
-    private static Component formatDimensionEntry(ResourceLocation dimensionId, Object stats) {
-        // 使用instanceof模式匹配检查类型
-        if (!(stats instanceof CleanupService.DimensionCleanupStats dimensionStats)) {
-            return null;
-        }
-        
+    private static Component formatDimensionEntry(ResourceLocation dimensionId, int itemCount, int projectileCount) {
+        String dimensionName = dimensionId.toString();
+        dimensionName = dimensionName.substring(dimensionName.indexOf(':') + 1);
+
         // 创建基础文本
         String baseText = formatTemplate(Config.MESSAGE.dimensionEntryFormat.get(), Map.of(
-            "name", getDimensionDisplayName(dimensionId),
-            "items", String.valueOf(dimensionStats.itemsCleaned()),
-            "entities", String.valueOf(dimensionStats.projectilesCleaned())
+            "name", dimensionName,
+            "items", String.valueOf(itemCount),
+            "entities", String.valueOf(projectileCount)
         ));
-        
+
         // 创建可点击的按钮
-        String buttonText = formatTemplate(Config.MESSAGE.trashBoxButtonText.get(), 
-            Map.of("name", getDimensionDisplayName(dimensionId)));
-        String hoverText = formatTemplate(Config.MESSAGE.trashBoxButtonHover.get(), 
-            Map.of("name", getDimensionDisplayName(dimensionId)));
-            
+        String buttonText = formatTemplate(Config.MESSAGE.trashBoxButtonText.get(),
+            Map.of("name", dimensionName));
+        String hoverText = formatTemplate(Config.MESSAGE.trashBoxButtonHover.get(),
+            Map.of("name", dimensionName));
+
         MutableComponent button = Component.literal(buttonText)
                 .withStyle(Style.EMPTY
                         .withColor(ChatFormatting.GREEN)
                         .withUnderlined(true)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, 
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                 "/bin open " + dimensionId + " 1"))
                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 Component.literal(hoverText).withStyle(ChatFormatting.YELLOW))));
-        
+
         // 组合文本和按钮
         return Component.literal(baseText).append(button);
     }
 
-    /**
-     * 获取维度的显示名称
-     */
-    private static String getDimensionDisplayName(ResourceLocation dimensionId) {
-        String dimString = dimensionId.toString();
-        return dimString.contains(":") ? 
-            dimString.substring(dimString.indexOf(':') + 1) : dimString;
-    }
     
     // === 消息发送功能 ===
-    
-    /**
-     * 统一消息发送方法 - 发送给所有玩家
-     */
-    public static void sendToAll(MinecraftServer server, String message, 
-                                MessageType messageType, Target target) {
-        Component component = Component.literal(message).withStyle(style -> 
-            style.withColor(messageType.getColor())
-                 .withBold(target == Target.ACTION_BAR));
-        
-        if (target == Target.ACTION_BAR) {
-            ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(component);
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                player.connection.send(packet);
-            }
-        } else {
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                player.sendSystemMessage(component);
-            }
-        }
-    }
-    
     /**
      * 发送Component消息给所有玩家
      */
-    public static void sendChatMessage(MinecraftServer server, Component component) {
+    public static void sendChatToAll(MinecraftServer server, Component component) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             player.sendSystemMessage(component);
         }
     }
 
     /**
-     * 显示ActionBar消息（兼容旧接口）
+     * 发送消息给所有玩家的Actionbar上
      */
-    public static void showActionBar(MinecraftServer server, String message, int color) {
-        MessageType messageType = findMessageTypeByColor(color);
-        sendToAll(server, message, messageType, Target.ACTION_BAR);
-    }
-    
-    /**
-     * 根据颜色值找到对应的MessageType
-     */
-    private static MessageType findMessageTypeByColor(int color) {
-        for (MessageType type : MessageType.values()) {
-            if (type.getColor() == color) {
-                return type;
-            }
+    public static void sendActionBarToAll(MinecraftServer server, String message, int color) {
+        Component component = Component.literal(message).withStyle(style ->
+                style.withColor(color));
+
+        ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(component);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.connection.send(packet);
         }
-        return MessageType.DEFAULT;
     }
 }
