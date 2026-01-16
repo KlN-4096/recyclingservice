@@ -5,7 +5,8 @@
   "mixins": [
     "ItemEntityReportMixin",
     "ProjectileReportMixin",
-    "EntityDiscardMixin"
+    "EntityDiscardMixin",
+    "ChunkTicketTrackerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

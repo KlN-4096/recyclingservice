@@ -3,7 +3,6 @@ package com.klnon.recyclingservice.content.chunk.service;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.chunk.ChunkDataCache;
-import com.klnon.recyclingservice.content.chunk.function.TicketManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -56,9 +55,8 @@ public class ChunkTakeover {
                     byte state = blockEntityCount < Config.TECHNICAL.chunkEntityThreshold.get() ?
                             ChunkDataCache.UNIMPORTANT : ChunkDataCache.MANAGED;
 
-                    // 移除非白名单ticket
-                    if (state == ChunkDataCache.UNIMPORTANT)
-                        TicketManager.removeManagementTicket(chunkPos, level);
+                    // 不重要的区块会被冻结（通过DistanceManagerMixin实现）
+                    // 不再需要移除tickets，因为我们现在通过ChunkDataCache状态控制
 
                     newChunks.add(new ChunkDataCache.ChunkInfo(dimension, chunkPos, blockEntityCount, state, 0));
                 });
@@ -76,7 +74,6 @@ public class ChunkTakeover {
      * 1. 已经被我们管理
      * 2. 包含玩家ticket（玩家正在操作）
      * 3. 不是强加载区块（所有tickets的level都 > 31）
-     * 4. 只有白名单ticket
      */
     private static boolean shouldSkipChunk(ChunkPos chunkPos,
                                            SortedArraySet<Ticket<?>> ticketSet,
@@ -92,11 +89,6 @@ public class ChunkTakeover {
         }
 
         // 不是强加载区块，跳过
-        if (ticketSet.stream().noneMatch(ticket -> ticket.getTicketLevel() <= FORCE_LOADED_THRESHOLD)) {
-            return true;
-        }
-
-        // 只有白名单ticket，跳过
-        return ticketSet.stream().allMatch(ticket -> TicketManager.WHITELIST_TICKET_TYPES.contains(ticket.getType()));
+        return ticketSet.stream().noneMatch(ticket -> ticket.getTicketLevel() <= FORCE_LOADED_THRESHOLD);
     }
 }
