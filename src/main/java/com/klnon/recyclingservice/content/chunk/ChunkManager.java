@@ -21,42 +21,45 @@ public class ChunkManager {
      * 执行启动区块接管
      */
     public static void performTakeover(MinecraftServer server) {
-        ChunkTakeover.handleTakeover(server);
+        // ChunkTakeover.handleTakeover(server);
     }
 
     /**
      * 执行物品监控检查
      */
     public static void performItemMonitoring(MinecraftServer server) {
-        ChunkItemMonitoring.performItemMonitoring(server);
+        // ChunkItemMonitoring.performItemMonitoring(server);
     }
     
     /**
      * 执行性能调整
      */
     public static void performPerformanceAdjustment(MinecraftServer server) {
-        ChunkPerformanceAdjustment.adjustChunksBasedOnPerformance(server);
+        // ChunkPerformanceAdjustment.adjustChunksBasedOnPerformance(server);
     }
 
     /**
      * 获取区块状态名称
      */
     public static String getStateName(ChunkDataCache.ChunkInfo chunkInfo) {
-        return chunkInfo.getStateName();
+        // return chunkInfo.getStateName();
+        return "UNKNOWN";
     }
 
     /**
      * 根据状态名称获取状态值
      */
     public static byte getStateByName(String name) {
-        return ChunkDataCache.getStateByName(name);
+        // return ChunkDataCache.getStateByName(name);
+        return ChunkDataCache.UNIMPORTANT;
     }
 
     /**
      * 获取指定区块的所有tickets
      */
     public static List<Ticket<?>> getChunkTickets(ChunkPos chunkPos, ServerLevel level) {
-        return TicketManager.getChunkTickets(chunkPos, level);
+        // return TicketManager.getChunkTickets(chunkPos, level);
+        return List.of();
     }
 
 }

@@ -25,6 +25,7 @@ public class ChunkTakeover {
     private static final int FORCE_LOADED_THRESHOLD = 31;
 
     public static void handleTakeover(MinecraftServer server) {
+        /*
         try {
             for (ServerLevel level : server.getAllLevels()) {
                 int managedCount = takeoverDimensionChunks(level);
@@ -34,9 +35,11 @@ public class ChunkTakeover {
         } catch (Exception e) {
             Recyclingservice.LOGGER.error("Failed to perform chunk takeover", e);
         }
+        */
     }
 
     private static int takeoverDimensionChunks(ServerLevel level) {
+        /*
         List<ChunkDataCache.ChunkInfo> newChunks = new ArrayList<>();
         ResourceLocation dimension = level.dimension().location();
 
@@ -66,6 +69,8 @@ public class ChunkTakeover {
         // 批量设置到缓存
         ChunkDataCache.setManagedChunks(dimension, newChunks);
         return newChunks.size();
+        */
+        return 0;
     }
 
     /**
@@ -79,6 +84,7 @@ public class ChunkTakeover {
                                            SortedArraySet<Ticket<?>> ticketSet,
                                            ResourceLocation dimension) {
         // 已经被管理，跳过
+        /*
         if (ChunkDataCache.getChunkInfo(dimension, chunkPos) != null) {
             return true;
         }
@@ -90,5 +96,7 @@ public class ChunkTakeover {
 
         // 不是强加载区块，跳过
         return ticketSet.stream().noneMatch(ticket -> ticket.getTicketLevel() <= FORCE_LOADED_THRESHOLD);
+        */
+        return false;
     }
 }

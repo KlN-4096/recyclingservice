@@ -80,6 +80,7 @@ public class AutoCleanupEvent {
      */
     private static void performChunkOperations(MinecraftServer server) {
         // 1. 先执行需要实体计数数据的操作
+        /*
         if (Config.TECHNICAL.enableItemBasedFreezing.get()) {
             ChunkManager.performItemMonitoring(server);
         }
@@ -89,6 +90,7 @@ public class AutoCleanupEvent {
             ChunkManager.performTakeover(server);
             ChunkManager.performPerformanceAdjustment(server);
         }
+        */
         cleaning = false; // 整个清理流程完成
     }
 }

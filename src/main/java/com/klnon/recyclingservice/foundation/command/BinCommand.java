@@ -53,6 +53,7 @@ public class BinCommand {
                 .then(Commands.literal("cleanup")
                         .requires(ADMIN_PERMISSION)
                         .executes(BinCommand::manualCleanup))
+                /*
                 .then(Commands.literal("tickets")
                         .requires(ADMIN_PERMISSION)
                         .then(Commands.argument("x", IntegerArgumentType.integer())
@@ -66,6 +67,7 @@ public class BinCommand {
                                 .executes(BinCommand::listChunks)
                                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                         .executes(BinCommand::listChunks))))
+                */
                 .then(Commands.literal("reload")
                         .requires(ADMIN_PERMISSION)
                         .executes(BinCommand::reloadConfig))
@@ -89,8 +91,8 @@ public class BinCommand {
 
     private static void sendAdminHelp(CommandSourceStack source) {
         String[] adminCommands = {
-                "§e/bin tickets <x> <z> §7- Show chunk tickets info",
-                "§e/bin chunks [state] [page] §7- List managed chunks by state",
+                // "§e/bin tickets <x> <z> §7- Show chunk tickets info",
+                // "§e/bin chunks [state] [page] §7- List managed chunks by state",
                 "§e/bin reload §7- Reload configuration"
         };
 
@@ -123,6 +125,7 @@ public class BinCommand {
     }
 
     private static int showChunkTickets(CommandContext<CommandSourceStack> context) {
+        /*
         ServerPlayer player = getPlayerFromContext(context);
         if (player == null) return 0;
 
@@ -136,9 +139,12 @@ public class BinCommand {
             sendError(context.getSource(), "Failed to show tickets: " + e.getMessage());
             return 0;
         }
+        */
+        return 0;
     }
 
     private static void displayTicketInfo(CommandSourceStack source, ServerLevel level, int x, int z) {
+        /*
         ChunkPos chunkPos = new ChunkPos(x, z);
         List<Ticket<?>> chunkTickets = ChunkManager.getChunkTickets(chunkPos, level);
 
@@ -158,9 +164,11 @@ public class BinCommand {
                     currentIndex, ticket.getType(), ticket.getTicketLevel());
             source.sendSuccess(() -> Component.literal(ticketInfo), false);
         }
+        */
     }
 
     private static int listChunks(CommandContext<CommandSourceStack> context) {
+        /*
         ServerPlayer player = getPlayerFromContext(context);
         if (player == null) return 0;
 
@@ -175,9 +183,12 @@ public class BinCommand {
             sendError(context.getSource(), "Failed to list chunks: " + e.getMessage());
             return 0;
         }
+        */
+        return 0;
     }
 
     private static List<Component> collectChunkInfo(MinecraftServer server, String stateFilter) {
+        /*
         List<Component> allChunks = new ArrayList<>();
 
         for (ServerLevel level : server.getAllLevels()) {
@@ -194,17 +205,22 @@ public class BinCommand {
         }
 
         return allChunks;
+        */
+        return new ArrayList<>();
     }
 
     private static void addChunksForState(List<Component> allChunks, ResourceLocation dimension, byte state) {
+        /*
         List<ChunkDataCache.ChunkInfo> chunks = ChunkDataCache.getChunksByState(dimension, state);
         chunks.stream()
                 .map(BinCommand::formatChunkInfo)
                 .forEach(allChunks::add);
+        */
     }
 
     private static void displayChunkPage(CommandSourceStack source, List<Component> allChunks,
                                          String stateFilter, int page) {
+        /*
         int pageSize = 10;
         int totalPages = Math.max(1, (allChunks.size() + pageSize - 1) / pageSize);
         page = Math.max(1, Math.min(page, totalPages));
@@ -221,9 +237,11 @@ public class BinCommand {
             final Component chunkInfo = allChunks.get(i);
             source.sendSuccess(() -> chunkInfo, false);
         }
+        */
     }
 
     private static Component formatChunkInfo(ChunkDataCache.ChunkInfo chunkInfo) {
+        /*
         String stateName = ChunkManager.getStateName(chunkInfo);
         String dimName = chunkInfo.dimension().getPath();
         int worldX = chunkInfo.pos().x * 16 + 8;
@@ -244,6 +262,8 @@ public class BinCommand {
                                         "§7Block Entities: " + chunkInfo.blockEntityCount()))));
 
         return baseInfo.append(teleportButton);
+        */
+        return Component.literal("");
     }
 
     private static int reloadConfig(CommandContext<CommandSourceStack> context) {
@@ -288,8 +308,11 @@ public class BinCommand {
 
     private static CompletableFuture<Suggestions> suggestChunkStates(
             CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
+        /*
         List<String> states = List.of("ALL", "UNIMPORTANT", "MANAGED", "ITEM_FROZEN", "PERFORMANCE_FROZEN");
         return SharedSuggestionProvider.suggest(states, builder);
+        */
+        return SharedSuggestionProvider.suggest(List.of(), builder);
     }
 
     // === 工具方法 ===

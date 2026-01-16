@@ -16,7 +16,9 @@ public class MessageConfig {
     public final ModConfigSpec.ConfigValue<String> paymentErrorMessage;
     public final ModConfigSpec.ConfigValue<String> paymentSuccessMessage;
     public final ModConfigSpec.ConfigValue<String> warningMessage;
+    /*
     public final ModConfigSpec.ConfigValue<String> tooManyItemsWarningMessage;
+    */
     public final ModConfigSpec.ConfigValue<List<? extends String>> cmdHelpMessages;
     public final ModConfigSpec.ConfigValue<String> trashBoxButtonText;
     public final ModConfigSpec.ConfigValue<String> trashBoxButtonHover;
@@ -56,9 +58,11 @@ public class MessageConfig {
                 .comment("Warning message template (use {time} for remaining seconds)")
                 .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
 
+        /*
         tooManyItemsWarningMessage = builder
                 .comment("Warning message for too many items. {count} = item count, {x} {z} = world coordinates, {ticket} = ticket level")
                 .define("too_many_items_warning_message", "§e[Items Warning] Found {count} items at ({x}, {z}) ticketLevel:{ticket}");
+        */
         
         cmdHelpMessages = builder
                 .comment("Command help messages")
@@ -66,8 +70,8 @@ public class MessageConfig {
                     List.of(
                         "§6=== Trash Box Command Help ===",
                         "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
-                        "§e/bin cleanup §7- Manually trigger cleanup",
-                        "§e/bin tickets <x> <z> §7- Show chunk tickets info"
+                        "§e/bin cleanup §7- Manually trigger cleanup"
+                        // "§e/bin tickets <x> <z> §7- Show chunk tickets info"
                     ),
                     () -> "",
                     obj -> obj instanceof String);

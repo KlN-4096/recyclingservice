@@ -20,6 +20,7 @@ import java.util.Map;
  */
 public class ChunkItemMonitoring {
     public static void performItemMonitoring(MinecraftServer server) {
+        /*
         try {
             int totalFrozenCount = 0;
             int unfrozenCount = 0;
@@ -54,12 +55,14 @@ public class ChunkItemMonitoring {
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to perform item monitoring", e);
         }
+        */
     }
 
     /**
      * 发送物品超载警告消息给所有玩家
      */
     private static void sendItemWarningMessages(MinecraftServer server, ResourceLocation dimension, List<ChunkPos> overloadedChunks) {
+        /*
         if (overloadedChunks.isEmpty()) return;
 
         try {
@@ -80,9 +83,11 @@ public class ChunkItemMonitoring {
         } catch (Exception e) {
             Recyclingservice.LOGGER.debug("Failed to send item warning messages for {}", dimension, e);
         }
+        */
     }
 
     private static int unfreezeExpiredChunks(ResourceLocation dimension, ServerLevel level) {
+        /*
         int unfrozenCount = 0;
 
         try {
@@ -106,5 +111,7 @@ public class ChunkItemMonitoring {
         }
 
         return unfrozenCount;
+        */
+        return 0;
     }
 }

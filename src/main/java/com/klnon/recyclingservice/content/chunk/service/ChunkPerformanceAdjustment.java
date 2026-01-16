@@ -21,6 +21,7 @@ public class ChunkPerformanceAdjustment {
      * 基于性能调整区块
      */
     public static void adjustChunksBasedOnPerformance(MinecraftServer server) {
+        /*
         double mspt = PerformanceMonitor.getAverageTickTime(server);
 
         if (mspt > Config.TECHNICAL.msptThresholdSuspend.get()) {
@@ -28,12 +29,14 @@ public class ChunkPerformanceAdjustment {
         } else if (mspt < Config.TECHNICAL.msptThresholdRestore.get()) {
             adjustChunksByPerformance(server, ChunkDataCache.PERFORMANCE_FROZEN, ChunkDataCache.MANAGED, "Unfrozen");
         }
+        */
     }
 
     private static void adjustChunksByPerformance(MinecraftServer server,
                                                   byte fromState,
                                                   byte toState,
                                                   String action) {
+        /*
         int targetCount = Config.TECHNICAL.chunkOperationCount.get();
         int processedCount = 0;
 
@@ -74,5 +77,6 @@ public class ChunkPerformanceAdjustment {
         }
 
         Recyclingservice.LOGGER.info("Performance: {} {} chunks", action, processedCount);
+        */
     }
 }

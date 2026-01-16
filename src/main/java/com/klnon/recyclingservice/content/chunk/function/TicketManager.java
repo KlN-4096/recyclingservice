@@ -30,6 +30,7 @@ public class TicketManager {
      * 扩散冻结：冻结超载区块及其周围半径内的非白名单强加载区块
      */
     public static int freezeChunkWithRadius(ResourceLocation dimension, ChunkPos centerChunk, ServerLevel level) {
+        /*
         int radius = Config.TECHNICAL.chunkFreezingSearchRadius.get();
         int frozenCount = 0;
 
@@ -51,21 +52,29 @@ public class TicketManager {
         }
 
         return frozenCount;
+        */
+        return 0;
     }
     /**
      * 通用冻结区块方法 - 只更新ChunkDataCache状态
      */
     public static boolean freezeChunk(ResourceLocation dimension, ChunkPos pos, ServerLevel level, byte newState, long unfreezeTime) {
         // 只更新状态，不操作ticket
+        /*
         return ChunkDataCache.updateChunkState(dimension, pos, newState,
                 System.currentTimeMillis() + unfreezeTime * 60 * 1000L);
+        */
+        return false;
     }
     /**
      * 解冻区块 - 只更新状态
      */
     public static boolean unfreezeChunk(ResourceLocation dimension, ChunkPos pos, ServerLevel level) {
         // 只更新状态
+        /*
         return ChunkDataCache.updateChunkState(dimension, pos, ChunkDataCache.MANAGED, 0);
+        */
+        return false;
     }
 
 
@@ -73,6 +82,7 @@ public class TicketManager {
      * 获取指定区块的所有tickets
      */
     public static List<Ticket<?>> getChunkTickets(ChunkPos chunkPos, ServerLevel level) {
+        /*
         try {
             DistanceManager distanceManager = level.getChunkSource().distanceManager;
             long chunkKey = ChunkPos.asLong(chunkPos.x, chunkPos.z);
@@ -82,5 +92,7 @@ public class TicketManager {
         } catch (Exception e) {
             return Collections.emptyList();
         }
+        */
+        return Collections.emptyList();
     }
 }

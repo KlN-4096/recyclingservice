@@ -30,7 +30,10 @@ public class MessageHelper {
     // === 消息格式化功能 ===
 
     public static int toWorldPos(int chunkPos) {
+        /*
         return chunkPos*16+8;
+        */
+        return 0;
     }
     
     /**
@@ -59,6 +62,7 @@ public class MessageHelper {
      * 获取格式化的物品过多警告消息（支持点击传送）
      */
     public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ) {
+        /*
         String message = formatTemplate(Config.MESSAGE.tooManyItemsWarningMessage.get(), Map.of(
             "count", String.valueOf(itemCount),
             "x", String.valueOf(worldX),
@@ -75,6 +79,8 @@ public class MessageHelper {
                         HoverEvent.Action.SHOW_TEXT,
                         Component.literal("§7TP (" + worldX + ", " + worldZ + ")\n"))
                 ));
+        */
+        return Component.literal("");
     }
 
     /**

@@ -39,7 +39,7 @@ public class ItemEntityReportMixin {
             
             ResourceLocation dimension = self.level().dimension().location();
             UUID uuid = self.getUUID();
-            ChunkPos chunkPos = new ChunkPos(self.blockPosition());
+            // ChunkPos chunkPos = new ChunkPos(self.blockPosition());
             
             // 检查是否已在缓存中
             boolean alreadyReported = CleanupManager.isEntityReported(dimension, uuid);
@@ -50,7 +50,7 @@ public class ItemEntityReportMixin {
             if (shouldReport && !alreadyReported && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 CleanupManager.addEntity(CleanupManager.ITEM,dimension, uuid);
                 // 增加区块计数
-                ChunkDataCache.incrementEntityCount(dimension, chunkPos);
+                // ChunkDataCache.incrementEntityCount(dimension, chunkPos);
             }
             
             // 检查全局删除信号，如果激活且在缓存中则自删除

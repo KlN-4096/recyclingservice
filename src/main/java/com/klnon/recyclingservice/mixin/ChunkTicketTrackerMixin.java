@@ -26,6 +26,7 @@ public class ChunkTicketTrackerMixin {
      */
     @Inject(method = "getLevelFromSource", at = @At("RETURN"), cancellable = true)
     private void checkFrozenChunk(long chunkPos, CallbackInfoReturnable<Integer> cir) {
+        /*
         try {
             // 获取当前返回值
             int currentLevel = cir.getReturnValue();
@@ -64,5 +65,6 @@ public class ChunkTicketTrackerMixin {
         } catch (Exception e) {
             // 静默处理异常
         }
+        */
     }
 }

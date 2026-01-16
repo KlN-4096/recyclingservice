@@ -8,6 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class TechnicalConfig {
     
     // === 区块管理设置 ===
+    /*
     public final ModConfigSpec.BooleanValue enableChunkItemWarning;
     public final ModConfigSpec.IntValue tooManyItemsWarning;
     public final ModConfigSpec.IntValue chunkFreezingSearchRadius;
@@ -21,6 +22,7 @@ public class TechnicalConfig {
     // 物品监控配置  
     public final ModConfigSpec.BooleanValue enableItemBasedFreezing;
     public final ModConfigSpec.IntValue itemFreezeMinutes;
+    */
     
     // === 调试设置 ===
     public final ModConfigSpec.BooleanValue enableDebugLogs;
@@ -29,6 +31,7 @@ public class TechnicalConfig {
         builder.comment("Technical Settings").push("technical");
         
         // 区块管理
+        /*
         builder.comment("Chunk management").push("chunk");
         enableChunkItemWarning = builder
                 .comment("Enable warnings for chunks with too many items")
@@ -65,6 +68,7 @@ public class TechnicalConfig {
                 .comment("Minutes to freeze chunks with too many items")
                 .defineInRange("freeze_minutes", 60, 1, 14400);
         builder.pop();
+        */
         
         // 调试
         builder.comment("Debug settings").push("debug");

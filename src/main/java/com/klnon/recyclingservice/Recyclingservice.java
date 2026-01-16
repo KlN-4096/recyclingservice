@@ -65,19 +65,23 @@ public class Recyclingservice {
     // 服务器启动完成事件 - 执行启动区块清理
     @SubscribeEvent
     public void onServerStarted(ServerStartedEvent event) {
+        /*
         LOGGER.info("Server fully started, performing startup chunk cleanup");
         
         // 建立distanceManager与维度映射表,方便区块接管
         if (Config.TECHNICAL.enableChunkManagement.get()) {
             ChunkManager.performTakeover(event.getServer());
         }
+        */
     }
     
     // 服务器停止事件 - 清空区块缓存
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
+        /*
         LOGGER.info("Server stopping, clearing chunk cache");
         ChunkDataCache.clearAll();
+        */
     }
     
     // 注册命令事件

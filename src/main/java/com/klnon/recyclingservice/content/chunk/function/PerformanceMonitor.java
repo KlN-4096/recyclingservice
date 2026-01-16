@@ -15,6 +15,7 @@ public class PerformanceMonitor {
      * @return 平均tick时间（毫秒）
      */
     public static double getAverageTickTime(MinecraftServer server) {
+        /*
         try {
             ResourceLocation overworldKey = ResourceLocation.parse("minecraft:overworld");
             long[] recentTicks = server.getTickTime(net.minecraft.resources.ResourceKey.create(
@@ -42,5 +43,7 @@ public class PerformanceMonitor {
         } catch (Exception e) {
             return 50.0;
         }
+        */
+        return 50.0;
     }
 }

@@ -44,12 +44,15 @@ public class ChunkDataCache {
          * 根据状态获取字符形式的状态
          */
         public String getStateName() {
+            /*
             return switch (state) {
                 case UNIMPORTANT -> "UNIMPORTANT";
                 case ITEM_FROZEN -> "ITEM_FROZEN";
                 case PERFORMANCE_FROZEN -> "PERFORMANCE_FROZEN";
                 default -> "MANAGED";
             };
+            */
+            return "UNKNOWN";
         }
     }
     // ================== 状态方法 ==================
@@ -57,25 +60,32 @@ public class ChunkDataCache {
      * 根据状态名称获取状态值
      */
     public static byte getStateByName(String name) {
+        /*
         return switch (name.toUpperCase()) {
             case "UNIMPORTANT" -> UNIMPORTANT;
             case "ITEM_FROZEN" -> ITEM_FROZEN;
             case "PERFORMANCE_FROZEN" -> PERFORMANCE_FROZEN;
             default -> MANAGED;
         };
+        */
+        return UNIMPORTANT;
     }
 
     /**
      * 获取状态集合
      */
     public static byte[] getAllStates() {
+        /*
         return STATE_NAMES;
+        */
+        return new byte[0];
     }
 
     /**
      * 检查物品超载区块是否应该解冻
      */
     public static boolean shouldUnfreezeItemFrozenChunk(ResourceLocation dimension, ChunkPos pos) {
+        /*
         Map<ChunkPos, ChunkDataCache.ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
         if (dimensionIndex == null) return false;
 
@@ -83,6 +93,8 @@ public class ChunkDataCache {
         return info != null &&
                 info.state == ITEM_FROZEN &&
                 System.currentTimeMillis() >= info.itemFreezeTime;
+        */
+        return false;
     }
 
     // ================== 核心存储方法 ==================
@@ -92,6 +104,7 @@ public class ChunkDataCache {
      * 增量添加管理区块列表（只添加新区块，保持现有区块）
      */
     public static void setManagedChunks(ResourceLocation dimension, List<ChunkInfo> newChunks) {
+        /*
         if (newChunks.isEmpty()) {
             return; // 没有新区块，直接返回，保持现有状态
         }
@@ -102,12 +115,14 @@ public class ChunkDataCache {
         for (ChunkInfo chunk : newChunks) {
             dimensionIndex.put(chunk.pos(), chunk);
         }
+        */
     }
 
     /**
      * 更新区块状态
      */
     public static boolean updateChunkState(ResourceLocation dimension, ChunkPos pos, byte newState, long freezeTime) {
+        /*
         Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
         if (dimensionIndex == null) return false;
 
@@ -118,12 +133,15 @@ public class ChunkDataCache {
             return true;
         }
         return false;
+        */
+        return false;
     }
 
     /**
      * 获取指定状态的区块列表
      */
     public static List<ChunkInfo> getChunksByState(ResourceLocation dimension, byte state) {
+        /*
         Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
         if (dimensionIndex == null) {
             return Collections.emptyList();
@@ -133,22 +151,29 @@ public class ChunkDataCache {
                 .filter(info -> info.state == state)
                 .sorted((a, b) -> Integer.compare(b.blockEntityCount(), a.blockEntityCount())) // 按需排序
                 .toList();
+        */
+        return Collections.emptyList();
     }
 
     /**
      * 快速获取区块信息
      */
     public static ChunkInfo getChunkInfo(ResourceLocation dimension, ChunkPos pos) {
+        /*
         Map<ChunkPos, ChunkInfo> dimensionIndex = dimensionIndexes.get(dimension);
         return dimensionIndex != null ? dimensionIndex.get(pos) : null;
+        */
+        return null;
     }
 
     /**
      * 清空所有管理的区块缓存（服务器停止时调用）
      */
     public static void clearAll() {
+        /*
         dimensionIndexes.clear();
         entityCounts.clear();
+        */
     }
 
 
@@ -159,15 +184,18 @@ public class ChunkDataCache {
      * 增加指定区块的实体计数
      */
     public static void incrementEntityCount(ResourceLocation dimension, ChunkPos pos) {
+        /*
         entityCounts.computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
                     .computeIfAbsent(pos, k -> new AtomicInteger())
                     .incrementAndGet();
+        */
     }
 
     /**
      * 获取指定维度所有区块的实体数量统计
      */
     public static Map<ChunkPos, Integer> getEntityCountByDimension(ResourceLocation dimension) {
+        /*
         Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
         if (dimensionCounts == null) {
             return new HashMap<>();
@@ -176,12 +204,15 @@ public class ChunkDataCache {
         Map<ChunkPos, Integer> result = new HashMap<>();
         dimensionCounts.forEach((pos, count) -> result.put(pos, count.get()));
         return result;
+        */
+        return new HashMap<>();
     }
 
     /**
      * 获取超载区块列表（实体数量超过阈值）
      */
     public static List<ChunkPos> getOverloadedChunks(ResourceLocation dimension) {
+        /*
         Map<ChunkPos, AtomicInteger> dimensionCounts = entityCounts.get(dimension);
         if (dimensionCounts == null) {
             return Collections.emptyList();
@@ -191,12 +222,16 @@ public class ChunkDataCache {
                              .filter(entry -> entry.getValue().get() >= Config.TECHNICAL.tooManyItemsWarning.get())
                              .map(Map.Entry::getKey)
                              .toList();
+        */
+        return Collections.emptyList();
     }
 
     /**
      * 清空指定维度的实体计数
      */
     public static void clearEntityCounts(ResourceLocation dimension) {
+        /*
         entityCounts.remove(dimension);
+        */
     }
 }
