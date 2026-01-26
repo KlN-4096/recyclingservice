@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice;
 
-import com.klnon.recyclingservice.foundation.config.*;
+import com.klnon.recyclingservice.foundation.config.GameplayConfig;
+import com.klnon.recyclingservice.foundation.config.MessageConfig;
 
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -21,7 +22,6 @@ public class Config {
     
     // 各功能配置实例
     public static final GameplayConfig GAMEPLAY = new GameplayConfig(BUILDER);
-    public static final TechnicalConfig TECHNICAL = new TechnicalConfig(BUILDER);
     public static final MessageConfig MESSAGE = new MessageConfig(BUILDER);
     
     // 性能优化缓存

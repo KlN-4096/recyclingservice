@@ -50,15 +50,6 @@
   "recycle.config.projectile_types_to_clean": "Projectile Types to Clean", 
   "recycle.config.projectile_types_to_clean.tooltip": "Types of projectiles to clean up (arrows, fireballs, etc.)",
   
-  "recycle.config.too_many_items_warning": "Too Many Items Warning",
-  "recycle.config.too_many_items_warning.tooltip": "Warn when a chunk has more than this many items",
-  
-  "recycle.config.auto_stop_chunk_loading": "Auto Stop Chunk Loading",
-  "recycle.config.auto_stop_chunk_loading.tooltip": "Automatically stop chunk loading when chunk has too many items",
-  
-  "recycle.config.too_many_items_warning_message": "Too Many Items Warning Message",
-  "recycle.config.too_many_items_warning_message.tooltip": "Warning message template for too many items",
-  
   "_comment_ui": "=== UI Configuration ===",
   "recycle.config.ui_max_quick_move": "UI Max Quick Move",
   "recycle.config.ui_max_quick_move.tooltip": "Maximum items to move at once with Shift+Click",
@@ -116,9 +107,6 @@
   
   "_comment_errors": "=== Error Messages ===",
   "operation.error.general": "§cAn error occurred during the operation",
-  
-  "_comment_warnings": "=== Warning Messages ===", 
-  "recycle.warning.too_many_items": "§6Warning: Too many items detected ({count}/{threshold})",
   
   "_comment_ui_types": "=== UI Types ===",
   "trash_box.ui.type.enhanced": "Enhanced",

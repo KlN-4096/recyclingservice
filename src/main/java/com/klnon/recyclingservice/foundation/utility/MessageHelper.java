@@ -28,13 +28,6 @@ public class MessageHelper {
     public static final int WARNING = 0xFFAA00;
     
     // === 消息格式化功能 ===
-
-    public static int toWorldPos(int chunkPos) {
-        /*
-        return chunkPos*16+8;
-        */
-        return 0;
-    }
     
     /**
      * 统一的字符串模板处理工具
@@ -56,31 +49,6 @@ public class MessageHelper {
     public static String getWarningMessage(int remainingSeconds) {
         return formatTemplate(Config.MESSAGE.warningMessage.get(), 
             Map.of("time", String.valueOf(remainingSeconds)));
-    }
-
-    /**
-     * 获取格式化的物品过多警告消息（支持点击传送）
-     */
-    public static Component getItemWarningMessage(int itemCount, int worldX, int worldZ) {
-        /*
-        String message = formatTemplate(Config.MESSAGE.tooManyItemsWarningMessage.get(), Map.of(
-            "count", String.valueOf(itemCount),
-            "x", String.valueOf(worldX),
-            "z", String.valueOf(worldZ)
-        ));
-        
-        return Component.literal(message)
-                .withStyle(style -> style
-                    .withColor(ChatFormatting.YELLOW)
-                    .withClickEvent(new ClickEvent(
-                        ClickEvent.Action.RUN_COMMAND,
-                        "/tp @s " + worldX + " ~ " + worldZ))
-                    .withHoverEvent(new HoverEvent(
-                        HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("§7TP (" + worldX + ", " + worldZ + ")\n"))
-                ));
-        */
-        return Component.literal("");
     }
 
     /**
