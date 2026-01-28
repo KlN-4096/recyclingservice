@@ -5,31 +5,31 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 游戏玩法配置 - 包含清理、垃圾箱、物品过滤相关设置
+ * Gameplay configuration for cleanup, trash box, and item filtering.
  */
 public class GameplayConfig {
-    
-    // === 自动清理设置 ===
+
+    // === Auto cleanup ===
     public final ModConfigSpec.IntValue autoCleanTime;
     public final ModConfigSpec.BooleanValue showCleanupWarnings;
     public final ModConfigSpec.IntValue warningCountdownStart;
-    
-    // === 垃圾箱设置 ===
+
+    // === Trash box ===
     public final ModConfigSpec.IntValue trashBoxRows;
     public final ModConfigSpec.IntValue itemStackMultiplier;
     public final ModConfigSpec.IntValue maxBoxesPerDimension;
     public final ModConfigSpec.ConfigValue<List<? extends String>> dimensionTrashAllowPutIn;
     public final ModConfigSpec.BooleanValue dimensionTrashCrossAccess;
-    
-    // === 物品过滤设置 ===
+
+    // === Item filter ===
     public final ModConfigSpec.ConfigValue<String> cleanMode;
     public final ModConfigSpec.ConfigValue<List<? extends String>> whitelist;
     public final ModConfigSpec.ConfigValue<List<? extends String>> blacklist;
     public final ModConfigSpec.BooleanValue cleanProjectiles;
     public final ModConfigSpec.ConfigValue<List<? extends String>> projectileTypesToClean;
     public final ModConfigSpec.BooleanValue protectCreateProcessingItems;
-    
-    // === 支付系统设置 ===
+
+    // === Payment system ===
     public final ModConfigSpec.ConfigValue<String> paymentItemType;
     public final ModConfigSpec.IntValue crossDimensionAccessCost;
     public final ModConfigSpec.ConfigValue<String> extractCostFormula;
@@ -38,11 +38,11 @@ public class GameplayConfig {
     public final ModConfigSpec.ConfigValue<String> extractPaymentMode;
     public final ModConfigSpec.ConfigValue<List<? extends String>> dimensionMultipliers;
     public final ModConfigSpec.ConfigValue<List<? extends String>> extractCostCaps;
-    
+
     public GameplayConfig(ModConfigSpec.Builder builder) {
         builder.comment("Gameplay Settings").push("gameplay");
-        
-        // 自动清理
+
+        // Auto cleanup
         builder.comment("Auto cleanup settings").push("cleanup");
         autoCleanTime = builder
                 .comment("Auto cleanup interval in seconds")
@@ -54,8 +54,8 @@ public class GameplayConfig {
                 .comment("Start countdown warnings at remaining seconds")
                 .defineInRange("countdown_start", 15, 0, 300);
         builder.pop();
-        
-        // 垃圾箱
+
+        // Trash box
         builder.comment("Trash box settings").push("trash_box");
         trashBoxRows = builder
                 .comment("Number of rows in each trash box")
@@ -75,8 +75,8 @@ public class GameplayConfig {
                 .comment("Allow cross-dimension trash box access")
                 .define("cross_access", true);
         builder.pop();
-        
-        // 物品过滤
+
+        // Item filter
         builder.comment("Item filter settings").push("filter");
         cleanMode = builder
                 .comment("Item cleaning mode: whitelist or blacklist")
@@ -105,8 +105,8 @@ public class GameplayConfig {
                 .comment("Protect items being processed by Create mod")
                 .define("protect_create_items", true);
         builder.pop();
-        
-        // 支付系统
+
+        // Payment system
         builder.comment("Payment system settings").push("payment");
         paymentItemType = builder
                 .comment("Payment item type")
@@ -120,13 +120,13 @@ public class GameplayConfig {
                         base comes from extract_mode/cross_dimension_cost and may be 0 for auto-cleaned item types.
                         Variables: base, count, recent, same_dim, cross_dim
                         Functions: min, max, floor, ceil, abs, round, step""")
-                .define("extract_cost_formula", "base + max(0, recent - 2) * 0.2");
+                .define("extract_cost_formula", "base + max(0, recent -2) * 0.2");
         extractPenaltyCrossDimensionOnly = builder
                 .comment("Only apply extract penalty escalation to cross-dimension access")
                 .define("extract_penalty_cross_dimension_only", true);
         autoCleanItemsFree = builder
-                .comment("When true, players can freely extract auto-cleaned items")
-                .define("auto_clean_items_free", true);
+                .comment("When true, players can freely extract auto-cleaned items (different from all_free)")
+                .define("auto_clean_items_free", false);
         extractPaymentMode = builder
                 .comment("""
                         Extract operation payment mode configuration:
@@ -148,10 +148,10 @@ public class GameplayConfig {
                     () -> "minecraft:overworld:0",
                     obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+$"));
         builder.pop();
-        
+
         builder.pop();
     }
-    
+
     private boolean validateResourceLocation(Object obj) {
         if (!(obj instanceof String id)) return false;
         try {

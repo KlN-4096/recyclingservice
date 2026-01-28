@@ -167,7 +167,7 @@ public class TrashPaymentHandler {
         ResourceLocation playerDim = player.level().dimension().location();
         boolean sameDimension = playerDim.equals(trashDim);
         int baseCost = calculateBaseExtractCost(playerDim, trashDim);
-        if (baseFlag <= 0) {
+        if (baseFlag <= 0 && Config.GAMEPLAY.autoCleanItemsFree.get()) {
             baseCost = 0;
         }
         int recent = getEffectiveRecentCount(player, sameDimension);
@@ -341,7 +341,7 @@ public class TrashPaymentHandler {
             logFormulaError(formula, "Multiplier returned invalid number");
             adjusted = result;
         }
-        int cost = (int) Math.ceil(adjusted);
+        int cost = (int) Math.floor(adjusted);
         cost = Math.max(0, cost);
         if (costCap > 0 && cost > costCap) {
             cost = costCap;
