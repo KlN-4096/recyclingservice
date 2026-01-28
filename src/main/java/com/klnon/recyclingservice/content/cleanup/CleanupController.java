@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
+import com.klnon.recyclingservice.content.trashbox.service.TrashPaymentHandler;
 import net.minecraft.server.MinecraftServer;
 
 /**
@@ -16,6 +17,7 @@ public class CleanupController {
      */
     public static void performAutoCleanup(MinecraftServer server) {
         TrashBoxManager.clearAll();
+        TrashPaymentHandler.resetExtractHistory();
         activate(server);
     }
 

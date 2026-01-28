@@ -1,7 +1,5 @@
 package com.klnon.recyclingservice;
 
-import com.klnon.recyclingservice.content.chunk.ChunkDataCache;
-import com.klnon.recyclingservice.content.chunk.ChunkManager;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.klnon.recyclingservice.foundation.command.BinCommand;
 import org.slf4j.Logger;
@@ -16,8 +14,6 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
@@ -56,34 +52,12 @@ public class Recyclingservice {
     public void onServerStarting(ServerStartingEvent event) {
         // 在服务器启动时做一些事情
         LOGGER.info("HELLO from server starting");
-        
+
         // 初始化性能优化缓存
         Config.updateCaches();
         LOGGER.info("Performance caches initialized");
     }
-    
-    // 服务器启动完成事件 - 执行启动区块清理
-    @SubscribeEvent
-    public void onServerStarted(ServerStartedEvent event) {
-        /*
-        LOGGER.info("Server fully started, performing startup chunk cleanup");
-        
-        // 建立distanceManager与维度映射表,方便区块接管
-        if (Config.TECHNICAL.enableChunkManagement.get()) {
-            ChunkManager.performTakeover(event.getServer());
-        }
-        */
-    }
-    
-    // 服务器停止事件 - 清空区块缓存
-    @SubscribeEvent
-    public void onServerStopping(ServerStoppingEvent event) {
-        /*
-        LOGGER.info("Server stopping, clearing chunk cache");
-        ChunkDataCache.clearAll();
-        */
-    }
-    
+
     // 注册命令事件
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {

@@ -23,6 +23,8 @@ import org.jetbrains.annotations.NotNull;
  */
 public class TrashBoxMenu extends ChestMenu {
 
+    private static final int QUICK_CRAFT_END = 2;
+
     private final TrashBox trashBox;
     private final int trashSlots;
     private final TrashBoxClickHandler clickHandler;
@@ -32,6 +34,7 @@ public class TrashBoxMenu extends ChestMenu {
         this.trashBox = trashBox;
         this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;
         this.clickHandler = new TrashBoxClickHandler(trashBox, this);
+        refreshTrashBoxTooltips();
     }
 
     @Override
@@ -50,12 +53,23 @@ public class TrashBoxMenu extends ChestMenu {
                 return;
         }
 
+        if (clickType == ClickType.QUICK_CRAFT) {
+            super.clicked(slotId, button, clickType, player);
+            if ((button & 3) == QUICK_CRAFT_END) {
+                refreshTrashBoxTooltips();
+            }
+            return;
+        }
+
         // 处理垃圾箱槽位的点击 - 委托给ClickHandler
         if (slotId >= 0 && slotId < trashSlots) {
             clickHandler.handleTrashBoxSlotClick(slotId, button, clickType, player);
             return;
         }
         super.clicked(slotId, button, clickType, player);
+        if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots) {
+            refreshTrashBoxTooltips();
+        }
     }
 
     @Override
@@ -71,6 +85,7 @@ public class TrashBoxMenu extends ChestMenu {
 
             if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
                 clickHandler.updateSlotAfterMove(slot, moveCount);
+                refreshTrashBoxTooltips();
                 return ItemStack.EMPTY;
             }
         } else {
@@ -86,6 +101,7 @@ public class TrashBoxMenu extends ChestMenu {
                     } else {
                         slot.setChanged();
                     }
+                    refreshTrashBoxTooltips();
                     return originalStack;
                 }
             }
@@ -147,6 +163,13 @@ public class TrashBoxMenu extends ChestMenu {
      */
     public void superClicked(int slotId, int button, ClickType clickType, Player player) {
         super.clicked(slotId, button, clickType, player);
+    }
+
+    private void refreshTrashBoxTooltips() {
+        for (int i = 0; i < trashSlots; i++) {
+            ItemStack stack = trashBox.getItem(i);
+            UiHelper.updateTooltip(stack);
+        }
     }
 
     // === Getters ===

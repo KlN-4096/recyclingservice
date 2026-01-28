@@ -31,13 +31,31 @@ public class TrashBox implements Container {
      * 添加物品到垃圾箱
      */
     public boolean addItem(ItemStack item, int slot) {
+        return addItem(item, slot, TrashData.ItemOrigin.PLAYER);
+    }
+
+    public boolean addItem(ItemStack item, int slot, TrashData.ItemOrigin origin) {
+        boolean isNewType = unknownItemType(item);
+        ItemStack originItem = isNewType ? item.copy() : ItemStack.EMPTY;
         // 先尝试合并到相同物品槽位
         if (data.tryMergeToExisting(item) && slot == -1) {
             return true; // 完全合并成功
         }
 
         // 合并失败或部分合并，尝试放入空槽位
-        return data.tryAddToEmptySlot(item, slot);
+        boolean added = data.tryAddToEmptySlot(item, slot);
+        if (added && isNewType) {
+            data.setOriginIfAbsent(originItem, origin);
+        }
+        return added;
+    }
+
+    public int getBaseFlag(ItemStack item) {
+        return data.getBaseFlag(item);
+    }
+
+    private boolean unknownItemType(ItemStack item) {
+        return !data.hasItemType(item);
     }
     // === Container接口实现 ===
 
@@ -99,6 +117,9 @@ public class TrashBox implements Container {
 
         data.items.set(slot, newItem);
         data.updateIndex(slot, oldItem, newItem);
+        if (!newItem.isEmpty()) {
+            data.setOriginIfAbsent(newItem, TrashData.ItemOrigin.PLAYER);
+        }
         setChanged();
     }
 

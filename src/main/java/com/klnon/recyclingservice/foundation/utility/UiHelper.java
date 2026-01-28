@@ -40,20 +40,28 @@ public class UiHelper {
      * @param stack 原始物品堆
      */
     public static void updateTooltip(ItemStack stack) {
-        // 先清理现有的我们添加的lore，然后获取干净的lore
+        updateTooltip(stack, 0);
+    }
+
+    public static void updateTooltip(ItemStack stack, int postageCost) {
         cleanItemStack(stack);
-        if (stack.getCount() <= stack.getMaxStackSize()) return;
-        // 获取清理后的lore（如果有）
+        if (stack.isEmpty()) {
+            return;
+        }
+
+        boolean showInfo = stack.getCount() > stack.getMaxStackSize() || postageCost > 0;
+        if (!showInfo) {
+            return;
+        }
+
         ItemLore existingLore = stack.get(DataComponents.LORE);
         List<Component> loreLines = new ArrayList<>();
 
-        // 保留现有的其他lore
         if (existingLore != null) {
             loreLines.addAll(existingLore.lines());
         }
 
-        // 添加我们的真实数量信息（带标识符）
-        loreLines.add(Component.literal(LORE_PREFIX + LORE_SUFFIX)); // 空行分隔符
+        loreLines.add(Component.literal(LORE_PREFIX + LORE_SUFFIX));
         loreLines.add(Component.literal(
                 LORE_PREFIX + MessageHelper.formatTemplate(Config.MESSAGE.itemCountDisplayFormat.get(), Map.of(
                         "current", String.valueOf(stack.getCount()),
@@ -61,14 +69,19 @@ public class UiHelper {
                 )) + LORE_SUFFIX
         ).withStyle(style -> style.withItalic(false)));
 
-        // 应用新的lore
+        if (postageCost > 0) {
+            String costText = MessageHelper.formatTemplate(Config.MESSAGE.postageCostDisplayFormat.get(), Map.of(
+                    "cost", String.valueOf(postageCost),
+                    "item", formatItemName(Config.getPaymentItem().getPath())
+            ));
+            loreLines.add(Component.literal(LORE_PREFIX + costText + LORE_SUFFIX)
+                    .withStyle(style -> style.withItalic(false)));
+        }
+
         stack.set(DataComponents.LORE, new ItemLore(loreLines));
     }
 
-    /**
-     * 精确清理ItemStack的Lore，只移除我们添加的内容
-     * @param item 可能包含自定义Lore的物品
-     */
+
     public static void cleanItemStack(ItemStack item) {
         if (item.isEmpty()) {
             return;
@@ -96,4 +109,23 @@ public class UiHelper {
         // 检查是否同时包含我们的前缀和后缀
         return text.startsWith(LORE_PREFIX) && text.endsWith(LORE_SUFFIX);
     }
+
+    private static String formatItemName(String itemPath) {
+        String[] parts = itemPath.split("_");
+        StringBuilder result = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (result.length() > 0) {
+                result.append(' ');
+            }
+            result.append(Character.toUpperCase(part.charAt(0)));
+            if (part.length() > 1) {
+                result.append(part.substring(1));
+            }
+        }
+        return result.toString();
+    }
+
 }

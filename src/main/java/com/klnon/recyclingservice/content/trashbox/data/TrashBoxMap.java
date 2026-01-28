@@ -46,7 +46,7 @@ public class TrashBoxMap {
         if (item.isEmpty()) return;
         TrashBox trashBox = getOrCreateTrashBox(dimensionId, 1);
         if (trashBox != null) {
-            trashBox.addItem(item,-1);
+            trashBox.addItem(item, -1, TrashData.ItemOrigin.AUTOCLEAN);
         }
     }
 

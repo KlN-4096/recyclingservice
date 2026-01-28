@@ -50,15 +50,6 @@
   "recycle.config.projectile_types_to_clean": "要清理的弹射物类型",
   "recycle.config.projectile_types_to_clean.tooltip": "要清理的弹射物类型（箭矢、火球等）",
   
-  "recycle.config.too_many_items_warning": "物品过多警告",
-  "recycle.config.too_many_items_warning.tooltip": "当区块中物品超过此数量时发出警告",
-  
-  "recycle.config.auto_stop_chunk_loading": "自动停止区块加载", 
-  "recycle.config.auto_stop_chunk_loading.tooltip": "当区块物品过多时自动停止区块加载",
-  
-  "recycle.config.too_many_items_warning_message": "物品过多警告消息",
-  "recycle.config.too_many_items_warning_message.tooltip": "物品过多警告的消息模板",
-  
   "_comment_ui": "=== UI配置 ===",
   "recycle.config.ui_max_quick_move": "UI最大快速移动数量",
   "recycle.config.ui_max_quick_move.tooltip": "Shift+点击一次性移动的最大物品数量",
@@ -116,9 +107,6 @@
   
   "_comment_errors": "=== 错误消息 ===",
   "operation.error.general": "§c操作过程中发生错误",
-  
-  "_comment_warnings": "=== 警告消息 ===",
-  "recycle.warning.too_many_items": "§6警告：检测到物品过多（{count}/{threshold}）",
   
   "_comment_ui_types": "=== UI类型 ===",
   "trash_box.ui.type.enhanced": "增强版",

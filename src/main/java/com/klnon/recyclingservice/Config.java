@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice;
 
-import com.klnon.recyclingservice.foundation.config.*;
+import com.klnon.recyclingservice.foundation.config.GameplayConfig;
+import com.klnon.recyclingservice.foundation.config.MessageConfig;
 
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -21,7 +22,6 @@ public class Config {
     
     // 各功能配置实例
     public static final GameplayConfig GAMEPLAY = new GameplayConfig(BUILDER);
-    public static final TechnicalConfig TECHNICAL = new TechnicalConfig(BUILDER);
     public static final MessageConfig MESSAGE = new MessageConfig(BUILDER);
     
     // 性能优化缓存
@@ -30,6 +30,7 @@ public class Config {
     public static volatile Set<String> projectileTypesCache = new HashSet<>();
     private static volatile Set<String> allowPutInDimensionsCache = new HashSet<>();
     private static final Map<String, Double> dimensionMultiplierCache = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> dimensionCostCapCache = new ConcurrentHashMap<>();
     
     static {
         // 构建配置规范
@@ -53,12 +54,19 @@ public class Config {
     public static ResourceLocation getPaymentItem() {
         return ResourceLocation.parse(GAMEPLAY.paymentItemType.get());
     }
-    
+
     /**
      * 获取指定维度的邮费倍数
      */
     public static double getDimensionMultiplier(String dimensionId) {
         return dimensionMultiplierCache.getOrDefault(dimensionId, 1.0);
+    }
+
+    /**
+     * 获取指定维度的邮费上限（0 表示无限制）
+     */
+    public static int getDimensionCostCap(String dimensionId) {
+        return dimensionCostCapCache.getOrDefault(dimensionId, 0);
     }
     
     /**
@@ -98,6 +106,7 @@ public class Config {
             projectileTypesCache = new HashSet<>(GAMEPLAY.projectileTypesToClean.get());
             allowPutInDimensionsCache = new HashSet<>(GAMEPLAY.dimensionTrashAllowPutIn.get());
             parseDimensionMultipliers();
+            parseDimensionCostCaps();
         } catch (Exception e) {
             Recyclingservice.LOGGER.error("Failed to update config caches", e);
             
@@ -132,6 +141,33 @@ public class Config {
             dimensionMultiplierCache.put("minecraft:overworld", 1.0);
             dimensionMultiplierCache.put("minecraft:the_nether", 1.0);
             dimensionMultiplierCache.put("minecraft:the_end", 2.0);
+        }
+    }
+
+    /**
+     * 解析维度邮费上限配置并更新缓存
+     */
+    private static void parseDimensionCostCaps() {
+        dimensionCostCapCache.clear();
+
+        try {
+            GAMEPLAY.extractCostCaps.get().forEach(entry -> {
+                try {
+                    String[] parts = entry.split(":");
+                    if (parts.length == 3) {
+                        String dimensionId = parts[0] + ":" + parts[1];
+                        int cap = Integer.parseInt(parts[2]);
+                        if (cap < 0) {
+                            cap = 0;
+                        }
+                        dimensionCostCapCache.put(dimensionId, cap);
+                    }
+                } catch (NumberFormatException e) {
+                    Recyclingservice.LOGGER.warn("Invalid extract cost cap format: '{}', skipping", entry);
+                }
+            });
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.error("Failed to parse extract cost caps, using defaults", e);
         }
     }
 }

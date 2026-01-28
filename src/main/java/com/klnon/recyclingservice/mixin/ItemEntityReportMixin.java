@@ -2,10 +2,8 @@ package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
-import com.klnon.recyclingservice.content.chunk.ChunkDataCache;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.level.ChunkPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -39,7 +37,6 @@ public class ItemEntityReportMixin {
             
             ResourceLocation dimension = self.level().dimension().location();
             UUID uuid = self.getUUID();
-            // ChunkPos chunkPos = new ChunkPos(self.blockPosition());
             
             // 检查是否已在缓存中
             boolean alreadyReported = CleanupManager.isEntityReported(dimension, uuid);
@@ -49,8 +46,6 @@ public class ItemEntityReportMixin {
             
             if (shouldReport && !alreadyReported && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
                 CleanupManager.addEntity(CleanupManager.ITEM,dimension, uuid);
-                // 增加区块计数
-                // ChunkDataCache.incrementEntityCount(dimension, chunkPos);
             }
             
             // 检查全局删除信号，如果激活且在缓存中则自删除

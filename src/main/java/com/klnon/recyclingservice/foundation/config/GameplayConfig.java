@@ -32,9 +32,12 @@ public class GameplayConfig {
     // === 支付系统设置 ===
     public final ModConfigSpec.ConfigValue<String> paymentItemType;
     public final ModConfigSpec.IntValue crossDimensionAccessCost;
-    public final ModConfigSpec.ConfigValue<String> insertPaymentMode;
+    public final ModConfigSpec.ConfigValue<String> extractCostFormula;
+    public final ModConfigSpec.IntValue extractPenaltyWindowSeconds;
+    public final ModConfigSpec.BooleanValue extractPenaltyCrossDimensionOnly;
     public final ModConfigSpec.ConfigValue<String> extractPaymentMode;
     public final ModConfigSpec.ConfigValue<List<? extends String>> dimensionMultipliers;
+    public final ModConfigSpec.ConfigValue<List<? extends String>> extractCostCaps;
     
     public GameplayConfig(ModConfigSpec.Builder builder) {
         builder.comment("Gameplay Settings").push("gameplay");
@@ -111,14 +114,19 @@ public class GameplayConfig {
         crossDimensionAccessCost = builder
                 .comment("Cost for cross-dimension access")
                 .defineInRange("cross_dimension_cost", 1, 1, 64);
-        insertPaymentMode = builder
+        extractCostFormula = builder
                 .comment("""
-                        Insert operation payment mode configuration:
-                        - all_dimensions_pay: All dimensions require payment
-                        - current_dimension_free: Current dimension is free, others require payment
-                        - all_free: All dimensions are free""")
-                .defineInList("insert_mode", "current_dimension_free",
-                        Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
+                        Formula for extract postage (dimension multiplier applied after evaluation).
+                        base comes from extract_mode/cross_dimension_cost and may be 0 for auto-cleaned item types.
+                        Variables: base, count, recent, same_dim, cross_dim
+                        Functions: min, max, floor, ceil, abs, round, step""")
+                .define("extract_cost_formula", "base + max(0, recent - 2) * 0.3");
+        extractPenaltyWindowSeconds = builder
+                .comment("Time window (seconds) for extract penalty escalation")
+                .defineInRange("extract_penalty_window_seconds", 30, 1, 3600);
+        extractPenaltyCrossDimensionOnly = builder
+                .comment("Only apply extract penalty escalation to cross-dimension access")
+                .define("extract_penalty_cross_dimension_only", true);
         extractPaymentMode = builder
                 .comment("""
                         Extract operation payment mode configuration:
@@ -133,6 +141,12 @@ public class GameplayConfig {
                     List.of("minecraft:overworld:1.0", "minecraft:the_nether:1.0", "minecraft:the_end:2.0"),
                     () -> "minecraft:overworld:1.0",
                     obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+(\\.[0-9]+)?$"));
+        extractCostCaps = builder
+                .comment("Maximum postage per dimension (0 = unlimited, applied after formula and multiplier)")
+                .defineListAllowEmpty("extract_cost_caps",
+                    List.of("minecraft:overworld:2", "minecraft:the_nether:2", "minecraft:the_end:2"),
+                    () -> "minecraft:overworld:0",
+                    obj -> obj instanceof String && ((String) obj).matches("^[a-z0-9_]+:[a-z0-9_]+:[0-9]+$"));
         builder.pop();
         
         builder.pop();

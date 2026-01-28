@@ -22,6 +22,12 @@ public class TrashData {
     // 统一索引：物品类型->槽位列表，EMPTY表示空位置
     private final Map<String, Deque<Integer>> itemTypeSlots = new HashMap<>();
     private static final String EMPTY_KEY = "EMPTY";
+    private final Map<String, ItemOrigin> itemOrigins = new HashMap<>();
+
+    public enum ItemOrigin {
+        PLAYER,
+        AUTOCLEAN
+    }
 
     public TrashData(int capacity, int boxNumber, ResourceLocation dimensionId) {
         this.capacity = capacity;
@@ -36,6 +42,7 @@ public class TrashData {
      */
     public void initializeIndex() {
         itemTypeSlots.clear();
+        itemOrigins.clear();
         Deque<Integer> emptySlots = new ArrayDeque<>();
         for (int i = capacity - 1; i >= 0; i--) {  // 从大到小,从前往后填充
             emptySlots.add(i);
@@ -54,12 +61,51 @@ public class TrashData {
             oldSlots.remove(slot);
             if (oldSlots.isEmpty()) {
                 itemTypeSlots.remove(oldKey);
+                if (!EMPTY_KEY.equals(oldKey)) {
+                    itemOrigins.remove(oldKey);
+                }
             }
         }
 
         // 添加新索引
         String newKey = newItem.isEmpty() ? EMPTY_KEY : CleanupManager.generateItemHash(newItem);
         itemTypeSlots.computeIfAbsent(newKey, k -> new ArrayDeque<>()).addLast(slot);
+    }
+
+    public boolean hasItemType(ItemStack item) {
+        if (item.isEmpty()) {
+            return false;
+        }
+        String key = getItemKey(item);
+        return itemTypeSlots.containsKey(key);
+    }
+
+    public int getBaseFlag(ItemStack item) {
+        if (item.isEmpty()) {
+            return 0;
+        }
+        String key = getItemKey(item);
+        ItemOrigin origin = itemOrigins.get(key);
+        if (origin == null) {
+            return 0;
+        }
+        return origin == ItemOrigin.PLAYER ? 1 : 0;
+    }
+
+    public void setOriginIfAbsent(ItemStack item, ItemOrigin origin) {
+        if (item.isEmpty()) {
+            return;
+        }
+        String key = getItemKey(item);
+        if (EMPTY_KEY.equals(key)) {
+            return;
+        }
+        itemOrigins.putIfAbsent(key, origin);
+    }
+
+    private String getItemKey(ItemStack item) {
+        ItemStack copy = item.copy();
+        return CleanupManager.generateItemHash(copy);
     }
 
     /**
@@ -89,7 +135,9 @@ public class TrashData {
      */
     public boolean tryAddToEmptySlot(ItemStack item, int slot) {
         if (slot != -1) {
+            ItemStack oldItem = items.get(slot);
             items.set(slot, item.copy());
+            updateIndex(slot, oldItem, item);
             return true;
         }
         Deque<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);

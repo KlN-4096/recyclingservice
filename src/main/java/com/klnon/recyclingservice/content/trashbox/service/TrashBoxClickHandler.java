@@ -49,7 +49,8 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         }
 
         // 统一更新受影响的物品
-        UiHelper.updateTooltip(slotItem);
+        ItemStack updatedSlotItem = slot.getItem();
+        UiHelper.updateTooltip(updatedSlotItem);
         UiHelper.updateTooltip(result);
     }
 
