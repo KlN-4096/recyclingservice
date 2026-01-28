@@ -5,6 +5,7 @@ import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
@@ -26,6 +27,19 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         Slot slot = menu.slots.get(slotId);
         ItemStack carried = menu.getCarried();
         ItemStack slotItem = slot.getItem();
+        ItemStack beforeItem = slotItem.copy();
+        TrashPaymentHandler.ExtractInfo extractInfo = TrashPaymentHandler.getExtractInfo(
+                menu.getTrashSlots(), trashBox, slotId, button, clickType, player, menu.slots, carried);
+        int expectedCost = 0;
+        if (extractInfo != null && extractInfo.count() > 0) {
+            ResourceLocation trashDim = trashBox.getData().getDimensionId();
+            expectedCost = TrashPaymentHandler.previewExtractCost(player, trashDim,
+                    extractInfo.count(), extractInfo.baseFlag());
+            if (expectedCost > 0 && !TrashPaymentHandler.hasEnoughPaymentItems(player, expectedCost)) {
+                TrashPaymentHandler.sendPaymentErrorMessage(player, expectedCost);
+                return;
+            }
+        }
         ItemStack result;
 
         // 直接处理各种点击类型的逻辑
@@ -52,6 +66,11 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         ItemStack updatedSlotItem = slot.getItem();
         UiHelper.updateTooltip(updatedSlotItem);
         UiHelper.updateTooltip(result);
+
+        if (expectedCost > 0 && didExtract(beforeItem, updatedSlotItem)) {
+            TrashPaymentHandler.finalizeExtractPayment(player, trashBox.getData().getDimensionId(),
+                    extractInfo.count(), extractInfo.baseFlag());
+        }
     }
 
     /**
@@ -192,5 +211,18 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
     public boolean isAllowedToPutIn(Player player) {
         return Config.isDimensionAllowPutIn(trashBox.getData().getDimensionId().toString(),
                 player.level().dimension().location().toString());
+    }
+
+    private boolean didExtract(ItemStack beforeItem, ItemStack afterItem) {
+        if (beforeItem.isEmpty()) {
+            return false;
+        }
+        if (afterItem.isEmpty()) {
+            return true;
+        }
+        if (!CleanupManager.isSameItem(beforeItem, afterItem)) {
+            return true;
+        }
+        return afterItem.getCount() < beforeItem.getCount();
     }
 }

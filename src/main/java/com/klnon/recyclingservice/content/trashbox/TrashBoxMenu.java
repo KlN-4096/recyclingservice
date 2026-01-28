@@ -3,7 +3,6 @@ package com.klnon.recyclingservice.content.trashbox;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.service.TrashBoxClickHandler;
-import com.klnon.recyclingservice.content.trashbox.service.TrashPaymentHandler;
 import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -39,11 +38,6 @@ public class TrashBoxMenu extends ChestMenu {
 
     @Override
     public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
-        // 支付检查和扣除
-        if (!TrashPaymentHandler.validateAndProcessPayment(this, slotId, button, clickType, player)) {
-            return; // 邮费不足，阻止操作
-        }
-
         // 检查维度是否允许放入（支持跨维度访问控制）
         if (slotId >= 0 && !clickHandler.isAllowedToPutIn(player)) {
             if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots)

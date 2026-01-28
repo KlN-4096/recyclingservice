@@ -33,8 +33,8 @@ public class GameplayConfig {
     public final ModConfigSpec.ConfigValue<String> paymentItemType;
     public final ModConfigSpec.IntValue crossDimensionAccessCost;
     public final ModConfigSpec.ConfigValue<String> extractCostFormula;
-    public final ModConfigSpec.IntValue extractPenaltyWindowSeconds;
     public final ModConfigSpec.BooleanValue extractPenaltyCrossDimensionOnly;
+    public final ModConfigSpec.BooleanValue autoCleanItemsFree;
     public final ModConfigSpec.ConfigValue<String> extractPaymentMode;
     public final ModConfigSpec.ConfigValue<List<? extends String>> dimensionMultipliers;
     public final ModConfigSpec.ConfigValue<List<? extends String>> extractCostCaps;
@@ -120,13 +120,13 @@ public class GameplayConfig {
                         base comes from extract_mode/cross_dimension_cost and may be 0 for auto-cleaned item types.
                         Variables: base, count, recent, same_dim, cross_dim
                         Functions: min, max, floor, ceil, abs, round, step""")
-                .define("extract_cost_formula", "base + max(0, recent - 2) * 0.3");
-        extractPenaltyWindowSeconds = builder
-                .comment("Time window (seconds) for extract penalty escalation")
-                .defineInRange("extract_penalty_window_seconds", 30, 1, 3600);
+                .define("extract_cost_formula", "base + max(0, recent - 2) * 0.2");
         extractPenaltyCrossDimensionOnly = builder
                 .comment("Only apply extract penalty escalation to cross-dimension access")
                 .define("extract_penalty_cross_dimension_only", true);
+        autoCleanItemsFree = builder
+                .comment("When true, players can freely extract auto-cleaned items")
+                .define("auto_clean_items_free", true);
         extractPaymentMode = builder
                 .comment("""
                         Extract operation payment mode configuration:
@@ -136,7 +136,7 @@ public class GameplayConfig {
                 .defineInList("extract_mode", "current_dimension_free",
                         Arrays.asList("all_dimensions_pay", "current_dimension_free", "all_free"));
         dimensionMultipliers = builder
-                .comment("Cost multipliers per dimension")
+                .comment("Cost multipliers per dimension (multiplied with postage cost)")
                 .defineListAllowEmpty("dimension_multipliers", 
                     List.of("minecraft:overworld:1.0", "minecraft:the_nether:1.0", "minecraft:the_end:2.0"),
                     () -> "minecraft:overworld:1.0",
