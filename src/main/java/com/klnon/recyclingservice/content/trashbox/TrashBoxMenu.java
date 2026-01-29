@@ -1,178 +1,1 @@
-package com.klnon.recyclingservice.content.trashbox;
-
-import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
-import com.klnon.recyclingservice.content.trashbox.service.TrashBoxClickHandler;
-import com.klnon.recyclingservice.foundation.utility.UiHelper;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.*;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-
-import javax.annotation.Nonnull;
-import org.jetbrains.annotations.NotNull;
-
-/**
- * 垃圾箱菜单 - 负责UI显示和基础逻辑
- * 点击处理逻辑已拆分到TrashBoxClickHandler
- */
-public class TrashBoxMenu extends ChestMenu {
-
-    private static final int QUICK_CRAFT_END = 2;
-
-    private final TrashBox trashBox;
-    private final int trashSlots;
-    private final TrashBoxClickHandler clickHandler;
-
-    public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {
-        super(UiHelper.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.GAMEPLAY.trashBoxRows.get());
-        this.trashBox = trashBox;
-        this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;
-        this.clickHandler = new TrashBoxClickHandler(trashBox, this);
-        refreshTrashBoxTooltips();
-    }
-
-    @Override
-    public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
-        // 检查维度是否允许放入（支持跨维度访问控制）
-        if (slotId >= 0 && !clickHandler.isAllowedToPutIn(player)) {
-            if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots)
-                return;
-            if ((!getCarried().isEmpty() || (clickType == ClickType.SWAP && slotId > trashSlots))
-                    && slotId < trashSlots)
-                return;
-        }
-
-        if (clickType == ClickType.QUICK_CRAFT) {
-            super.clicked(slotId, button, clickType, player);
-            if ((button & 3) == QUICK_CRAFT_END) {
-                refreshTrashBoxTooltips();
-            }
-            return;
-        }
-
-        // 处理垃圾箱槽位的点击 - 委托给ClickHandler
-        if (slotId >= 0 && slotId < trashSlots) {
-            clickHandler.handleTrashBoxSlotClick(slotId, button, clickType, player);
-            return;
-        }
-        super.clicked(slotId, button, clickType, player);
-        if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots) {
-            refreshTrashBoxTooltips();
-        }
-    }
-
-    @Override
-    public @NotNull ItemStack quickMoveStack(@Nonnull Player player, int index) {
-        Slot slot = this.slots.get(index);
-        if (!slot.mayPickup(player)) return ItemStack.EMPTY;
-
-        ItemStack slotItem = slot.getItem();
-        if (index < trashSlots) {
-            // 从垃圾箱到玩家背包：最多64个
-            int moveCount = Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
-            ItemStack moveItem = slotItem.copyWithCount(moveCount);
-
-            if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {
-                clickHandler.updateSlotAfterMove(slot, moveCount);
-                refreshTrashBoxTooltips();
-                return ItemStack.EMPTY;
-            }
-        } else {
-            // 从玩家背包到垃圾箱
-            if (!slotItem.isEmpty()) {
-                ItemStack originalStack = slotItem.copy();
-
-                // 尝试移动到垃圾箱槽位
-                if (moveItemStackTo(slotItem, 0, trashSlots, false)) {
-                    // 移动成功后更新槽位
-                    if (slotItem.isEmpty()) {
-                        slot.setByPlayer(ItemStack.EMPTY);
-                    } else {
-                        slot.setChanged();
-                    }
-                    refreshTrashBoxTooltips();
-                    return originalStack;
-                }
-            }
-        }
-
-        return ItemStack.EMPTY;
-    }
-
-    @Override
-    protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex,
-                                      boolean reverseDirection) {
-        // 移动到垃圾箱的特殊处理
-        if (startIndex == 0 && endIndex <= trashSlots) {
-            if (stack.isEmpty()) return false;
-
-            trashBox.addItem(stack, -1);
-
-            // 检查是否完全添加
-            if (stack.isEmpty()) {
-                stack.setCount(0);
-                return true;
-            } else {
-                // 部分添加，更新原始栈的数量
-                stack.setCount(stack.getCount());
-                return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功
-            }
-        }
-
-        // 其他情况使用原版逻辑
-        UiHelper.updateTooltip(stack);
-        return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);
-    }
-
-    /**
-     * 为玩家打开指定维度的垃圾箱UI
-     */
-    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber) {
-        TrashBox trashBox = TrashBoxManager.getOrCreateTrashBox(dimensionId, boxNumber);
-        if (trashBox == null) return false;
-
-        // 直接使用匿名MenuProvider
-        player.openMenu(new MenuProvider() {
-            @Override
-            public @Nonnull Component getDisplayName() {
-                return Component.literal(dimensionId.getPath() + "-" + boxNumber);
-            }
-
-            @Override
-            public AbstractContainerMenu createMenu(int containerId, @Nonnull Inventory playerInventory, @Nonnull Player player) {
-                return new TrashBoxMenu(containerId, playerInventory, trashBox);
-            }
-        });
-
-        return true;
-    }
-
-    /**
-     * 提供给ClickHandler调用父类方法的接口
-     */
-    public void superClicked(int slotId, int button, ClickType clickType, Player player) {
-        super.clicked(slotId, button, clickType, player);
-    }
-
-    private void refreshTrashBoxTooltips() {
-        for (int i = 0; i < trashSlots; i++) {
-            ItemStack stack = trashBox.getItem(i);
-            UiHelper.updateTooltip(stack);
-        }
-    }
-
-    // === Getters ===
-
-    public TrashBox getTrashBox() {
-        return trashBox;
-    }
-
-    public int getTrashSlots() {
-        return trashSlots;
-    }
-}
+package com.klnon.recyclingservice.content.trashbox;import com.klnon.recyclingservice.Config;import com.klnon.recyclingservice.content.trashbox.data.TrashBox;import com.klnon.recyclingservice.content.trashbox.service.TrashBoxClickHandler;import com.klnon.recyclingservice.foundation.utility.UiHelper;import net.minecraft.world.MenuProvider;import net.minecraft.world.entity.player.Inventory;import net.minecraft.world.entity.player.Player;import net.minecraft.world.inventory.*;import net.minecraft.world.item.ItemStack;import net.minecraft.network.chat.Component;import net.minecraft.resources.ResourceLocation;import net.minecraft.server.level.ServerPlayer;import javax.annotation.Nonnull;import org.jetbrains.annotations.NotNull;/** * 垃圾箱菜单 - 负责UI显示和基础逻辑 * 点击处理逻辑已拆分到TrashBoxClickHandler */public class TrashBoxMenu extends ChestMenu {    private static final int QUICK_CRAFT_END = 2;    private final TrashBox trashBox;    private final int trashSlots;    private final TrashBoxClickHandler clickHandler;    public TrashBoxMenu(int containerId, Inventory playerInventory, TrashBox trashBox) {        super(UiHelper.getMenuTypeForRows(), containerId, playerInventory, trashBox, Config.GAMEPLAY.trashBoxRows.get());        this.trashBox = trashBox;        this.trashSlots = Config.GAMEPLAY.trashBoxRows.get() * 9;        this.clickHandler = new TrashBoxClickHandler(trashBox, this);        refreshTrashBoxTooltips();    }    @Override    public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {        // 检查维度是否允许放入（支持跨维度访问控制）        if (slotId >= 0 && !clickHandler.isAllowedToPutIn(player)) {            if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots)                return;            if ((!getCarried().isEmpty() || (clickType == ClickType.SWAP && slotId > trashSlots))                    && slotId < trashSlots)                return;        }        if (clickType == ClickType.QUICK_CRAFT) {            super.clicked(slotId, button, clickType, player);            if ((button & 3) == QUICK_CRAFT_END) {                refreshTrashBoxTooltips();            }            return;        }        // 处理垃圾箱槽位的点击 - 委托给ClickHandler        if (slotId >= 0 && slotId < trashSlots) {            clickHandler.handleTrashBoxSlotClick(slotId, button, clickType, player);            return;        }        super.clicked(slotId, button, clickType, player);        if (clickType == ClickType.QUICK_MOVE && slotId >= trashSlots) {            refreshTrashBoxTooltips();        }    }    @Override    public @NotNull ItemStack quickMoveStack(@Nonnull Player player, int index) {        Slot slot = this.slots.get(index);        if (!slot.mayPickup(player)) return ItemStack.EMPTY;        ItemStack slotItem = slot.getItem();        if (index < trashSlots) {            // 从垃圾箱到玩家背包：最多64个            int moveCount = Math.min(slotItem.getCount(), slotItem.getMaxStackSize());            ItemStack moveItem = slotItem.copyWithCount(moveCount);            if (moveItemStackTo(moveItem, trashSlots, slots.size(), true)) {                clickHandler.updateSlotAfterMove(slot, moveCount);                refreshTrashBoxTooltips();                return ItemStack.EMPTY;            }        } else {            // 从玩家背包到垃圾箱            if (!slotItem.isEmpty()) {                ItemStack originalStack = slotItem.copy();                // 尝试移动到垃圾箱槽位                if (moveItemStackTo(slotItem, 0, trashSlots, false)) {                    // 移动成功后更新槽位                    if (slotItem.isEmpty()) {                        slot.setByPlayer(ItemStack.EMPTY);                    } else {                        slot.setChanged();                    }                    refreshTrashBoxTooltips();                    return originalStack;                }            }        }        return ItemStack.EMPTY;    }    @Override    protected boolean moveItemStackTo(@Nonnull ItemStack stack, int startIndex, int endIndex,                                      boolean reverseDirection) {        // 移动到垃圾箱的特殊处理        if (startIndex == 0 && endIndex <= trashSlots) {            if (stack.isEmpty()) return false;            trashBox.addItem(stack, -1);            // 检查是否完全添加            if (stack.isEmpty()) {                stack.setCount(0);                return true;            } else {                // 部分添加，更新原始栈的数量                stack.setCount(stack.getCount());                return stack.getCount() < stack.getMaxStackSize(); // 返回是否有部分添加成功            }        }        // 其他情况使用原版逻辑        UiHelper.updateTooltip(stack);        return super.moveItemStackTo(stack, startIndex, endIndex, reverseDirection);    }    /**     * 为玩家打开指定维度的垃圾箱UI     */    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber) {        TrashBox trashBox = TrashBoxManager.getOrCreateTrashBox(dimensionId, boxNumber);        if (trashBox == null) return false;        // 直接使用匿名MenuProvider        player.openMenu(new MenuProvider() {            @Override            public @Nonnull Component getDisplayName() {                return Component.literal(dimensionId.getPath() + "-" + boxNumber);            }            @Override            public AbstractContainerMenu createMenu(int containerId, @Nonnull Inventory playerInventory, @Nonnull Player player) {                return new TrashBoxMenu(containerId, playerInventory, trashBox);            }        });        return true;    }    /**     * 转发调用父类的点击处理     * 用于ClickHandler复用原版点击逻辑     * @param slotId 目标槽位索引     * @param button 鼠标按键     * @param clickType 点击类型     * @param player 操作玩家     */    public void superClicked(int slotId, int button, ClickType clickType, Player player) {        super.clicked(slotId, button, clickType, player);    }    private void refreshTrashBoxTooltips() {        for (int i = 0; i < trashSlots; i++) {            ItemStack stack = trashBox.getItem(i);            UiHelper.updateTooltip(stack);        }    }    // === Getters ===    /**     * 获取当前菜单绑定的垃圾箱     * @return TrashBox 实例     */    public TrashBox getTrashBox() {        return trashBox;    }    /**     * 获取垃圾箱槽位总数     * @return 槽位数量     */    public int getTrashSlots() {        return trashSlots;    }}

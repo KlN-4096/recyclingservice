@@ -1,14 +1,14 @@
 package com.klnon.recyclingservice.content.cleanup;
 
-import com.klnon.recyclingservice.content.cleanup.function.EntityFilter;
 import com.klnon.recyclingservice.content.cleanup.function.EntityCompare;
+import com.klnon.recyclingservice.content.cleanup.function.EntityFilter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.*;
+import java.util.UUID;
 
 /**
  * 清理管理器 - 接口层
@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class CleanupManager {
 
-    public static final EntityCache.EntityType ITEM= EntityCache.EntityType.ITEM;
+    public static final EntityCache.EntityType ITEM = EntityCache.EntityType.ITEM;
     public static final EntityCache.EntityType PROJECTILE = EntityCache.EntityType.PROJECTILE;
 
     // === 核心清理功能 ===
@@ -56,14 +56,14 @@ public class CleanupManager {
     /**
      * 上报实体到清理缓存
      */
-    public static void addEntity(EntityCache.EntityType type,ResourceLocation dimension, UUID uuid) {
+    public static void addEntity(EntityCache.EntityType type, ResourceLocation dimension, UUID uuid) {
         EntityCache.addEntity(type, dimension, uuid);
     }
 
     /**
      * 从清理缓存中移除实体
      */
-    public static void removeEntity(EntityCache.EntityType type,ResourceLocation dimension, UUID uuid) {
+    public static void removeEntity(EntityCache.EntityType type, ResourceLocation dimension, UUID uuid) {
         EntityCache.removeEntity(type, dimension, uuid);
     }
 
@@ -72,7 +72,7 @@ public class CleanupManager {
      */
     public static boolean isEntityReported(ResourceLocation dimension, UUID uuid) {
         return EntityCache.isEntityReported(PROJECTILE, dimension, uuid)
-                ||EntityCache.isEntityReported(ITEM, dimension, uuid);
+                || EntityCache.isEntityReported(ITEM, dimension, uuid);
     }
 
     // === 统计信息查询 ===
@@ -87,7 +87,7 @@ public class CleanupManager {
     /**
      * 获取指定维度的实体数量
      */
-    public static int getEntityCount(EntityCache.EntityType type,ResourceLocation dimension) {
+    public static int getEntityCount(EntityCache.EntityType type, ResourceLocation dimension) {
         return EntityCache.getEntityCount(type, dimension);
     }
 
@@ -109,6 +109,7 @@ public class CleanupManager {
 
     /**
      * 检查两个物品是否为同一种物品（用于UI操作中的物品比较）
+     *
      * @param stack1 第一个物品
      * @param stack2 第二个物品
      * @return 是否为同一种物品

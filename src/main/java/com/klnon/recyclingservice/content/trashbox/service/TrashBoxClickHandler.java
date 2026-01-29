@@ -3,8 +3,8 @@ package com.klnon.recyclingservice.content.trashbox.service;
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
-import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
+import com.klnon.recyclingservice.foundation.utility.UiHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
@@ -19,10 +19,20 @@ import java.util.List;
 public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
 
 
-
     /**
-     * 处理垃圾箱槽位的点击事件
+     * 处理垃圾箱槽位点击事件
+     * 逻辑流程：
+     * 1) 预估本次取出数量与来源，计算预期邮费
+     * 2) 若需要邮费且玩家不足，直接提示并终止
+     * 3) 执行具体点击操作（左/右键、双击、Shift、丢弃）
+     * 4) 操作完成后刷新提示与实际取出数量
+     * 5) 仅在实际取出成功时扣费
+     * @param slotId 槽位索引
+     * @param button 鼠标按键
+     * @param clickType 点击类型
+     * @param player 操作玩家
      */
+
     public void handleTrashBoxSlotClick(int slotId, int button, ClickType clickType, Player player) {
         Slot slot = menu.slots.get(slotId);
         ItemStack carried = menu.getCarried();
@@ -31,9 +41,12 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         int beforeTotalSame = -1;
         int expectedExtractCount = 0;
         int expectedBaseFlag = 0;
+        //根据不同的操作类型来获取会取出的数量
         TrashPaymentHandler.ExtractInfo extractInfo = TrashPaymentHandler.getExtractInfo(
                 menu.getTrashSlots(), trashBox, slotId, button, clickType, player, menu.slots, carried);
         int expectedCost = 0;
+
+        //先计算取出物品数量以及基础邮费值
         if (clickType == ClickType.PICKUP_ALL && !slotItem.isEmpty()) {
             beforeTotalSame = getSameItemTotal(slotItem);
             expectedExtractCount = getPickupAllExpectedCount(slotItem, carried, beforeTotalSame);
@@ -42,6 +55,8 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
             expectedExtractCount = extractInfo.count();
             expectedBaseFlag = extractInfo.baseFlag();
         }
+
+        //如果取出的物品数量大于0,则开始计算邮费
         if (expectedExtractCount > 0) {
             ResourceLocation trashDim = trashBox.getData().getDimensionId();
             expectedCost = TrashPaymentHandler.previewExtractCost(player, trashDim,
@@ -51,9 +66,9 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
                 return;
             }
         }
-        ItemStack result;
 
         // 直接处理各种点击类型的逻辑
+        ItemStack result;
         if (clickType == ClickType.PICKUP) {
             result = handlePickupClick(slot, slotItem, carried, button == 0);
             menu.setCarried(result);
@@ -84,6 +99,8 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
             actualExtractCount = beforeTotalSame - getSameItemTotal(beforeItem);
             actualBaseFlag = trashBox.getBaseFlag(beforeItem);
         }
+
+        //成功取出后扣除邮费
         if (expectedCost > 0 && didExtract(beforeItem, updatedSlotItem)) {
             TrashPaymentHandler.finalizeExtractPayment(player, trashBox.getData().getDimensionId(),
                     actualExtractCount, actualBaseFlag);
@@ -214,7 +231,10 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
     }
 
     /**
-     * 在物品交换完毕后更新垃圾箱内物品数量
+     * 物品移动后更新槽位数量与索引
+     *
+     * @param slot      槽位
+     * @param moveCount 移动数量
      */
     public void updateSlotAfterMove(Slot slot, int moveCount) {
         ItemStack slotItem = slot.getItem();
@@ -224,14 +244,18 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         if (slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
             trashBox.getData().updateIndex(slot.index, beforeItem, ItemStack.EMPTY);
-        } else{
+        } else {
             slotItem.shrink(moveCount);
             trashBox.getData().updateIndex(slot.index, beforeItem, slotItem);
         }
     }
 
     /**
-     * 检查当前维度是否允许玩家主动放入物品到垃圾箱
+     * 判断玩家是否允许向当前垃圾箱放入物品
+     * 受跨维度访问配置影响
+     *
+     * @param player 操作玩家
+     * @return 是否允许放入
      */
     public boolean isAllowedToPutIn(Player player) {
         return Config.isDimensionAllowPutIn(trashBox.getData().getDimensionId().toString(),

@@ -1,171 +1,1 @@
-package com.klnon.recyclingservice.content.trashbox.data;
-
-import com.klnon.recyclingservice.foundation.utility.UiHelper;
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.resources.ResourceLocation;
-
-import javax.annotation.Nonnull;
-
-/**
- * 垃圾箱实体类 - 实现Container接口，直接作为容器使用
- * 专注于临时存储清理的掉落物
- */
-public class TrashBox implements Container {
-
-    private final TrashData data;
-
-    public TrashBox(int capacity, int boxNumber, ResourceLocation dimensionId) {
-        this.data = new TrashData(capacity, boxNumber, dimensionId);
-    }
-
-    /**
-     * 获取数据层引用
-     */
-    public TrashData getData() {
-        return data;
-    }
-
-    /**
-     * 添加物品到垃圾箱
-     */
-    public boolean addItem(ItemStack item, int slot) {
-        return addItem(item, slot, TrashData.ItemOrigin.PLAYER);
-    }
-
-    public boolean addItem(ItemStack item, int slot, TrashData.ItemOrigin origin) {
-        boolean isNewType = unknownItemType(item);
-        ItemStack originItem = isNewType ? item.copy() : ItemStack.EMPTY;
-        // 先尝试合并到相同物品槽位
-        if (slot == -1 && data.tryMergeToExisting(item)) {
-            return true; // 完全合并成功
-        }
-
-        // 合并失败或部分合并，尝试放入空槽位
-        boolean added = data.tryAddToEmptySlot(item, slot);
-        if (added && isNewType) {
-            data.setOriginIfAbsent(originItem, origin);
-        }
-        return added;
-    }
-
-    public int getBaseFlag(ItemStack item) {
-        return data.getBaseFlag(item);
-    }
-
-    private boolean unknownItemType(ItemStack item) {
-        return !data.hasItemType(item);
-    }
-    // === Container接口实现 ===
-
-    /**
-     * 获取指定位置的物品（不移除）
-     */
-    @Override
-    public @Nonnull ItemStack getItem(int slot) {
-        return (slot >= 0 && slot < data.getCapacity()) ? data.items.get(slot) : ItemStack.EMPTY;
-    }
-
-    /**
-     * 移除指定数量的物品
-     */
-    @Override
-    public @Nonnull ItemStack removeItem(int slot, int amount) {
-        if (slot < 0 || slot >= data.getCapacity() || data.items.get(slot).isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-
-        ItemStack stackInSlot = data.items.get(slot);
-        ItemStack beforeItem = stackInSlot.copy();
-        ItemStack result = (amount >= stackInSlot.getCount()) ?
-                stackInSlot : stackInSlot.split(amount);
-
-        if (amount >= stackInSlot.getCount()) {
-            data.items.set(slot, ItemStack.EMPTY);
-            data.updateIndex(slot, beforeItem, ItemStack.EMPTY);
-        }
-
-        setChanged();
-        return result;
-    }
-
-    /**
-     * 移除整个物品堆（不触发setChanged）
-     */
-    @Override
-    public @Nonnull ItemStack removeItemNoUpdate(int slot) {
-        if (slot < 0 || slot >= data.getCapacity() || data.items.get(slot).isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack stackInSlot = data.items.get(slot);
-        ItemStack beforeItem = stackInSlot.copy();
-        data.items.set(slot, ItemStack.EMPTY);
-        data.updateIndex(slot, beforeItem, ItemStack.EMPTY);
-        return stackInSlot;
-    }
-
-    /**
-     * 设置指定位置的物品
-     */
-    @Override
-    public void setItem(int slot, @Nonnull ItemStack stack) {
-        if (slot < 0 || slot >= data.getCapacity()) return;
-
-        ItemStack oldItem = data.items.get(slot);
-        ItemStack newItem = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
-
-        if (!newItem.isEmpty()) {
-            UiHelper.updateTooltip(newItem);
-        }
-
-        data.items.set(slot, newItem);
-        data.updateIndex(slot, oldItem, newItem);
-        if (!newItem.isEmpty()) {
-            data.setOriginIfAbsent(newItem, TrashData.ItemOrigin.PLAYER);
-        }
-        setChanged();
-    }
-
-    /**
-     * 清空垃圾箱 - Container接口方法
-     */
-    @Override
-    public void clearContent() {
-        data.items.clear();
-        data.initializeIndex();
-        setChanged();
-    }
-
-    /**
-     * 获取容器大小
-     */
-    @Override
-    public int getContainerSize() {
-        return data.getCapacity();
-    }
-
-    /**
-     * 检查容器是否为空
-     */
-    @Override
-    public boolean isEmpty() {
-        return data.items.stream().allMatch(ItemStack::isEmpty);
-    }
-
-    /**
-     * 标记容器已变更
-     */
-    @Override
-    public void setChanged() {
-        // 垃圾箱是临时容器，不需要持久化
-    }
-
-    /**
-     * 检查玩家是否可以访问容器 - Container接口方法
-     */
-    @Override
-    public boolean stillValid(@Nonnull Player player) {
-        return true; // 垃圾箱对所有玩家开放
-    }
-}
+package com.klnon.recyclingservice.content.trashbox.data;import com.klnon.recyclingservice.foundation.utility.UiHelper;import net.minecraft.resources.ResourceLocation;import net.minecraft.world.Container;import net.minecraft.world.entity.player.Player;import net.minecraft.world.item.ItemStack;import javax.annotation.Nonnull;/** * 垃圾箱实体类 - 实现Container接口，直接作为容器使用 * 专注于临时存储清理的掉落物 */public class TrashBox implements Container {    private final TrashData data;    public TrashBox(int capacity, int boxNumber, ResourceLocation dimensionId) {        this.data = new TrashData(capacity, boxNumber, dimensionId);    }    /**     * 获取垃圾箱底层数据对象     *     * @return TrashData 实例     */    public TrashData getData() {        return data;    }    /**     * 向垃圾箱添加物品（默认玩家来源）     *     * @param item 物品堆     * @param slot 指定槽位，-1 表示自动放入     * @return 是否成功添加     */    public boolean addItem(ItemStack item, int slot) {        return addItem(item, slot, TrashData.ItemOrigin.PLAYER);    }    /**     * 向垃圾箱添加物品（可指定来源）     *     * @param item   物品堆     * @param slot   指定槽位，-1 表示自动放入     * @param origin 物品来源类型     * @return 是否成功添加     */    public boolean addItem(ItemStack item, int slot, TrashData.ItemOrigin origin) {        boolean isNewType = !data.hasItemType(item);        ItemStack originItem = isNewType ? item.copy() : ItemStack.EMPTY;        // 先尝试合并到相同物品槽位        if (slot == -1 && data.tryMergeToExisting(item)) {            return true; // 完全合并成功        }        // 合并失败或部分合并，尝试放入空槽位        boolean added = data.tryAddToEmptySlot(item, slot);        if (added && isNewType) {            data.setOriginIfAbsent(originItem, origin);        }        return added;    }    /**     * 获取邮费基数标记     * 1 表示玩家来源，0 表示自动清理来源     *     * @param item 物品堆     * @return base 标记值     */    public int getBaseFlag(ItemStack item) {        return data.getBaseFlag(item);    }    // === Container接口实现 ===    /**     * 获取指定位置的物品（不移除）     */    @Override    public @Nonnull ItemStack getItem(int slot) {        return (slot >= 0 && slot < data.getCapacity()) ? data.items.get(slot) : ItemStack.EMPTY;    }    /**     * 移除指定数量的物品     */    @Override    public @Nonnull ItemStack removeItem(int slot, int amount) {        if (slot < 0 || slot >= data.getCapacity() || data.items.get(slot).isEmpty()) {            return ItemStack.EMPTY;        }        ItemStack stackInSlot = data.items.get(slot);        ItemStack beforeItem = stackInSlot.copy();        ItemStack result = (amount >= stackInSlot.getCount()) ?                stackInSlot : stackInSlot.split(amount);        if (amount >= stackInSlot.getCount()) {            data.items.set(slot, ItemStack.EMPTY);            data.updateIndex(slot, beforeItem, ItemStack.EMPTY);        }        setChanged();        return result;    }    /**     * 移除整个物品堆（不触发setChanged）     */    @Override    public @Nonnull ItemStack removeItemNoUpdate(int slot) {        if (slot < 0 || slot >= data.getCapacity() || data.items.get(slot).isEmpty()) {            return ItemStack.EMPTY;        }        ItemStack stackInSlot = data.items.get(slot);        ItemStack beforeItem = stackInSlot.copy();        data.items.set(slot, ItemStack.EMPTY);        data.updateIndex(slot, beforeItem, ItemStack.EMPTY);        return stackInSlot;    }    /**     * 设置指定位置的物品     */    @Override    public void setItem(int slot, @Nonnull ItemStack stack) {        if (slot < 0 || slot >= data.getCapacity()) return;        ItemStack oldItem = data.items.get(slot);        ItemStack newItem = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();        if (!newItem.isEmpty()) {            UiHelper.updateTooltip(newItem);        }        data.items.set(slot, newItem);        data.updateIndex(slot, oldItem, newItem);        if (!newItem.isEmpty()) {            data.setOriginIfAbsent(newItem, TrashData.ItemOrigin.PLAYER);        }        setChanged();    }    /**     * 清空垃圾箱 - Container接口方法     */    @Override    public void clearContent() {        data.items.clear();        data.initializeIndex();        setChanged();    }    /**     * 获取容器大小     */    @Override    public int getContainerSize() {        return data.getCapacity();    }    /**     * 检查容器是否为空     */    @Override    public boolean isEmpty() {        return data.items.stream().allMatch(ItemStack::isEmpty);    }    /**     * 标记容器已变更     */    @Override    public void setChanged() {        // 垃圾箱是临时容器，不需要持久化    }    /**     * 检查玩家是否可以访问容器 - Container接口方法     */    @Override    public boolean stillValid(@Nonnull Player player) {        return true; // 垃圾箱对所有玩家开放    }}

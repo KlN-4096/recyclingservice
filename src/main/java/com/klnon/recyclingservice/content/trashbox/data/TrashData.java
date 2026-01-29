@@ -1,187 +1,1 @@
-package com.klnon.recyclingservice.content.trashbox.data;
-
-import com.klnon.recyclingservice.content.cleanup.CleanupManager;
-import com.klnon.recyclingservice.foundation.utility.UiHelper;
-import com.klnon.recyclingservice.Config;
-import net.minecraft.core.NonNullList;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
-
-import java.util.*;
-
-/**
- * 垃圾箱数据类 - 负责数据存储和索引管理
- */
-public class TrashData {
-
-    public final NonNullList<ItemStack> items;
-    private final int capacity;
-    private final int boxNumber;
-    private final ResourceLocation dimensionId;
-
-    // 统一索引：物品类型->槽位列表，EMPTY表示空位置
-    private final Map<String, Deque<Integer>> itemTypeSlots = new HashMap<>();
-    private static final String EMPTY_KEY = "EMPTY";
-    private final Map<String, ItemOrigin> itemOrigins = new HashMap<>();
-
-    public enum ItemOrigin {
-        PLAYER,
-        AUTOCLEAN
-    }
-
-    public TrashData(int capacity, int boxNumber, ResourceLocation dimensionId) {
-        this.capacity = capacity;
-        this.boxNumber = boxNumber;
-        this.dimensionId = dimensionId;
-        this.items = NonNullList.withSize(capacity, ItemStack.EMPTY);
-        initializeIndex();
-    }
-
-    /**
-     * 初始化索引 - 全部设置为空位置
-     */
-    public void initializeIndex() {
-        itemTypeSlots.clear();
-        itemOrigins.clear();
-        Deque<Integer> emptySlots = new ArrayDeque<>();
-        for (int i = capacity - 1; i >= 0; i--) {  // 从大到小,从前往后填充
-            emptySlots.add(i);
-        }
-        itemTypeSlots.put(EMPTY_KEY, emptySlots);
-    }
-
-    /**
-     * 统一更新索引：先移除旧的，再添加新的
-     */
-    public void updateIndex(int slot, ItemStack oldItem, ItemStack newItem) {
-        // 移除旧索引
-        String oldKey = oldItem.isEmpty() ? EMPTY_KEY : CleanupManager.generateItemHash(oldItem);
-        Deque<Integer> oldSlots = itemTypeSlots.get(oldKey);
-        if (oldSlots != null) {
-            oldSlots.remove(slot);
-            if (oldSlots.isEmpty()) {
-                itemTypeSlots.remove(oldKey);
-                if (!EMPTY_KEY.equals(oldKey)) {
-                    itemOrigins.remove(oldKey);
-                }
-            }
-        }
-
-        // 添加新索引
-        String newKey = newItem.isEmpty() ? EMPTY_KEY : CleanupManager.generateItemHash(newItem);
-        itemTypeSlots.computeIfAbsent(newKey, k -> new ArrayDeque<>()).addLast(slot);
-    }
-
-    public boolean hasItemType(ItemStack item) {
-        if (item.isEmpty()) {
-            return false;
-        }
-        String key = getItemKey(item);
-        return itemTypeSlots.containsKey(key);
-    }
-
-    public int getBaseFlag(ItemStack item) {
-        if (item.isEmpty()) {
-            return 0;
-        }
-        String key = getItemKey(item);
-        ItemOrigin origin = itemOrigins.get(key);
-        if (origin == null) {
-            return 0;
-        }
-        return origin == ItemOrigin.PLAYER ? 1 : 0;
-    }
-
-    public void setOriginIfAbsent(ItemStack item, ItemOrigin origin) {
-        if (item.isEmpty()) {
-            return;
-        }
-        String key = getItemKey(item);
-        if (EMPTY_KEY.equals(key)) {
-            return;
-        }
-        itemOrigins.putIfAbsent(key, origin);
-    }
-
-    private String getItemKey(ItemStack item) {
-        ItemStack copy = item.copy();
-        return CleanupManager.generateItemHash(copy);
-    }
-
-    /**
-     * 尝试添加到相同物品槽位
-     */
-    public boolean tryMergeToExisting(ItemStack item) {
-        String itemKey = CleanupManager.generateItemHash(item);
-        Deque<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);
-        if (sameTypeSlots == null) return false;
-
-        List<Integer> orderedSlots = new ArrayList<>(sameTypeSlots);
-        orderedSlots.sort(Comparator.naturalOrder());
-        for (Integer slot : orderedSlots) {
-            ItemStack slotItem = items.get(slot);
-            int configLimit = Config.getItemStackMultiplier(slotItem);
-            int canAdd = configLimit - slotItem.getCount();
-            if (canAdd <= 0) continue;
-
-            int addAmount = Math.min(canAdd, item.getCount());
-            slotItem.grow(addAmount);
-            UiHelper.updateTooltip(slotItem);
-            item.shrink(addAmount);
-        }
-        return item.isEmpty();
-    }
-
-    /**
-     * 尝试添加到空槽位
-     */
-    public boolean tryAddToEmptySlot(ItemStack item, int slot) {
-        if (slot != -1) {
-            ItemStack oldItem = items.get(slot);
-            if (!oldItem.isEmpty()) {
-                return false;
-            }
-            items.set(slot, item.copy());
-            updateIndex(slot, oldItem, item);
-            return true;
-        }
-        Deque<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
-        if (emptySlots == null || emptySlots.isEmpty()) return false;
-
-        while (!emptySlots.isEmpty()) {
-            Integer emptySlot = emptySlots.removeLast();
-            if (!items.get(emptySlot).isEmpty()) {
-                continue;
-            }
-            items.set(emptySlot, item.copy());
-            updateIndex(emptySlot, ItemStack.EMPTY, item);
-            item.shrink(item.getCount());
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 获取相同物品的槽位列表
-     */
-    public List<Integer> getSameItemSlots(ItemStack item) {
-        if (item.isEmpty()) return Collections.emptyList();
-        String key = CleanupManager.generateItemHash(item);
-        Deque<Integer> deque = itemTypeSlots.getOrDefault(key, new ArrayDeque<>());
-        return new ArrayList<>(deque);
-    }
-
-    // === Getters ===
-
-    public int getCapacity() {
-        return capacity;
-    }
-
-    public int getBoxNumber() {
-        return boxNumber;
-    }
-
-    public ResourceLocation getDimensionId() {
-        return dimensionId;
-    }
-}
+package com.klnon.recyclingservice.content.trashbox.data;import com.klnon.recyclingservice.Config;import com.klnon.recyclingservice.content.cleanup.CleanupManager;import com.klnon.recyclingservice.foundation.utility.UiHelper;import net.minecraft.core.NonNullList;import net.minecraft.resources.ResourceLocation;import net.minecraft.world.item.ItemStack;import java.util.*;/** * 垃圾箱数据类 - 负责数据存储和索引管理 */public class TrashData {    private static final String EMPTY_KEY = "EMPTY";    public final NonNullList<ItemStack> items;    private final int capacity;    private final int boxNumber;    private final ResourceLocation dimensionId;    // 统一索引：物品类型->槽位列表，EMPTY表示空位置    private final Map<String, Deque<Integer>> itemTypeSlots = new HashMap<>();    private final Map<String, ItemOrigin> itemOrigins = new HashMap<>();    public TrashData(int capacity, int boxNumber, ResourceLocation dimensionId) {        this.capacity = capacity;        this.boxNumber = boxNumber;        this.dimensionId = dimensionId;        this.items = NonNullList.withSize(capacity, ItemStack.EMPTY);        initializeIndex();    }    /**     * 初始化物品索引     * 将所有槽位标记为可用空位     */    public void initializeIndex() {        itemTypeSlots.clear();        itemOrigins.clear();        Deque<Integer> emptySlots = new ArrayDeque<>();        for (int i = capacity - 1; i >= 0; i--) {  // 从大到小,从前往后填充            emptySlots.add(i);        }        itemTypeSlots.put(EMPTY_KEY, emptySlots);    }    /**     * 更新索引映射     * 先移除旧物品槽位，再登记新物品槽位     *     * @param slot    槽位索引     * @param oldItem 旧物品     * @param newItem 新物品     */    public void updateIndex(int slot, ItemStack oldItem, ItemStack newItem) {        // 移除旧索引        String oldKey = oldItem.isEmpty() ? EMPTY_KEY : CleanupManager.generateItemHash(oldItem);        Deque<Integer> oldSlots = itemTypeSlots.get(oldKey);        if (oldSlots != null) {            oldSlots.remove(slot);            if (oldSlots.isEmpty()) {                itemTypeSlots.remove(oldKey);                if (!EMPTY_KEY.equals(oldKey)) {                    itemOrigins.remove(oldKey);                }            }        }        // 添加新索引        String newKey = newItem.isEmpty() ? EMPTY_KEY : CleanupManager.generateItemHash(newItem);        itemTypeSlots.computeIfAbsent(newKey, k -> new ArrayDeque<>()).addLast(slot);    }    /**     * 判断是否存在相同物品类型,如果包含了该物品生成的key则已存在     *     * @param item 物品堆     * @return 是否已存在该类型     */    public boolean hasItemType(ItemStack item) {        if (item.isEmpty()) {            return false;        }        String key = getItemKey(item);        return itemTypeSlots.containsKey(key);    }    /**     * 获取物品来源标记     *     * @param item 物品堆     * @return 1 为玩家来源，0 为自动清理来源     */    public int getBaseFlag(ItemStack item) {        if (item.isEmpty()) {            return 0;        }        String key = getItemKey(item);        ItemOrigin origin = itemOrigins.get(key);        if (origin == null) {            return 0;        }        return origin == ItemOrigin.PLAYER ? 1 : 0;    }    /**     * 设置物品来源标记（仅在首次出现时写入）     *     * @param item   物品堆     * @param origin 来源类型     */    public void setOriginIfAbsent(ItemStack item, ItemOrigin origin) {        if (item.isEmpty()) {            return;        }        String key = getItemKey(item);        if (EMPTY_KEY.equals(key)) {            return;        }        itemOrigins.putIfAbsent(key, origin);    }    /**     * 返回物品对应的key,可以用于检测垃圾箱中是否存在该物品     *     * @param item 物品堆     * @return 根据物品堆生成的hashcode     */    private String getItemKey(ItemStack item) {        ItemStack copy = item.copy();        return CleanupManager.generateItemHash(copy);    }    /**     * 将物品合并到已有的同类槽位     *     * @param item 待合并物品堆（会被扣减）     * @return 是否全部合并完成     */    public boolean tryMergeToExisting(ItemStack item) {        String itemKey = CleanupManager.generateItemHash(item);        Deque<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);        if (sameTypeSlots == null) return false;        List<Integer> orderedSlots = new ArrayList<>(sameTypeSlots);        orderedSlots.sort(Comparator.naturalOrder());        for (Integer slot : orderedSlots) {            ItemStack slotItem = items.get(slot);            int configLimit = Config.getItemStackMultiplier(slotItem);            int canAdd = configLimit - slotItem.getCount();            if (canAdd <= 0) continue;            int addAmount = Math.min(canAdd, item.getCount());            slotItem.grow(addAmount);            UiHelper.updateTooltip(slotItem);            item.shrink(addAmount);        }        return item.isEmpty();    }    /**     * 尝试放入空槽位     *     * @param item 待放入物品堆（会被扣减）     * @param slot 指定槽位，-1 表示自动选择空槽     * @return 是否成功放入     */    public boolean tryAddToEmptySlot(ItemStack item, int slot) {        if (slot != -1) {            ItemStack oldItem = items.get(slot);            if (!oldItem.isEmpty()) {                return false;            }            items.set(slot, item.copy());            updateIndex(slot, oldItem, item);            return true;        }        //如果箱子完全没空槽位,直接返回        Deque<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);        if (emptySlots == null || emptySlots.isEmpty()) return false;        while (!emptySlots.isEmpty()) {            Integer emptySlot = emptySlots.removeLast();            if (!items.get(emptySlot).isEmpty()) {                continue;            }            items.set(emptySlot, item.copy());            updateIndex(emptySlot, ItemStack.EMPTY, item);            item.shrink(item.getCount());            return true;        }        return false;    }    /**     * 获取同类物品所在的槽位列表     *     * @param item 物品堆     * @return 槽位索引列表     */    public List<Integer> getSameItemSlots(ItemStack item) {        if (item.isEmpty()) return Collections.emptyList();        String key = CleanupManager.generateItemHash(item);        Deque<Integer> deque = itemTypeSlots.getOrDefault(key, new ArrayDeque<>());        return new ArrayList<>(deque);    }    /**     * 获取垃圾箱容量     *     * @return 槽位总数     */    public int getCapacity() {        return capacity;    }    // === Getters ===    /**     * 获取垃圾箱编号     *     * @return 编号     */    public int getBoxNumber() {        return boxNumber;    }    /**     * 获取垃圾箱所属维度     *     * @return 维度资源标识     */    public ResourceLocation getDimensionId() {        return dimensionId;    }    public enum ItemOrigin {        PLAYER,        AUTOCLEAN    }}
