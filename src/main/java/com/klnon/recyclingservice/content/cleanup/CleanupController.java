@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
+import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.service.TrashPaymentHandler;
 import net.minecraft.server.MinecraftServer;
 
@@ -47,6 +48,7 @@ public class CleanupController {
         boolean cacheEmpty = CleanupManager.getTotalReportedCount() == 0;
         
         if (timeOut || cacheEmpty) {
+            CleanupManager.clearAll();
             deleteSignalActive = false;
             return false;
         }

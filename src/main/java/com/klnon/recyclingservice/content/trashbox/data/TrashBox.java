@@ -38,7 +38,7 @@ public class TrashBox implements Container {
         boolean isNewType = unknownItemType(item);
         ItemStack originItem = isNewType ? item.copy() : ItemStack.EMPTY;
         // 先尝试合并到相同物品槽位
-        if (data.tryMergeToExisting(item) && slot == -1) {
+        if (slot == -1 && data.tryMergeToExisting(item)) {
             return true; // 完全合并成功
         }
 
@@ -77,11 +77,13 @@ public class TrashBox implements Container {
         }
 
         ItemStack stackInSlot = data.items.get(slot);
+        ItemStack beforeItem = stackInSlot.copy();
         ItemStack result = (amount >= stackInSlot.getCount()) ?
                 stackInSlot : stackInSlot.split(amount);
 
         if (amount >= stackInSlot.getCount()) {
             data.items.set(slot, ItemStack.EMPTY);
+            data.updateIndex(slot, beforeItem, ItemStack.EMPTY);
         }
 
         setChanged();
@@ -97,7 +99,9 @@ public class TrashBox implements Container {
             return ItemStack.EMPTY;
         }
         ItemStack stackInSlot = data.items.get(slot);
+        ItemStack beforeItem = stackInSlot.copy();
         data.items.set(slot, ItemStack.EMPTY);
+        data.updateIndex(slot, beforeItem, ItemStack.EMPTY);
         return stackInSlot;
     }
 

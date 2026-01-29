@@ -28,13 +28,24 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         ItemStack carried = menu.getCarried();
         ItemStack slotItem = slot.getItem();
         ItemStack beforeItem = slotItem.copy();
+        int beforeTotalSame = -1;
+        int expectedExtractCount = 0;
+        int expectedBaseFlag = 0;
         TrashPaymentHandler.ExtractInfo extractInfo = TrashPaymentHandler.getExtractInfo(
                 menu.getTrashSlots(), trashBox, slotId, button, clickType, player, menu.slots, carried);
         int expectedCost = 0;
-        if (extractInfo != null && extractInfo.count() > 0) {
+        if (clickType == ClickType.PICKUP_ALL && !slotItem.isEmpty()) {
+            beforeTotalSame = getSameItemTotal(slotItem);
+            expectedExtractCount = getPickupAllExpectedCount(slotItem, carried, beforeTotalSame);
+            expectedBaseFlag = trashBox.getBaseFlag(slotItem);
+        } else if (extractInfo != null && extractInfo.count() > 0) {
+            expectedExtractCount = extractInfo.count();
+            expectedBaseFlag = extractInfo.baseFlag();
+        }
+        if (expectedExtractCount > 0) {
             ResourceLocation trashDim = trashBox.getData().getDimensionId();
             expectedCost = TrashPaymentHandler.previewExtractCost(player, trashDim,
-                    extractInfo.count(), extractInfo.baseFlag());
+                    expectedExtractCount, expectedBaseFlag);
             if (expectedCost > 0 && !TrashPaymentHandler.hasEnoughPaymentItems(player, expectedCost)) {
                 TrashPaymentHandler.sendPaymentErrorMessage(player, expectedCost);
                 return;
@@ -43,7 +54,7 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         ItemStack result;
 
         // 直接处理各种点击类型的逻辑
-        if (clickType == ClickType.PICKUP && slotItem.getCount() >= slotItem.getMaxStackSize()) {
+        if (clickType == ClickType.PICKUP) {
             result = handlePickupClick(slot, slotItem, carried, button == 0);
             menu.setCarried(result);
         } else if (clickType == ClickType.SWAP && slotItem.getCount() > slotItem.getMaxStackSize()) {
@@ -67,9 +78,15 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         UiHelper.updateTooltip(updatedSlotItem);
         UiHelper.updateTooltip(result);
 
+        int actualExtractCount = expectedExtractCount;
+        int actualBaseFlag = expectedBaseFlag;
+        if (clickType == ClickType.PICKUP_ALL && beforeTotalSame >= 0) {
+            actualExtractCount = beforeTotalSame - getSameItemTotal(beforeItem);
+            actualBaseFlag = trashBox.getBaseFlag(beforeItem);
+        }
         if (expectedCost > 0 && didExtract(beforeItem, updatedSlotItem)) {
             TrashPaymentHandler.finalizeExtractPayment(player, trashBox.getData().getDimensionId(),
-                    extractInfo.count(), extractInfo.baseFlag());
+                    actualExtractCount, actualBaseFlag);
         }
     }
 
@@ -95,17 +112,22 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
             if (slotItem.isEmpty()) {
                 // 空槽位：左键放全部，右键放一个
                 ItemStack toAdd = isLeftClick ? carried : carried.copyWithCount(1);
+                int moveCount = toAdd.getCount();
                 if (trashBox.addItem(toAdd, slot.index)) {
-                    carried.shrink(toAdd.getCount());
+                    carried.shrink(moveCount);
                     return carried.isEmpty() ? ItemStack.EMPTY : carried;
                 }
             } else if (CleanupManager.isSameItem(carried, slotItem)) {
                 // 相同物品：尝试合并
-                ItemStack mergeItem = isLeftClick ? carried : carried.copyWithCount(1);
-                if (trashBox.addItem(mergeItem, -1)) {
-                    carried.shrink(isLeftClick ? carried.getCount() - mergeItem.getCount() : 1);
-                    return carried.isEmpty() ? ItemStack.EMPTY : carried;
+                int stackLimit = Config.getItemStackMultiplier(slotItem);
+                int canAdd = stackLimit - slotItem.getCount();
+                if (canAdd <= 0) {
+                    return carried;
                 }
+                int moveCount = isLeftClick ? Math.min(canAdd, carried.getCount()) : 1;
+                slotItem.grow(moveCount);
+                carried.shrink(moveCount);
+                return carried.isEmpty() ? ItemStack.EMPTY : carried;
             } else {
                 // 不同物品：交换
                 if (slotItem.getCount() <= slotItem.getMaxStackSize()) {
@@ -185,7 +207,7 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
      */
     private ItemStack handleThrowClick(Slot slot, int button, Player player) {
         ItemStack result = slot.getItem();
-        int throwCount = button == 0 ? 1 : result.getCount();
+        int throwCount = button == 0 ? 1 : Math.min(result.getCount(), result.getMaxStackSize());
         result = slot.safeTake(throwCount, Integer.MAX_VALUE, player);
         player.drop(result, true);
         return result;
@@ -198,10 +220,13 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
         ItemStack slotItem = slot.getItem();
         //这里检查一下是否是原版的最大数量上限,比如药水,护甲等
         moveCount = Math.min(moveCount, slotItem.getMaxStackSize());
+        ItemStack beforeItem = slotItem.copy();
         if (slotItem.getCount() <= moveCount) {
             slot.set(ItemStack.EMPTY);
+            trashBox.getData().updateIndex(slot.index, beforeItem, ItemStack.EMPTY);
         } else{
             slotItem.shrink(moveCount);
+            trashBox.getData().updateIndex(slot.index, beforeItem, slotItem);
         }
     }
 
@@ -224,5 +249,22 @@ public record TrashBoxClickHandler(TrashBox trashBox, TrashBoxMenu menu) {
             return true;
         }
         return afterItem.getCount() < beforeItem.getCount();
+    }
+
+    private int getSameItemTotal(ItemStack item) {
+        int total = 0;
+        for (Integer slotIndex : trashBox.getData().getSameItemSlots(item)) {
+            total += trashBox.getItem(slotIndex).getCount();
+        }
+        return total;
+    }
+
+    private int getPickupAllExpectedCount(ItemStack clickedItem, ItemStack carried, int totalBefore) {
+        int currentCount = carried.isEmpty() ? 0 : carried.getCount();
+        int maxAdd = clickedItem.getMaxStackSize() - currentCount;
+        if (maxAdd <= 0) {
+            return 0;
+        }
+        return Math.min(totalBefore, maxAdd);
     }
 }

@@ -116,7 +116,9 @@ public class TrashData {
         Deque<Integer> sameTypeSlots = itemTypeSlots.get(itemKey);
         if (sameTypeSlots == null) return false;
 
-        for (Integer slot : sameTypeSlots) {
+        List<Integer> orderedSlots = new ArrayList<>(sameTypeSlots);
+        orderedSlots.sort(Comparator.naturalOrder());
+        for (Integer slot : orderedSlots) {
             ItemStack slotItem = items.get(slot);
             int configLimit = Config.getItemStackMultiplier(slotItem);
             int canAdd = configLimit - slotItem.getCount();
@@ -136,6 +138,9 @@ public class TrashData {
     public boolean tryAddToEmptySlot(ItemStack item, int slot) {
         if (slot != -1) {
             ItemStack oldItem = items.get(slot);
+            if (!oldItem.isEmpty()) {
+                return false;
+            }
             items.set(slot, item.copy());
             updateIndex(slot, oldItem, item);
             return true;
@@ -143,11 +148,17 @@ public class TrashData {
         Deque<Integer> emptySlots = itemTypeSlots.get(EMPTY_KEY);
         if (emptySlots == null || emptySlots.isEmpty()) return false;
 
-        Integer emptySlot = emptySlots.removeLast();
-        items.set(emptySlot, item.copy());
-        updateIndex(emptySlot, ItemStack.EMPTY, item);
-        item.shrink(item.getCount());
-        return true;
+        while (!emptySlots.isEmpty()) {
+            Integer emptySlot = emptySlots.removeLast();
+            if (!items.get(emptySlot).isEmpty()) {
+                continue;
+            }
+            items.set(emptySlot, item.copy());
+            updateIndex(emptySlot, ItemStack.EMPTY, item);
+            item.shrink(item.getCount());
+            return true;
+        }
+        return false;
     }
 
     /**
