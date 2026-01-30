@@ -14,6 +14,8 @@ public class GameplayConfig {
     public final ModConfigSpec.IntValue autoCleanTime;
     public final ModConfigSpec.BooleanValue showCleanupWarnings;
     public final ModConfigSpec.IntValue warningCountdownStart;
+    public final ModConfigSpec.IntValue entityCheckInterval;
+    public final ModConfigSpec.IntValue minAgeForCleanup;
 
     // ==================== Trash Box ====================
     public final ModConfigSpec.IntValue trashBoxRows;
@@ -57,6 +59,14 @@ public class GameplayConfig {
         warningCountdownStart = builder
                 .comment("Start countdown warnings at remaining seconds")
                 .defineInRange("countdown_start", 15, 0, 300);
+
+        entityCheckInterval = builder
+                .comment("Entity report check interval in seconds (affects performance)")
+                .defineInRange("entity_check_interval", 20, 5, 60);
+
+        minAgeForCleanup = builder
+                .comment("Minimum entity age in seconds before considering cleanup")
+                .defineInRange("min_age_for_cleanup", 10, 2, 300);
 
         builder.pop();
 

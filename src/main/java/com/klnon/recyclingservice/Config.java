@@ -52,6 +52,27 @@ public class Config {
     }
 
     /**
+     * 获取实体检查间隔（tick）
+     */
+    public static int getEntityCheckIntervalTicks() {
+        return GAMEPLAY.entityCheckInterval.get() * 20;
+    }
+
+    /**
+     * 获取实体最小存活时间（tick）
+     */
+    public static int getMinAgeForCleanupTicks() {
+        return GAMEPLAY.minAgeForCleanup.get() * 20;
+    }
+
+    /**
+     * 获取缓存过期时间（毫秒）
+     * 检查间隔 × 1.5，给予容错空间
+     */
+    public static long getCacheExpireMillis() {
+        return (long) (GAMEPLAY.entityCheckInterval.get() * 1.5 * 1000L);
+    }
+    /**
      * 检查是否为白名单模式
      */
     public static boolean isWhitelistMode() {

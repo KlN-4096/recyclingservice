@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.mixin;
 
+import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import net.minecraft.resources.ResourceLocation;
@@ -21,15 +22,9 @@ import java.util.UUID;
 @Mixin(ItemEntity.class)
 public class ItemEntityReportMixin {
 
-    /** 正常检查间隔（20秒） */
-    @Unique
-    private static final int NORMAL_CHECK_INTERVAL = 20 * 20;
     /** 清理期间检查间隔（1秒） */
     @Unique
     private static final int CLEANUP_CHECK_INTERVAL = 20;
-    /** 物品最小存活时间才考虑清理（10秒） */
-    @Unique
-    private static final int MIN_AGE_FOR_CLEANUP = 10 * 20;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void recyclingservice$checkAndReport(CallbackInfo ci) {
@@ -75,7 +70,7 @@ public class ItemEntityReportMixin {
     private boolean recyclingservice$shouldCheckThisTick(ItemEntity self) {
         int interval = CleanupManager.isDeleteSignalActive()
                 ? CLEANUP_CHECK_INTERVAL
-                : NORMAL_CHECK_INTERVAL;
+                : Config.getEntityCheckIntervalTicks();
         // 使用实体ID分散检查时机
         return self.tickCount % interval == (self.getId() % 20);
     }
@@ -86,7 +81,7 @@ public class ItemEntityReportMixin {
     @Unique
     private boolean recyclingservice$shouldReport(ItemEntity self) {
         // 存活时间不足则跳过
-        if (self.getAge() < MIN_AGE_FOR_CLEANUP) {
+        if (self.getAge() < Config.getMinAgeForCleanupTicks()) {
             return false;
         }
         // 通过清理过滤器检查

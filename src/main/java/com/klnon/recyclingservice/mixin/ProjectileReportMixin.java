@@ -1,5 +1,6 @@
 package com.klnon.recyclingservice.mixin;
 
+import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -24,15 +25,9 @@ import java.util.UUID;
 })
 public class ProjectileReportMixin {
 
-    /** 正常检查间隔（10秒） */
-    @Unique
-    private static final int NORMAL_CHECK_INTERVAL = 20 * 10;
     /** 清理期间检查间隔（1秒） */
     @Unique
     private static final int CLEANUP_CHECK_INTERVAL = 20;
-    /** 弹射物最小存活时间才考虑清理（10秒） */
-    @Unique
-    private static final int MIN_AGE_FOR_CLEANUP = 10 * 20;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void recyclingservice$checkAndReport(CallbackInfo ci) {
@@ -77,7 +72,7 @@ public class ProjectileReportMixin {
     private boolean recyclingservice$shouldCheckThisTick(Entity self) {
         int interval = CleanupManager.isDeleteSignalActive()
                 ? CLEANUP_CHECK_INTERVAL
-                : NORMAL_CHECK_INTERVAL;
+                : Config.getEntityCheckIntervalTicks();
         // 使用实体ID分散检查时机
         return self.tickCount % interval == (self.getId() % 20);
     }
@@ -87,7 +82,7 @@ public class ProjectileReportMixin {
      */
     @Unique
     private boolean recyclingservice$shouldReport(Entity self) {
-        if (self.tickCount < MIN_AGE_FOR_CLEANUP) {
+        if (self.tickCount < Config.getMinAgeForCleanupTicks()) {
             return false;
         }
         return CleanupManager.shouldCleanProjectile(self);

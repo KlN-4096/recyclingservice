@@ -97,14 +97,14 @@ public class EntityCache {
     }
 
     // ==================== 缓存清理 ====================
-
     /**
      * 清理过期的缓存记录
-     * 区块卸载的实体不会刷新时间戳，超过清理周期后移除
+     * 如果实体在2个检查周期内没有刷新时间戳，认为它已失效
      */
     public static void pruneExpiredCache() {
         long now = System.currentTimeMillis();
-        long expireMillis = Config.GAMEPLAY.autoCleanTime.get() * 1000L;
+        // 过期阈值
+        long expireMillis = Config.getCacheExpireMillis();
 
         for (EntityType type : EntityType.values()) {
             Map<ResourceLocation, Map<UUID, Long>> typeCache = entityCache.get(type);
@@ -112,12 +112,10 @@ public class EntityCache {
             for (Map.Entry<ResourceLocation, Map<UUID, Long>> dimEntry : typeCache.entrySet()) {
                 Map<UUID, Long> dimensionCache = dimEntry.getValue();
 
-                // 移除过期记录
                 dimensionCache.entrySet().removeIf(entry ->
                         now - entry.getValue() > expireMillis
                 );
 
-                // 清理空维度
                 if (dimensionCache.isEmpty()) {
                     typeCache.remove(dimEntry.getKey());
                 }
