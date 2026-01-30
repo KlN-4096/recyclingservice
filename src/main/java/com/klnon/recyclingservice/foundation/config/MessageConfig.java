@@ -56,12 +56,12 @@ public class MessageConfig {
                 .define("postage_cost_format", "cost: {cost} {item}");
 
         trashBoxButtonText = builder
-                .comment("Text for trash box button in chat")
-                .define("button_text", "[Open Trash Box]");
+                .comment("Text for trash box button. Variables: {name}, {box}")
+                .define("button_text", "[#Box{box}]");
 
         trashBoxButtonHover = builder
-                .comment("Hover text for trash box button. Variables: {name}")
-                .define("button_hover", "Click to open trash box #1 in {name}");
+                .comment("Hover text for trash box button. Variables: {name}, {box}")
+                .define("button_hover", "Click to open trash box #{box} in {name}");
 
         builder.pop();
 

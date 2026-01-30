@@ -2,7 +2,9 @@ package com.klnon.recyclingservice.content.trashbox;
 
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBoxMap;
+import com.klnon.recyclingservice.content.trashbox.service.TrashPaymentHandler;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -48,5 +50,25 @@ public class TrashBoxManager {
      */
     public static void clearAll() {
         TrashBoxMap.clearAllItems();
+    }
+
+    public static void resetExtractHistory() {
+        TrashPaymentHandler.resetExtractHistory();
+    }
+
+    /**
+     * 为玩家打开指定维度的垃圾箱UI
+     */
+    public static boolean openTrashBox(ServerPlayer player, ResourceLocation dimensionId, int boxNumber) {
+        return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber);
+    }
+
+    /**
+     * 获取垃圾箱编号
+     *
+     * @return 编号
+     */
+    public static int getBoxNumber(TrashBox trashBox) {
+        return trashBox.getData().getBoxNumber();
     }
 }

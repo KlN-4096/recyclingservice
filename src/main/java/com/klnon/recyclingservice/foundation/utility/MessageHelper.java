@@ -2,6 +2,8 @@ package com.klnon.recyclingservice.foundation.utility;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
+import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
+import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.*;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
@@ -11,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -74,6 +77,10 @@ public class MessageHelper {
 
     /**
      * 构建单个维度的清理条目（带可点击按钮）
+     *
+     * @param dimensionId     维度ID
+     * @param itemCount       清理的物品数量
+     * @param projectileCount 清理的弹射物数量
      */
     private static Component buildDimensionEntry(ResourceLocation dimensionId, int itemCount, int projectileCount) {
         String dimensionName = dimensionId.getPath();
@@ -85,22 +92,43 @@ public class MessageHelper {
                 "entities", String.valueOf(projectileCount)
         ));
 
-        // 可点击按钮
-        String buttonText = formatTemplate(Config.MESSAGE.trashBoxButtonText.get(),
-                Map.of("name", dimensionName));
-        String hoverText = formatTemplate(Config.MESSAGE.trashBoxButtonHover.get(),
-                Map.of("name", dimensionName));
+        MutableComponent result = Component.literal(baseText);
 
-        MutableComponent button = Component.literal(buttonText)
+        // 为每个非空垃圾箱生成按钮
+        List<TrashBox> boxes = TrashBoxManager.getDimensionTrashBoxes(dimensionId);
+        for (TrashBox box : boxes) {
+            if (!box.isEmpty()) {
+                result.append(Component.literal(" "));
+                result.append(buildTrashBoxButton(dimensionId, dimensionName, TrashBoxManager.getBoxNumber(box)));
+            }
+        }
+
+        // 如果没有非空垃圾箱，显示默认的#1按钮
+        if (boxes.stream().allMatch(TrashBox::isEmpty)) {
+            result.append(Component.literal(" "));
+            result.append(buildTrashBoxButton(dimensionId, dimensionName, 1));
+        }
+
+        return result;
+    }
+
+    /**
+     * 构建垃圾箱快捷按钮
+     */
+    private static Component buildTrashBoxButton(ResourceLocation dimensionId, String dimensionName, int boxNumber) {
+        String buttonText = formatTemplate(Config.MESSAGE.trashBoxButtonText.get(),
+                Map.of("name", dimensionName, "box", String.valueOf(boxNumber)));
+        String hoverText = formatTemplate(Config.MESSAGE.trashBoxButtonHover.get(),
+                Map.of("name", dimensionName, "box", String.valueOf(boxNumber)));
+
+        return Component.literal(buttonText)
                 .withStyle(Style.EMPTY
                         .withColor(ChatFormatting.GREEN)
                         .withUnderlined(true)
                         .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                "/bin open " + dimensionId + " 1"))
+                                "/bin open " + dimensionId + " " + boxNumber))
                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 Component.literal(hoverText).withStyle(ChatFormatting.YELLOW))));
-
-        return Component.literal(baseText).append(button);
     }
 
     // ==================== 消息发送 ====================

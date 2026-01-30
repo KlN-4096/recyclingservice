@@ -2,7 +2,6 @@ package com.klnon.recyclingservice.foundation.command;
 
 import com.klnon.recyclingservice.Config;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
-import com.klnon.recyclingservice.content.trashbox.TrashBoxMenu;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import com.klnon.recyclingservice.foundation.events.AutoCleanupEvent;
 import com.mojang.brigadier.CommandDispatcher;
@@ -103,7 +102,7 @@ public class BinCommand {
         try {
             ResourceLocation dimensionId = ResourceLocationArgument.getId(context, "dimension");
             int boxNumber = IntegerArgumentType.getInteger(context, "box_number");
-            return TrashBoxMenu.openTrashBox(player, dimensionId, boxNumber) ? 1 : 0;
+            return TrashBoxManager.openTrashBox(player, dimensionId, boxNumber) ? 1 : 0;
         } catch (Exception e) {
             sendError(context.getSource(), "Failed to open trash box: " + e.getMessage());
             return 0;
