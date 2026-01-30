@@ -75,6 +75,13 @@ public class CleanupManager {
                 || EntityCache.isEntityReported(ITEM, dimension, uuid);
     }
 
+    public static void pruneExpiredCache(){
+        EntityCache.pruneExpiredCache();
+    }
+
+    public static void refreshEntity(EntityCache.EntityType type, ResourceLocation dimension, UUID uuid){
+        EntityCache.refreshEntity(type,dimension,uuid);
+    }
     // === 统计信息查询 ===
 
     /**

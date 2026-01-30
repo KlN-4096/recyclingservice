@@ -28,8 +28,8 @@ public class EntityFilter {
         
         String itemId = BuiltInRegistries.ITEM.getKey(entity.getItem().getItem()).toString();
         return Config.isWhitelistMode() 
-            ? !Config.whitelistCache.contains(itemId)  // 白名单模式：不在保留列表中的都清理
-            : Config.blacklistCache.contains(itemId);  // 黑名单模式：只清理黑名单中的
+            ? !Config.getWhitelist().contains(itemId)  // 白名单模式：不在保留列表中的都清理
+            : Config.getBlacklist().contains(itemId);  // 黑名单模式：只清理黑名单中的
     }
 
     /**
@@ -39,7 +39,7 @@ public class EntityFilter {
      */
     public static boolean shouldCleanProjectile(Entity entity) {
         return Config.GAMEPLAY.cleanProjectiles.get() && 
-               Config.projectileTypesCache.contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+               Config.getProjectileTypes().contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
 
     /**

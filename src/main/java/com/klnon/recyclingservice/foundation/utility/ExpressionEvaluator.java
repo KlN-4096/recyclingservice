@@ -1,19 +1,31 @@
 package com.klnon.recyclingservice.foundation.utility;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 数学表达式求值器
+ * <p>
+ * 支持：
+ * - 运算符：+ - * / % ^
+ * - 函数：min, max, floor, ceil, abs, round, step
+ * - 变量替换
+ * - 表达式编译缓存
+ */
 public final class ExpressionEvaluator {
+
     private static final Map<String, CompiledExpression> CACHE = new ConcurrentHashMap<>();
 
     private ExpressionEvaluator() {
     }
 
+    /**
+     * 计算表达式
+     *
+     * @param expression 表达式字符串，如 "base + count * 0.1"
+     * @param variables  变量映射，如 {"base": 10.0, "count": 5.0}
+     * @return 计算结果
+     */
     public static double evaluate(String expression, Map<String, Double> variables) {
         if (expression == null || expression.isBlank()) {
             return 0D;
@@ -22,22 +34,28 @@ public final class ExpressionEvaluator {
         return compiled.evaluate(variables);
     }
 
+    /**
+     * 编译表达式为逆波兰表示法（RPN）
+     * 使用调度场算法（Shunting Yard）
+     */
     private static CompiledExpression compile(String expression) {
         List<Token> output = new ArrayList<>();
         Deque<Token> operators = new ArrayDeque<>();
         Deque<Integer> argCountStack = new ArrayDeque<>();
         TokenType previous = null;
         boolean functionPending = false;
-
         int index = 0;
         String source = expression.trim();
+
         while (index < source.length()) {
             char ch = source.charAt(index);
+
             if (Character.isWhitespace(ch)) {
                 index++;
                 continue;
             }
 
+            // 数字
             if (isNumberStart(ch, index, source)) {
                 int start = index;
                 index++;
@@ -50,6 +68,7 @@ public final class ExpressionEvaluator {
                 continue;
             }
 
+            // 标识符（变量或函数）
             if (isIdentifierStart(ch)) {
                 int start = index;
                 index++;
@@ -69,6 +88,7 @@ public final class ExpressionEvaluator {
                 continue;
             }
 
+            // 左括号
             if (ch == '(') {
                 operators.push(Token.leftParen());
                 if (functionPending) {
@@ -82,6 +102,7 @@ public final class ExpressionEvaluator {
                 continue;
             }
 
+            // 右括号
             if (ch == ')') {
                 while (!operators.isEmpty() && operators.peek().type != TokenType.LEFT_PAREN) {
                     output.add(operators.pop());
@@ -106,6 +127,7 @@ public final class ExpressionEvaluator {
                 continue;
             }
 
+            // 逗号（函数参数分隔）
             if (ch == ',') {
                 while (!operators.isEmpty() && operators.peek().type != TokenType.LEFT_PAREN) {
                     output.add(operators.pop());
@@ -119,8 +141,10 @@ public final class ExpressionEvaluator {
                 continue;
             }
 
+            // 运算符
             if (isOperator(ch)) {
                 String symbol = String.valueOf(ch);
+                // 处理一元负号
                 if (ch == '-' && (previous == null || previous == TokenType.OPERATOR
                         || previous == TokenType.LEFT_PAREN || previous == TokenType.COMMA)) {
                     symbol = "NEG";
@@ -144,6 +168,7 @@ public final class ExpressionEvaluator {
             throw new IllegalArgumentException("Unexpected character '" + ch + "' in expression: " + expression);
         }
 
+        // 弹出剩余运算符
         while (!operators.isEmpty()) {
             Token token = operators.pop();
             if (token.type == TokenType.LEFT_PAREN || token.type == TokenType.RIGHT_PAREN) {
@@ -154,6 +179,8 @@ public final class ExpressionEvaluator {
 
         return new CompiledExpression(output);
     }
+
+    // ==================== 字符判断工具方法 ====================
 
     private static boolean isNumberStart(char ch, int index, String source) {
         if (Character.isDigit(ch)) {
@@ -186,16 +213,22 @@ public final class ExpressionEvaluator {
         return pos;
     }
 
-    private enum TokenType {
-        NUMBER,
-        VARIABLE,
-        OPERATOR,
-        FUNCTION,
-        LEFT_PAREN,
-        RIGHT_PAREN,
-        COMMA
+    private static String normalize(String text) {
+        return text == null ? "" : text.toLowerCase(Locale.ROOT);
     }
 
+    // ==================== 内部类 ====================
+
+    /**
+     * Token 类型
+     */
+    private enum TokenType {
+        NUMBER, VARIABLE, OPERATOR, FUNCTION, LEFT_PAREN, RIGHT_PAREN, COMMA
+    }
+
+    /**
+     * 词法单元
+     */
     private static final class Token {
         private final TokenType type;
         private final String text;
@@ -243,6 +276,9 @@ public final class ExpressionEvaluator {
         }
     }
 
+    /**
+     * 运算符属性
+     */
     private record Operator(int precedence, boolean leftAssociative, int arity) {
         static Operator fromSymbol(String symbol) {
             return switch (symbol) {
@@ -255,6 +291,9 @@ public final class ExpressionEvaluator {
         }
     }
 
+    /**
+     * 编译后的表达式（逆波兰表示法）
+     */
     private static final class CompiledExpression {
         private final List<Token> rpn;
 
@@ -262,6 +301,9 @@ public final class ExpressionEvaluator {
             this.rpn = rpn;
         }
 
+        /**
+         * 使用变量值计算表达式结果
+         */
         double evaluate(Map<String, Double> variables) {
             Deque<Double> stack = new ArrayDeque<>();
             for (Token token : rpn) {
@@ -361,9 +403,5 @@ public final class ExpressionEvaluator {
             }
             return stack.pop();
         }
-    }
-
-    private static String normalize(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT);
     }
 }

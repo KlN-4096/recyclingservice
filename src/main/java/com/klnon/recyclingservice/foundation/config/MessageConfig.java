@@ -1,6 +1,7 @@
 package com.klnon.recyclingservice.foundation.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
+
 import java.util.List;
 
 /**
@@ -8,79 +9,115 @@ import java.util.List;
  */
 public class MessageConfig {
 
+    // ==================== General ====================
+    public final ModConfigSpec.ConfigValue<String> messagePrefix;
+
+    // ==================== UI Display ====================
     public final ModConfigSpec.ConfigValue<String> itemCountDisplayFormat;
     public final ModConfigSpec.ConfigValue<String> postageCostDisplayFormat;
+    public final ModConfigSpec.ConfigValue<String> trashBoxButtonText;
+    public final ModConfigSpec.ConfigValue<String> trashBoxButtonHover;
+
+    // ==================== Cleanup Messages ====================
+    public final ModConfigSpec.ConfigValue<String> warningMessage;
+    public final ModConfigSpec.ConfigValue<String> manualCleanupStart;
     public final ModConfigSpec.ConfigValue<String> cleanupResultHeader;
     public final ModConfigSpec.ConfigValue<String> dimensionEntryFormat;
     public final ModConfigSpec.ConfigValue<String> errorCleanupFailed;
-    public final ModConfigSpec.ConfigValue<String> manualCleanupStart;
-    public final ModConfigSpec.ConfigValue<String> paymentErrorMessage;
+
+    // ==================== Payment Messages ====================
     public final ModConfigSpec.ConfigValue<String> paymentSuccessMessage;
-    public final ModConfigSpec.ConfigValue<String> messagePrefix;
-    public final ModConfigSpec.ConfigValue<String> warningMessage;
+    public final ModConfigSpec.ConfigValue<String> paymentErrorMessage;
+
+    // ==================== Command Help ====================
     public final ModConfigSpec.ConfigValue<List<? extends String>> cmdHelpMessages;
-    public final ModConfigSpec.ConfigValue<String> trashBoxButtonText;
-    public final ModConfigSpec.ConfigValue<String> trashBoxButtonHover;
 
     public MessageConfig(ModConfigSpec.Builder builder) {
         builder.comment("Message Templates").push("messages");
 
-        itemCountDisplayFormat = builder
-                .comment("Format for item count display. {current} = current count, {max} = maximum stack size")
-                .define("item_count_display_format", "§7Available: §a{current} / §b{max}");
-        postageCostDisplayFormat = builder
-                .comment("Format for postage cost display. {cost} = cost, {item} = payment item name")
-                .define("postage_cost_display_format", "cost: {cost} {item}");
+        // ==================== General ====================
+        builder.comment("General settings").push("general");
 
-        cleanupResultHeader = builder
-                .comment("Header text for detailed cleanup results")
-                .define("cleanup_result_header", "> §a§lCleanup results:");
-        
-        dimensionEntryFormat = builder
-                .comment("Format for each dimension entry in cleanup message. {name} {items} {entities}")
-                .define("dimension_entry_format", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
-        
-        errorCleanupFailed = builder
-                .comment("Message shown when cleanup fails")
-                .define("error_cleanup_failed", "§cCleanup failed");
-        
-        manualCleanupStart = builder
-                .comment("Message shown when manual cleanup starts")
-                .define("manual_cleanup_start", "§6[Manual Cleanup] Starting cleanup...");
-        
-        paymentErrorMessage = builder
-                .comment("Message shown when player doesn't have enough payment items. {cost} = required amount, {item} = item name")
-                .define("payment_error_message", "§cNeed {cost} {item} as postage!");
-        
-        paymentSuccessMessage = builder
-                .comment("Message shown when payment is successfully deducted. {cost} = deducted amount, {item} = item name")
-                .define("payment_success_message", "§aDeducted {cost} {item} as postage");
         messagePrefix = builder
-                .comment("Prefix for payment messages")
-                .define("message_prefix", "[RecyclingService] ");
+                .comment("Prefix for all mod messages")
+                .define("prefix", "[RecyclingService] ");
 
-        warningMessage = builder
-                .comment("Warning message template (use {time} for remaining seconds)")
-                .define("warning_message", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
+        builder.pop();
 
-        cmdHelpMessages = builder
-                .comment("Command help messages")
-                .defineListAllowEmpty("cmd_help_messages",
-                    List.of(
-                        "§6=== Trash Box Command Help ===",
-                        "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
-                        "§e/bin cleanup §7- Manually trigger cleanup"
-                    ),
-                    () -> "",
-                    obj -> obj instanceof String);
+        // ==================== UI Display ====================
+        builder.comment("UI display formats").push("ui");
+
+        itemCountDisplayFormat = builder
+                .comment("Format for item count tooltip. Variables: {current}, {max}")
+                .define("item_count_format", "§7Available: §a{current} / §b{max}");
+
+        postageCostDisplayFormat = builder
+                .comment("Format for postage cost tooltip. Variables: {cost}, {item}")
+                .define("postage_cost_format", "cost: {cost} {item}");
 
         trashBoxButtonText = builder
-                .comment("Text for trash box button. {name} = dimension name")
-                .define("trash_box_button_text", "[Open Trash Box]");
+                .comment("Text for trash box button in chat")
+                .define("button_text", "[Open Trash Box]");
 
         trashBoxButtonHover = builder
-                .comment("Hover text for trash box button. {name} = dimension name")
-                .define("trash_box_button_hover", "Click to open trash box #1 in {name}");
+                .comment("Hover text for trash box button. Variables: {name}")
+                .define("button_hover", "Click to open trash box #1 in {name}");
+
+        builder.pop();
+
+        // ==================== Cleanup Messages ====================
+        builder.comment("Cleanup related messages").push("cleanup");
+
+        warningMessage = builder
+                .comment("Warning before cleanup. Variables: {time}")
+                .define("warning", "§e[Auto Clean] Items will be cleaned up in {time} seconds!");
+
+        manualCleanupStart = builder
+                .comment("Message when manual cleanup starts")
+                .define("manual_start", "§6[Manual Cleanup] Starting cleanup...");
+
+        cleanupResultHeader = builder
+                .comment("Header for cleanup results")
+                .define("result_header", "> §a§lCleanup results:");
+
+        dimensionEntryFormat = builder
+                .comment("Format for each dimension in results. Variables: {name}, {items}, {entities}")
+                .define("dimension_entry", "§f{name}: §b{items} §fitems, §d{entities} §fentities");
+
+        errorCleanupFailed = builder
+                .comment("Message when cleanup fails")
+                .define("error_failed", "§cCleanup failed");
+
+        builder.pop();
+
+        // ==================== Payment Messages ====================
+        builder.comment("Payment related messages").push("payment");
+
+        paymentSuccessMessage = builder
+                .comment("Message when payment succeeds. Variables: {cost}, {item}")
+                .define("success", "§aDeducted {cost} {item} as postage");
+
+        paymentErrorMessage = builder
+                .comment("Message when payment fails (insufficient funds). Variables: {cost}, {item}")
+                .define("error", "§cNeed {cost} {item} as postage!");
+
+        builder.pop();
+
+        // ==================== Command Help ====================
+        builder.comment("Command help messages").push("command");
+
+        cmdHelpMessages = builder
+                .comment("Help messages shown by /bin command")
+                .defineListAllowEmpty("help_messages",
+                        List.of(
+                                "§6=== Trash Box Command Help ===",
+                                "§e/bin open <dimension> <box> §7- Open specific dimension trash box",
+                                "§e/bin cleanup §7- Manually trigger cleanup"
+                        ),
+                        () -> "",
+                        obj -> obj instanceof String);
+
+        builder.pop();
 
         builder.pop();
     }

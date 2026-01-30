@@ -3,40 +3,58 @@ package com.klnon.recyclingservice.content.trashbox.service;
 import com.klnon.recyclingservice.Recyclingservice;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import com.klnon.recyclingservice.foundation.utility.ExpressionEvaluator;
-import com.klnon.recyclingservice.foundation.utility.MessageHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayDeque;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.klnon.recyclingservice.Config;
 
+import static com.klnon.recyclingservice.foundation.utility.MessageHelper.sendPaymentError;
+import static com.klnon.recyclingservice.foundation.utility.MessageHelper.sendPaymentSuccess;
+
+
 /**
- * 垃圾箱支付系统 - 处理垃圾箱相关的支付功能
- * 职责：
- * - 检查和扣除玩家邮费
- * - 发送支付相关消息  
- * - 支付物品验证
+ * 垃圾箱支付系统 - 处理邮费检查、扣除、费用计算
  */
 public class TrashPaymentHandler {
+
+    private static final String MODE_CURRENT_DIM_FREE = "current_dimension_free";
+    private static final String MODE_ALL_DIMS_PAY = "all_dimensions_pay";
 
     private static final Map<UUID, ArrayDeque<Long>> EXTRACT_HISTORY = new ConcurrentHashMap<>();
     private static volatile String lastFormulaError;
 
-    public record ExtractInfo(int count, int baseFlag) {
-    }
+    public record ExtractInfo(int count, int baseFlag) {}
 
     public static void resetExtractHistory() {
         EXTRACT_HISTORY.clear();
+    }
+
+    // ==================== 支付相关 ====================
+    /**
+     * 是否有足够邮费
+     * @param player 玩家
+     * @param requiredCost 需要扣除的数量
+     * @return 能否成功扣除
+     */
+    public static boolean hasEnoughPaymentItems(Player player, int requiredCost) {
+        if (requiredCost <= 0) return true;
+
+        ResourceLocation paymentItem = Config.getPaymentItem();
+        int total = 0;
+        for (ItemStack stack : player.getInventory().items) {
+            if (isPaymentItem(stack, paymentItem)) {
+                total += stack.getCount();
+                if (total >= requiredCost) return true;  // 提前退出
+            }
+        }
+        return false;
     }
 
 
@@ -47,306 +65,128 @@ public class TrashPaymentHandler {
      * @return 是否成功扣除
      */
     public static boolean deductPayment(Player player, int cost) {
-        return processPayment(player, cost) >= 0;
-    }
-
-    public static boolean hasEnoughPaymentItems(Player player, int requiredCost) {
-        if (requiredCost <= 0) {
-            return true;
-        }
-        ResourceLocation paymentItem = Config.getPaymentItem();
-        int totalFound = 0;
-        for (ItemStack stack : player.getInventory().items) {
-            if (isPaymentItem(stack, paymentItem)) {
-                totalFound += stack.getCount();
-            }
-        }
-        return totalFound >= requiredCost;
-    }
-    
-    /**
-     * Process postage payment with a count-first pass.
-     * @param player Player
-     * @param requiredCost Required postage count
-     * @return 0 on success, -1 on failure
-     */
-    private static int processPayment(Player player, int requiredCost) {
-        if (requiredCost <= 0) {
-            return 0;
-        }
+        if (cost <= 0) return true;
 
         ResourceLocation paymentItem = Config.getPaymentItem();
-        int totalFound = 0;
+        List<ItemStack> paymentStacks = new ArrayList<>();
+        int total = 0;
 
-        // First pass: count without mutating.
         for (ItemStack stack : player.getInventory().items) {
             if (isPaymentItem(stack, paymentItem)) {
-                totalFound += stack.getCount();
+                paymentStacks.add(stack);
+                total += stack.getCount();
             }
         }
 
-        if (totalFound < requiredCost) {
-            return -1; // Insufficient payment items.
+        if (total < cost) return false;
+
+        int remaining = cost;
+        for (ItemStack stack : paymentStacks) {
+            if (remaining <= 0) break;
+            int deduct = Math.min(remaining, stack.getCount());
+            stack.shrink(deduct);
+            remaining -= deduct;
         }
-
-        int remaining = requiredCost;
-
-        // Second pass: deduct after validation.
-        for (ItemStack stack : player.getInventory().items) {
-            if (remaining <= 0) {
-                break;
-            }
-            if (isPaymentItem(stack, paymentItem)) {
-                int deduct = Math.min(remaining, stack.getCount());
-                stack.shrink(deduct);
-                remaining -= deduct;
-            }
-        }
-
-        return (remaining == 0 ? 0 : -1);
+        return true;
     }
 
     private static boolean isPaymentItem(ItemStack stack, ResourceLocation paymentItem) {
-        return !stack.isEmpty() && 
-               BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(paymentItem);
-    }
-    
-    /**
-     * 发送邮费不足错误消息
-     * @param player 玩家
-     * @param requiredCost 需要的邮费数量
-     */
-    public static void sendPaymentErrorMessage(Player player, int requiredCost) {
-        String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageHelper.formatTemplate(Config.MESSAGE.paymentErrorMessage.get(), Map.of(
-            "cost", String.valueOf(requiredCost),
-            "item", itemName
-        ));
-        String prefix = Config.MESSAGE.messagePrefix.get();
-        Component message = Component.literal(prefix + formattedMessage)
-                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.RED).withBold(true));
-        player.displayClientMessage(message, false);
-    }
-    
-    /**
-     * 发送邮费扣除成功消息
-     * @param player 玩家
-     * @param deductedCost 扣除的邮费数量
-     */
-    public static void sendPaymentSuccessMessage(Player player, int deductedCost) {
-        String itemName = getPaymentItemDisplayName();
-        String formattedMessage = MessageHelper.formatTemplate(Config.MESSAGE.paymentSuccessMessage.get(), Map.of(
-            "cost", String.valueOf(deductedCost),
-            "item", itemName
-        ));
-        String prefix = Config.MESSAGE.messagePrefix.get();
-        Component message = Component.literal(prefix + formattedMessage)
-                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GREEN).withBold(true));
-        player.displayClientMessage(message, false);
-    }
-    
-    /**
-     * 获取邮费物品的显示名称
-     * @return 邮费物品显示名称
-     */
-    private static String getPaymentItemDisplayName() {
-        ResourceLocation paymentItem = Config.getPaymentItem();
-        // 简化处理：直接使用路径作为显示名
-        return paymentItem.getPath();
+        return !stack.isEmpty() &&
+                BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(paymentItem);
     }
 
-	/**
-     * Calculate extract postage cost preview.
-     * @param player Player
-     * @param trashDim Trash box dimension
-     * @param itemCount Item count for this extraction
-     * @param baseFlag 1 for player-origin items, 0 for auto-cleaned items
-     * @return Cost required
+    // ==================== 费用计算 ====================
+
+    /**
+     * 根据支付模式计算基础提取费用
+     * 支付模式：
+     * - current_dimension_free: 同维度免费，跨维度收费
+     * - all_dimensions_pay: 所有维度都收费
+     *
+     * @param sameDim 是否与垃圾箱同维度
+     * @return 基础费用
      */
-    public static int previewExtractCost(Player player, ResourceLocation trashDim, int itemCount, int baseFlag) {
-        ResourceLocation playerDim = player.level().dimension().location();
-        boolean sameDimension = playerDim.equals(trashDim);
-        int baseCost = calculateBaseExtractCost(playerDim, trashDim);
-        if (baseFlag <= 0 && Config.GAMEPLAY.autoCleanItemsFree.get()) {
-            baseCost = 0;
-        }
-        int recent = getEffectiveRecentCount(player, sameDimension);
-        int costCap = Config.getDimensionCostCap(trashDim.toString());
-        return evaluateExtractCost(baseCost, itemCount, recent, sameDimension,
-                Config.getDimensionMultiplier(trashDim.toString()), costCap);
-    }
+    private static int calculateBaseExtractCost(boolean sameDim) {
+        String mode = Config.GAMEPLAY.extractPaymentMode.get();
+        int crossCost = Config.GAMEPLAY.crossDimensionAccessCost.get();
 
-    private static int calculateBaseExtractCost(ResourceLocation playerDim, ResourceLocation trashDim) {
-        boolean isSameDimension = playerDim.equals(trashDim);
-        String paymentMode = Config.GAMEPLAY.extractPaymentMode.get();
-
-        return switch (paymentMode) {
-            case "current_dimension_free" ->
-                isSameDimension ? 0 : calculateCrossDimensionCost();
-            case "all_dimensions_pay" ->
-                isSameDimension ? Config.GAMEPLAY.crossDimensionAccessCost.get() :
-                                  calculateCrossDimensionCost();
+        return switch (mode) {
+            case MODE_CURRENT_DIM_FREE -> sameDim ? 0 : crossCost;
+            case MODE_ALL_DIMS_PAY -> crossCost;
             default -> 0;
         };
     }
 
+    /**
+     * 预览计算费用（不实际扣除）
+     * 根据维度、物品数量、最近提取次数等因素计算邮费
+     * @param player 玩家
+     * @param trashDim 垃圾箱维度
+     * @param itemCount 取出物品数量
+     * @param baseFlag 物品来源标记（1=玩家放入，0=自动清理）
+     * @return 预计邮费价格
+     */
+    public static int previewExtractCost(Player player, ResourceLocation trashDim, int itemCount, int baseFlag) {
+        ResourceLocation playerDim = player.level().dimension().location();
+        boolean sameDim = playerDim.equals(trashDim);
+
+        int baseCost = calculateBaseExtractCost(sameDim);
+        if (baseFlag <= 0 && Config.GAMEPLAY.autoCleanItemsFree.get()) {
+            baseCost = 0;
+        }
+
+        int recent = getEffectiveRecentCount(player, sameDim);
+        double multiplier = Config.getDimensionMultiplier(trashDim.toString());
+        int costCap = Config.getDimensionCostCap(trashDim.toString());
+
+        return evaluateExtractCost(baseCost, itemCount, recent, sameDim, multiplier, costCap);
+    }
 
     /**
-     * Calculate cross-dimension base cost (dimension multiplier applied after formula).
+     * 使用配置的公式计算最终提取费用
+     * 公式可用变量：
+     * - base: 基础费用
+     * - count: 物品数量
+     * - recent: 最近提取次数
+     * - same_dim: 是否同维度（1或0）
+     * - cross_dim: 是否跨维度（1或0）
+     * - multiplier: 维度费用倍率
+     * 计算后应用费用上限
+     *
+     * @param baseCost   基础费用
+     * @param itemCount  物品数量
+     * @param recent     最近提取次数
+     * @param sameDim    是否同维度
+     * @param multiplier 维度费用倍率
+     * @param costCap    费用上限（0表示无上限）
+     * @return 最终费用（最小为0）
      */
-    public static int calculateCrossDimensionCost() {
-        return Config.GAMEPLAY.crossDimensionAccessCost.get();
-    }
-
-	public static void finalizeExtractPayment(Player player, ResourceLocation trashDim,
-											  int extractCount, int baseFlag) {
-        if (extractCount <= 0) {
-            return;
-        }
-        int cost = previewExtractCost(player, trashDim, extractCount, baseFlag);
-        if (cost <= 0) {
-            if (!Config.GAMEPLAY.autoCleanItemsFree.get()) {
-                boolean sameDimension = player.level().dimension().location().equals(trashDim);
-                recordExtract(player, sameDimension);
-            }
-            return;
-        }
-        boolean sameDimension = player.level().dimension().location().equals(trashDim);
-        if (!deductPayment(player, cost)) {
-            sendPaymentErrorMessage(player, cost);
-            return;
-        }
-        sendPaymentSuccessMessage(player, cost);
-        recordExtract(player, sameDimension);
-	}
-
-	public static ExtractInfo getExtractInfo(int trashSlots, TrashBox trashBox, int slotId, int button,
-                                             ClickType clickType, Player player, List<Slot> slots,
-                                             ItemStack carriedItem) {
-        if (slotId >= 0 && slotId < trashSlots) {
-            ItemStack slotItem = slots.get(slotId).getItem();
-            if (slotItem.isEmpty()) {
-                return null;
-            }
-            ItemStack swapItem = player.getInventory().getItem(button);
-            int maxExtract = getMaxExtractCount(slotItem);
-            int baseFlag = trashBox != null ? trashBox.getBaseFlag(slotItem) : 0;
-
-            if (clickType == ClickType.SWAP) {
-                boolean slotHasItem = !slotItem.isEmpty();
-                boolean swapHasItem = !swapItem.isEmpty();
-                if (!slotHasItem) {
-                    return null;
-                }
-                if (slotItem.getCount() > slotItem.getMaxStackSize() && swapHasItem) {
-                    return null;
-                }
-                return new ExtractInfo(maxExtract, baseFlag);
-            }
-
-            if (clickType == ClickType.PICKUP) {
-                if (!slotItem.isEmpty() && carriedItem.isEmpty()) {
-                    int extractCount = button == 0 ? maxExtract : getRightClickExtractCount(slotItem);
-                    return new ExtractInfo(extractCount, baseFlag);
-                }
-            }
-
-            if (clickType == ClickType.QUICK_MOVE && !slotItem.isEmpty()) {
-                return new ExtractInfo(maxExtract, baseFlag);
-            }
-            if (clickType == ClickType.PICKUP_ALL && !slotItem.isEmpty()) {
-                int extractCount = Math.min(slotItem.getMaxStackSize(), slotItem.getCount());
-                return new ExtractInfo(extractCount, baseFlag);
-            }
-            if (clickType == ClickType.THROW && carriedItem.isEmpty() && !slotItem.isEmpty()) {
-                int extractCount = button == 0 ? 1 : Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
-                return new ExtractInfo(extractCount, baseFlag);
-            }
-        }
-        return null;
-    }
-
-    private static int getEffectiveRecentCount(Player player, boolean sameDimension) {
-        if (sameDimension && Config.GAMEPLAY.extractPenaltyCrossDimensionOnly.get()) {
-            return 0;
-        }
-        long now = System.currentTimeMillis();
-        long windowMillis = Config.GAMEPLAY.autoCleanTime.get() * 1000L;
-        return getRecentExtractCount(player.getUUID(), now, windowMillis);
-    }
-
-    public static void recordExtract(Player player, boolean sameDimension) {
-        if (sameDimension && Config.GAMEPLAY.extractPenaltyCrossDimensionOnly.get()) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        long windowMillis = Config.GAMEPLAY.autoCleanTime.get() * 1000L;
-        addExtract(player.getUUID(), now, windowMillis);
-    }
-
-    private static int getRecentExtractCount(UUID playerId, long now, long windowMillis) {
-        ArrayDeque<Long> history = EXTRACT_HISTORY.get(playerId);
-        if (history == null) {
-            return 0;
-        }
-        int size;
-        synchronized (history) {
-            pruneHistory(history, now, windowMillis);
-            size = history.size();
-        }
-        if (size == 0) {
-            EXTRACT_HISTORY.remove(playerId, history);
-        }
-        return size;
-    }
-
-    private static void addExtract(UUID playerId, long now, long windowMillis) {
-        ArrayDeque<Long> history = EXTRACT_HISTORY.computeIfAbsent(playerId, id -> new ArrayDeque<>());
-        synchronized (history) {
-            pruneHistory(history, now, windowMillis);
-            history.addLast(now);
-        }
-    }
-
-    private static void pruneHistory(ArrayDeque<Long> history, long now, long windowMillis) {
-        long cutoff = now - windowMillis;
-        while (!history.isEmpty() && history.peekFirst() < cutoff) {
-            history.removeFirst();
-        }
-    }
-
-    private static int evaluateExtractCost(int baseCost, int itemCount, int recent, boolean sameDimension,
-                                           double multiplier, int costCap) {
+    private static int evaluateExtractCost(int baseCost, int itemCount, int recent,
+                                           boolean sameDim, double multiplier, int costCap) {
         String formula = Config.GAMEPLAY.extractCostFormula.get();
-        Map<String, Double> variables = Map.of(
+        Map<String, Double> vars = Map.of(
                 "base", (double) baseCost,
                 "count", (double) itemCount,
                 "recent", (double) recent,
-                "same_dim", sameDimension ? 1D : 0D,
-                "cross_dim", sameDimension ? 0D : 1D
+                "same_dim", sameDim ? 1D : 0D,
+                "cross_dim", sameDim ? 0D : 1D,
+                "multiplier", multiplier
         );
+
         double result;
         try {
-            result = ExpressionEvaluator.evaluate(formula, variables);
+            result = ExpressionEvaluator.evaluate(formula, vars);
+            if (Double.isNaN(result) || Double.isInfinite(result)) {
+                logFormulaError(formula, "Invalid result");
+                result = baseCost;
+            }
         } catch (IllegalArgumentException ex) {
             logFormulaError(formula, ex.getMessage());
             result = baseCost;
         }
-        if (Double.isNaN(result) || Double.isInfinite(result)) {
-            logFormulaError(formula, "Formula returned invalid number");
-            result = baseCost;
-        }
-        double adjusted = result * multiplier;
-        if (Double.isNaN(adjusted) || Double.isInfinite(adjusted)) {
-            logFormulaError(formula, "Multiplier returned invalid number");
-            adjusted = result;
-        }
-        int cost = (int) Math.floor(adjusted);
-        cost = Math.max(0, cost);
-        if (costCap > 0 && cost > costCap) {
-            cost = costCap;
-        }
-        return cost;
+
+        int cost = Math.max(0, (int) Math.floor(result));
+        return (costCap > 0 && cost > costCap) ? costCap : cost;
     }
 
     private static void logFormulaError(String formula, String reason) {
@@ -356,20 +196,137 @@ public class TrashPaymentHandler {
         }
     }
 
-    private static int getMaxExtractCount(ItemStack slotItem) {
-        return Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
+    // ==================== 提取支付流程 ====================
+    /**
+     * 完成提取支付流程（使用预计算的费用）
+     *
+     * @param player         玩家
+     * @param trashDim       垃圾箱所在维度
+     * @param extractCount   提取物品数量
+     * @param previewedCost  预计算的费用（避免重复计算）
+     */
+    public static void finalizeExtractPayment(Player player, ResourceLocation trashDim,
+                                              int extractCount, int previewedCost) {
+        if (extractCount <= 0) return;
+
+        boolean sameDim = player.level().dimension().location().equals(trashDim);
+
+        // 免费情况
+        if (previewedCost <= 0) {
+            if (!Config.GAMEPLAY.autoCleanItemsFree.get()) {
+                recordExtract(player, sameDim);
+            }
+            return;
+        }
+
+        // 尝试扣费
+        if (!deductPayment(player, previewedCost)) {
+            sendPaymentError(player, previewedCost);
+            return;
+        }
+
+        sendPaymentSuccess(player, previewedCost);
+        recordExtract(player, sameDim);
     }
 
-    private static int getRightClickExtractCount(ItemStack slotItem) {
-        int count = slotItem.getCount();
-        int max = slotItem.getMaxStackSize();
-        if (count <= 1) {
-            return 1;
+    // ==================== 提取历史记录 ====================
+
+    public static void recordExtract(Player player, boolean sameDim) {
+        if (sameDim && Config.GAMEPLAY.extractPenaltyCrossDimensionOnly.get()) return;
+
+        long now = System.currentTimeMillis();
+        long window = Config.GAMEPLAY.autoCleanTime.get() * 1000L;
+
+        ArrayDeque<Long> history = EXTRACT_HISTORY.computeIfAbsent(player.getUUID(), id -> new ArrayDeque<>());
+        synchronized (history) {
+            pruneHistory(history, now, window);
+            history.addLast(now);
         }
-        if (count >= max) {
-            return Math.max(1, max / 2);
+    }
+
+    private static int getEffectiveRecentCount(Player player, boolean sameDim) {
+        if (sameDim && Config.GAMEPLAY.extractPenaltyCrossDimensionOnly.get()) return 0;
+
+        long now = System.currentTimeMillis();
+        long window = Config.GAMEPLAY.autoCleanTime.get() * 1000L;
+
+        ArrayDeque<Long> history = EXTRACT_HISTORY.get(player.getUUID());
+        if (history == null) return 0;
+
+        int size;
+        synchronized (history) {
+            pruneHistory(history, now, window);
+            size = history.size();
         }
+
+        // 清理空队列，防止内存泄漏
+        if (size == 0) {
+            EXTRACT_HISTORY.remove(player.getUUID(), history);
+        }
+
+        return size;
+    }
+
+    private static void pruneHistory(ArrayDeque<Long> history, long now, long window) {
+        long cutoff = now - window;
+        while (!history.isEmpty() && history.peekFirst() < cutoff) {
+            history.removeFirst();
+        }
+    }
+
+    // ==================== 提取信息获取 ====================
+
+    public static ExtractInfo getExtractInfo(int trashSlots, TrashBox trashBox, int slotId, int button,
+                                             ClickType clickType, Player player, List<Slot> slots,
+                                             ItemStack carriedItem) {
+        if (slotId < 0 || slotId >= trashSlots) return null;
+
+        ItemStack slotItem = slots.get(slotId).getItem();
+        if (slotItem.isEmpty()) return null;
+
+        int baseFlag = (trashBox != null) ? trashBox.getBaseFlag(slotItem) : 0;
+        int maxExtract = getMaxExtractCount(slotItem);
+
+        switch (clickType) {
+            case SWAP -> {
+                ItemStack swapItem = player.getInventory().getItem(button);
+                if (slotItem.getCount() > slotItem.getMaxStackSize() && !swapItem.isEmpty()) {
+                    return null;
+                }
+                return new ExtractInfo(maxExtract, baseFlag);
+            }
+            case PICKUP -> {
+                if (!carriedItem.isEmpty()) return null;
+                int count = (button == 0) ? maxExtract : getRightClickExtractCount(slotItem);
+                return new ExtractInfo(count, baseFlag);
+            }
+            case QUICK_MOVE -> {
+                return new ExtractInfo(maxExtract, baseFlag);
+            }
+            case PICKUP_ALL -> {
+                return new ExtractInfo(Math.min(slotItem.getMaxStackSize(), slotItem.getCount()), baseFlag);
+            }
+            case THROW -> {
+                if (!carriedItem.isEmpty()) return null;
+                int count = (button == 0) ? 1 : Math.min(slotItem.getCount(), slotItem.getMaxStackSize());
+                return new ExtractInfo(count, baseFlag);
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    private static int getMaxExtractCount(ItemStack item) {
+        return Math.min(item.getCount(), item.getMaxStackSize());
+    }
+
+    private static int getRightClickExtractCount(ItemStack item) {
+        int count = item.getCount();
+        int max = item.getMaxStackSize();
+
+        if (count <= 1) return 1;
+        if (count >= max) return max / 2;
         return (count + 1) / 2;
     }
-
 }

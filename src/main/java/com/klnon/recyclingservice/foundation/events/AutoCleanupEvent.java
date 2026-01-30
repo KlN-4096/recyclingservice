@@ -33,7 +33,7 @@ public class AutoCleanupEvent {
                     // 使用配置的倒计时开始时间
                     if (remainingSeconds <= Config.GAMEPLAY.warningCountdownStart.get() && remainingSeconds > 0) {
                         String message = MessageHelper.getWarningMessage(remainingSeconds);
-                        MessageHelper.sendActionBarToAll(event.getServer(), message, MessageHelper.WARNING);
+                        MessageHelper.sendActionBarToAll(event.getServer(), message, MessageHelper.COLOR_WARNING);
                     }
                 }
                 return;
@@ -56,6 +56,8 @@ public class AutoCleanupEvent {
      */
     public static void doCleanup(MinecraftServer server) {
         if (!cleaning) {
+            //先清除过期物品
+            CleanupManager.pruneExpiredCache();
             cleaning = true;
             int totalItemsBefore = CleanupManager.getAllEntityCount(CleanupManager.ITEM);
             int totalProjectilesBefore = CleanupManager.getAllEntityCount(CleanupManager.PROJECTILE);
@@ -63,8 +65,8 @@ public class AutoCleanupEvent {
 
             // 如果有清理结果才显示消息
             if (totalItemsBefore + totalProjectilesBefore > 0) {
-                Component message = MessageHelper.getDetailedCleanupMessage(server);
-                MessageHelper.sendChatToAll(server, message);
+                Component message = MessageHelper.buildCleanupResultMessage(server);
+                MessageHelper.sendToAll(server, message);
             }
         }
     }

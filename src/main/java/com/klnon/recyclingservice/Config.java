@@ -2,172 +2,218 @@ package com.klnon.recyclingservice;
 
 import com.klnon.recyclingservice.foundation.config.GameplayConfig;
 import com.klnon.recyclingservice.foundation.config.MessageConfig;
-
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ModConfigSpec;
-import net.minecraft.resources.ResourceLocation;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 统一配置管理器 - 整合各功能配置模块
- * 采用新的架构：减少文件数量，保持合理分离
+ * 统一配置管理器
+ * 职责：
+ * - 整合各功能配置模块
+ * - 提供便捷访问方法
+ * - 管理配置缓存
  */
 public class Config {
-    
-    // 配置构建器和规范
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+
+    // ==================== 配置规范 ====================
+
     public static final ModConfigSpec SPEC;
-    
-    // 各功能配置实例
+    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final GameplayConfig GAMEPLAY = new GameplayConfig(BUILDER);
     public static final MessageConfig MESSAGE = new MessageConfig(BUILDER);
-    
-    // 性能优化缓存
-    public static volatile Set<String> whitelistCache = new HashSet<>();
-    public static volatile Set<String> blacklistCache = new HashSet<>();
-    public static volatile Set<String> projectileTypesCache = new HashSet<>();
-    private static volatile Set<String> allowPutInDimensionsCache = new HashSet<>();
     private static final Map<String, Double> dimensionMultiplierCache = new ConcurrentHashMap<>();
+
+    // ==================== 缓存字段 ====================
     private static final Map<String, Integer> dimensionCostCapCache = new ConcurrentHashMap<>();
-    
+    // 物品过滤缓存
+    private static volatile Set<String> whitelistCache = new HashSet<>();
+    private static volatile Set<String> blacklistCache = new HashSet<>();
+    private static volatile Set<String> projectileTypesCache = new HashSet<>();
+    // 维度相关缓存
+    private static volatile Set<String> allowPutInDimensionsCache = new HashSet<>();
+
     static {
-        // 构建配置规范
         SPEC = BUILDER.build();
     }
-    
 
-    
-    // === 便捷访问方法 ===
-    
+
+    // ==================== 清理相关 ====================
+
     /**
      * 获取清理间隔（tick）
      */
     public static int getCleanIntervalTicks() {
         return GAMEPLAY.autoCleanTime.get() * 20;
     }
-    
-    /**
-     * 获取付费物品的ResourceLocation
-     */
-    public static ResourceLocation getPaymentItem() {
-        return ResourceLocation.parse(GAMEPLAY.paymentItemType.get());
-    }
 
-    /**
-     * 获取指定维度的邮费倍数
-     */
-    public static double getDimensionMultiplier(String dimensionId) {
-        return dimensionMultiplierCache.getOrDefault(dimensionId, 1.0);
-    }
-
-    /**
-     * 获取指定维度的邮费上限（0 表示无限制）
-     */
-    public static int getDimensionCostCap(String dimensionId) {
-        return dimensionCostCapCache.getOrDefault(dimensionId, 0);
-    }
-    
-    /**
-     * 检查维度是否允许指定玩家主动放入物品到垃圾箱
-     */
-    public static boolean isDimensionAllowPutIn(String dimensionId, String playerDimension) {
-        if (!GAMEPLAY.dimensionTrashCrossAccess.get()) {
-            // 不允许跨维度访问：只能访问玩家当前所在维度的垃圾箱
-            return playerDimension.equals(dimensionId) && allowPutInDimensionsCache.contains(dimensionId);
-        } else {
-            // 允许跨维度访问：按配置列表判断
-            return allowPutInDimensionsCache.contains(dimensionId);
-        }
-    }
-    
     /**
      * 检查是否为白名单模式
      */
     public static boolean isWhitelistMode() {
         return "whitelist".equals(GAMEPLAY.cleanMode.get());
     }
-    
+
     /**
-     * 获取物品堆叠合并限制
+     * 获取白名单缓存
+     */
+    public static Set<String> getWhitelist() {
+        return whitelistCache;
+    }
+
+    /**
+     * 获取黑名单缓存
+     */
+    public static Set<String> getBlacklist() {
+        return blacklistCache;
+    }
+
+    /**
+     * 获取弹射物类型缓存
+     */
+    public static Set<String> getProjectileTypes() {
+        return projectileTypesCache;
+    }
+
+    // ==================== 垃圾箱相关 ====================
+
+    /**
+     * 获取物品堆叠上限
      */
     public static int getItemStackMultiplier(ItemStack itemStack) {
         return GAMEPLAY.itemStackMultiplier.get() * itemStack.getMaxStackSize();
     }
-    
+
     /**
-     * 更新HashSet缓存（配置重载时调用）
+     * 检查维度是否允许玩家放入物品
+     */
+    public static boolean isDimensionAllowPutIn(String trashDimension, String playerDimension) {
+        if (!GAMEPLAY.dimensionTrashCrossAccess.get()) {
+            // 不允许跨维度：玩家必须在垃圾箱所在维度
+            return playerDimension.equals(trashDimension)
+                    && allowPutInDimensionsCache.contains(trashDimension);
+        }
+        // 允许跨维度：按配置列表判断
+        return allowPutInDimensionsCache.contains(trashDimension);
+    }
+
+    // ==================== 支付相关 ====================
+
+    /**
+     * 获取支付物品
+     */
+    public static ResourceLocation getPaymentItem() {
+        return ResourceLocation.parse(GAMEPLAY.paymentItemType.get());
+    }
+
+    /**
+     * 获取指定维度的邮费倍率
+     */
+    public static double getDimensionMultiplier(String dimensionId) {
+        return dimensionMultiplierCache.getOrDefault(dimensionId, 1.0);
+    }
+
+    /**
+     * 获取指定维度的邮费上限（0表示无限制）
+     */
+    public static int getDimensionCostCap(String dimensionId) {
+        return dimensionCostCapCache.getOrDefault(dimensionId, 0);
+    }
+
+    // ==================== 缓存管理 ====================
+
+    /**
+     * 更新所有缓存（配置重载时调用）
      */
     public static void updateCaches() {
         try {
+            // 物品过滤缓存
             whitelistCache = new HashSet<>(GAMEPLAY.whitelist.get());
             blacklistCache = new HashSet<>(GAMEPLAY.blacklist.get());
             projectileTypesCache = new HashSet<>(GAMEPLAY.projectileTypesToClean.get());
+
+            // 维度相关缓存
             allowPutInDimensionsCache = new HashSet<>(GAMEPLAY.dimensionTrashAllowPutIn.get());
             parseDimensionMultipliers();
             parseDimensionCostCaps();
+
         } catch (Exception e) {
             Recyclingservice.LOGGER.error("Failed to update config caches", e);
-            
-            if (whitelistCache == null) whitelistCache = new HashSet<>();
-            if (blacklistCache == null) blacklistCache = new HashSet<>();
-            if (projectileTypesCache == null) projectileTypesCache = new HashSet<>();
-            if (allowPutInDimensionsCache == null) allowPutInDimensionsCache = new HashSet<>();
-        }
-    }
-    
-    /**
-     * 解析维度倍数配置并更新缓存
-     */
-    private static void parseDimensionMultipliers() {
-        dimensionMultiplierCache.clear();
-        
-        try {
-            GAMEPLAY.dimensionMultipliers.get().forEach(entry -> {
-                try {
-                    String[] parts = entry.split(":");
-                    if (parts.length == 3) {
-                        String dimensionId = parts[0] + ":" + parts[1];
-                        double multiplier = Double.parseDouble(parts[2]);
-                        dimensionMultiplierCache.put(dimensionId, multiplier);
-                    }
-                } catch (NumberFormatException e) {
-                    Recyclingservice.LOGGER.warn("Invalid dimension multiplier format: '{}', skipping", entry);
-                }
-            });
-        } catch (Exception e) {
-            Recyclingservice.LOGGER.error("Failed to parse dimension multipliers, using defaults", e);
-            dimensionMultiplierCache.put("minecraft:overworld", 1.0);
-            dimensionMultiplierCache.put("minecraft:the_nether", 1.0);
-            dimensionMultiplierCache.put("minecraft:the_end", 2.0);
+            initEmptyCaches();
         }
     }
 
     /**
-     * 解析维度邮费上限配置并更新缓存
+     * 初始化空缓存（异常时的兜底）
+     */
+    private static void initEmptyCaches() {
+        if (whitelistCache == null) whitelistCache = new HashSet<>();
+        if (blacklistCache == null) blacklistCache = new HashSet<>();
+        if (projectileTypesCache == null) projectileTypesCache = new HashSet<>();
+        if (allowPutInDimensionsCache == null) allowPutInDimensionsCache = new HashSet<>();
+    }
+
+    /**
+     * 解析维度配置条目（格式：namespace:path:value）
+     */
+    private static void parseDimensionEntry(String entry, DimensionEntryConsumer consumer) {
+        try {
+            String[] parts = entry.split(":");
+            if (parts.length == 3) {
+                String dimensionId = parts[0] + ":" + parts[1];
+                consumer.accept(dimensionId, parts[2]);
+            } else {
+                Recyclingservice.LOGGER.warn("Invalid dimension config format: '{}'", entry);
+            }
+        } catch (NumberFormatException e) {
+            Recyclingservice.LOGGER.warn("Invalid number in dimension config: '{}'", entry);
+        }
+    }
+
+    /**
+     * 解析维度倍率配置
+     */
+    private static void parseDimensionMultipliers() {
+        dimensionMultiplierCache.clear();
+
+        try {
+            for (String entry : GAMEPLAY.dimensionMultipliers.get()) {
+                parseDimensionEntry(entry, (dimId, value) ->
+                        dimensionMultiplierCache.put(dimId, Double.parseDouble(value))
+                );
+            }
+        } catch (Exception e) {
+            Recyclingservice.LOGGER.error("Failed to parse dimension multipliers", e);
+        }
+    }
+
+    /**
+     * 解析维度邮费上限配置
      */
     private static void parseDimensionCostCaps() {
         dimensionCostCapCache.clear();
 
         try {
-            GAMEPLAY.extractCostCaps.get().forEach(entry -> {
-                try {
-                    String[] parts = entry.split(":");
-                    if (parts.length == 3) {
-                        String dimensionId = parts[0] + ":" + parts[1];
-                        int cap = Integer.parseInt(parts[2]);
-                        if (cap < 0) {
-                            cap = 0;
-                        }
-                        dimensionCostCapCache.put(dimensionId, cap);
-                    }
-                } catch (NumberFormatException e) {
-                    Recyclingservice.LOGGER.warn("Invalid extract cost cap format: '{}', skipping", entry);
-                }
-            });
+            for (String entry : GAMEPLAY.extractCostCaps.get()) {
+                parseDimensionEntry(entry, (dimId, value) -> {
+                    int cap = Math.max(0, Integer.parseInt(value));
+                    dimensionCostCapCache.put(dimId, cap);
+                });
+            }
         } catch (Exception e) {
-            Recyclingservice.LOGGER.error("Failed to parse extract cost caps, using defaults", e);
+            Recyclingservice.LOGGER.error("Failed to parse dimension cost caps", e);
         }
     }
+
+
+    @FunctionalInterface
+    private interface DimensionEntryConsumer {
+        void accept(String dimensionId, String value) throws NumberFormatException;
+    }
+
+
 }

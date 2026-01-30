@@ -2,71 +2,94 @@ package com.klnon.recyclingservice.mixin;
 
 import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
 import java.util.UUID;
 
 /**
- * Projectile上报Mixin
- * 弹射物满足清理条件时主动上报到缓存
+ * Projectile Mixin - 弹射物清理上报
+ * 功能：
+ * - 满足清理条件的弹射物主动上报到缓存
+ * - 删除信号激活时删除缓存中的弹射物
  */
 @Mixin(targets = {
-    "net.minecraft.world.entity.projectile.AbstractArrow",
-    "net.minecraft.world.entity.projectile.Projectile"
+        "net.minecraft.world.entity.projectile.AbstractArrow",
+        "net.minecraft.world.entity.projectile.Projectile"
 })
 public class ProjectileReportMixin {
-    
+
+    /** 正常检查间隔（10秒） */
+    @Unique
+    private static final int NORMAL_CHECK_INTERVAL = 20 * 10;
+    /** 清理期间检查间隔（1秒） */
+    @Unique
+    private static final int CLEANUP_CHECK_INTERVAL = 20;
+    /** 弹射物最小存活时间才考虑清理（10秒） */
+    @Unique
+    private static final int MIN_AGE_FOR_CLEANUP = 10 * 20;
+
     @Inject(method = "tick", at = @At("TAIL"))
-    private void checkAndReport(CallbackInfo ci) {
-        try {
-            Entity self = (Entity)(Object)this;
-            
-            // 10秒检查一次,清扫时1秒检查一次
-            if(!CleanupManager.isDeleteSignalActive()){
-                if (self.tickCount % 20 != 0) {
-                    return;
-                }
-            }else {
-                if (self.tickCount % (20 * 10) != 0) {
-                    return;
-                }
-            }
-            
-            ResourceLocation dimension = self.level().dimension().location();
-            UUID uuid = self.getUUID();
-            
-            // 检查是否已在缓存中
-            boolean alreadyReported = CleanupManager.isEntityReported(dimension, uuid);
-            
-            // 检查是否应该上报
-            boolean shouldReport = recyclingservice$shouldReport(self);
-            
-            if (shouldReport && !alreadyReported && !self.level().isClientSide() && !CleanupManager.shouldDeleteEntity(self.level().getServer())) {
-                // 应该上报且未上报 -> 上报
-                CleanupManager.addEntity(CleanupManager.PROJECTILE,dimension, uuid);
-            } 
-            
-            // 检查全局删除信号，如果激活且在缓存中则自删除
-            if (!self.level().isClientSide() && alreadyReported && 
-                CleanupManager.shouldDeleteEntity(self.level().getServer())) {
-                self.discard();
-            }
-        } catch (Exception e) {
-            // 出错跳过
+    private void recyclingservice$checkAndReport(CallbackInfo ci) {
+        Entity self = (Entity) (Object) this;
+
+        MinecraftServer server = self.level().getServer();
+        if (server == null) {
+            return;
+        }
+
+        // 分散检查时间，避免同时计算
+        if (!recyclingservice$shouldCheckThisTick(self)) {
+            return;
+        }
+
+        ResourceLocation dimension = self.level().dimension().location();
+        UUID uuid = self.getUUID();
+        boolean alreadyReported = CleanupManager.isEntityReported(dimension, uuid);
+        boolean deleteSignalActive = CleanupManager.shouldDeleteEntity(server);
+
+        // 删除信号激活时：删除已上报的实体
+        if (deleteSignalActive && alreadyReported) {
+            self.discard();
+            return;
+        }
+        // 已上报：刷新时间戳（证明实体还活着）
+        if (alreadyReported) {
+            CleanupManager.refreshEntity(CleanupManager.PROJECTILE, dimension, uuid);
+            return;
+        }
+
+        // 非删除期间：上报符合条件的新实体
+        if (!deleteSignalActive && !alreadyReported && recyclingservice$shouldReport(self)) {
+            CleanupManager.addEntity(CleanupManager.PROJECTILE, dimension, uuid);
         }
     }
-    
+
+    /**
+     * 检查本tick是否应该执行检查（分散负载）
+     */
+    @Unique
+    private boolean recyclingservice$shouldCheckThisTick(Entity self) {
+        int interval = CleanupManager.isDeleteSignalActive()
+                ? CLEANUP_CHECK_INTERVAL
+                : NORMAL_CHECK_INTERVAL;
+        // 使用实体ID分散检查时机
+        return self.tickCount % interval == (self.getId() % 20);
+    }
+
+    /**
+     * 检查弹射物是否应该上报到清理缓存
+     */
     @Unique
     private boolean recyclingservice$shouldReport(Entity self) {
-        try {
-            return self.tickCount >= 10 * 20 && // 10秒后考虑清理
-                   CleanupManager.shouldCleanProjectile(self);
-        } catch (Exception e) {
+        if (self.tickCount < MIN_AGE_FOR_CLEANUP) {
             return false;
         }
+        return CleanupManager.shouldCleanProjectile(self);
     }
 }

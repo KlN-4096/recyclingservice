@@ -1,12 +1,11 @@
 package com.klnon.recyclingservice.content.cleanup;
 
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
-import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.service.TrashPaymentHandler;
 import net.minecraft.server.MinecraftServer;
 
 /**
- * 全局删除信号 - KISS原则实现
+ * 全局删除信号
  */
 public class CleanupController {
 
