@@ -27,7 +27,7 @@ public class ProjectileReportMixin {
 
     /** 清理期间检查间隔（1秒） */
     @Unique
-    private static final int CLEANUP_CHECK_INTERVAL = 20;
+    private static final int CLEANUP_CHECK_INTERVAL = 20*5;
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void recyclingservice$checkAndReport(CallbackInfo ci) {
