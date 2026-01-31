@@ -3,9 +3,11 @@ package com.klnon.recyclingservice.content.cleanup;
 import com.klnon.recyclingservice.Config;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * 实体上报缓存系统
@@ -27,10 +29,14 @@ public class EntityCache {
      * 缓存结构：EntityType -> Dimension -> UUID -> 上报时间戳
      */
     private static final Map<EntityType, Map<ResourceLocation, Map<UUID, Long>>> entityCache = new ConcurrentHashMap<>();
+    private static final Map<EntityType, LongAdder> totalCounts = new EnumMap<>(EntityType.class);
 
     static {
         entityCache.put(EntityType.ITEM, new ConcurrentHashMap<>());
         entityCache.put(EntityType.PROJECTILE, new ConcurrentHashMap<>());
+        for (EntityType type : EntityType.values()) {
+            totalCounts.put(type, new LongAdder());
+        }
     }
 
     // ==================== 添加/移除操作 ====================
@@ -39,9 +45,12 @@ public class EntityCache {
      * 添加实体到缓存
      */
     public static void addEntity(EntityType type, ResourceLocation dimension, UUID uuid) {
-        entityCache.get(type)
-                .computeIfAbsent(dimension, k -> new ConcurrentHashMap<>())
-                .put(uuid, System.currentTimeMillis());
+        Map<UUID, Long> dimensionCache = entityCache.get(type)
+                .computeIfAbsent(dimension, k -> new ConcurrentHashMap<>());
+        Long previous = dimensionCache.put(uuid, System.currentTimeMillis());
+        if (previous == null) {
+            totalCounts.get(type).increment();
+        }
     }
 
     /**
@@ -52,7 +61,10 @@ public class EntityCache {
         Map<UUID, Long> dimensionCache = typeCache.get(dimension);
 
         if (dimensionCache != null) {
-            dimensionCache.remove(uuid);
+            Long removed = dimensionCache.remove(uuid);
+            if (removed != null) {
+                totalCounts.get(type).add(-1);
+            }
             if (dimensionCache.isEmpty()) {
                 typeCache.remove(dimension);
             }
@@ -91,9 +103,7 @@ public class EntityCache {
      * 获取所有维度的实体数量
      */
     public static int getAllEntityCount(EntityType type) {
-        return entityCache.get(type).values().stream()
-                .mapToInt(Map::size)
-                .sum();
+        return (int) totalCounts.get(type).sum();
     }
 
     // ==================== 缓存清理 ====================
@@ -112,9 +122,14 @@ public class EntityCache {
             for (Map.Entry<ResourceLocation, Map<UUID, Long>> dimEntry : typeCache.entrySet()) {
                 Map<UUID, Long> dimensionCache = dimEntry.getValue();
 
+                int beforeSize = dimensionCache.size();
                 dimensionCache.entrySet().removeIf(entry ->
                         now - entry.getValue() > expireMillis
                 );
+                int removed = beforeSize - dimensionCache.size();
+                if (removed > 0) {
+                    totalCounts.get(type).add(-removed);
+                }
 
                 if (dimensionCache.isEmpty()) {
                     typeCache.remove(dimEntry.getKey());
@@ -128,5 +143,6 @@ public class EntityCache {
      */
     public static void clearAll() {
         entityCache.values().forEach(Map::clear);
+        totalCounts.values().forEach(LongAdder::reset);
     }
 }

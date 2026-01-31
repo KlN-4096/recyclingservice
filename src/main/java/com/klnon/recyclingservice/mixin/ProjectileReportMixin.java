@@ -25,7 +25,7 @@ import java.util.UUID;
 })
 public class ProjectileReportMixin {
 
-    /** 清理期间检查间隔（1秒） */
+    /** 清理期间检查间隔（5秒） */
     @Unique
     private static final int CLEANUP_CHECK_INTERVAL = 20*5;
 
@@ -74,7 +74,8 @@ public class ProjectileReportMixin {
                 ? CLEANUP_CHECK_INTERVAL
                 : Config.getEntityCheckIntervalTicks();
         // 使用实体ID分散检查时机
-        return self.tickCount % interval == (self.getId() % 20);
+        int phase = Math.floorMod(self.getId(), interval);
+        return self.tickCount % interval == phase;
     }
 
     /**

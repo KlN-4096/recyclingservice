@@ -118,7 +118,7 @@ public class BinCommand {
 
         context.getSource().sendSuccess(
                 () -> Component.literal(Config.MESSAGE.manualCleanupStart.get()), true);
-        AutoCleanupEvent.doCleanup(player.getServer());
+        AutoCleanupEvent.doCleanup();
 
         return 1;
     }
