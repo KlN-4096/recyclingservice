@@ -17,6 +17,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 public class AutoCleanupEvent {
 
     private static final int TICKS_PER_SECOND = 20;
+    private static volatile boolean debugEnabled = false;
 
     private static int ticks = 0;
     private static final CleanupJob CLEANUP_JOB = new CleanupJob();
@@ -26,13 +27,21 @@ public class AutoCleanupEvent {
         try {
             MinecraftServer server = event.getServer();
 
+            if (debugEnabled && server.getTickCount() % TICKS_PER_SECOND == 0) {
+                int itemCount = CleanupManager.getAllEntityCount(CleanupManager.ITEM);
+                int projectileCount = CleanupManager.getAllEntityCount(CleanupManager.PROJECTILE);
+                String message = "[RS Debug] Items: " + itemCount
+                        + " Projectiles: " + projectileCount;
+                MessageHelper.sendActionBarToAll(server, message, MessageHelper.COLOR_WARNING);
+            }
+
             if (CLEANUP_JOB.isRunning()) {
                 CLEANUP_JOB.tick(server);
                 return;
             }
             // 倒计时
             if (++ticks < Config.getCleanIntervalTicks()) {
-                if (ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
+                if (!debugEnabled && ticks % TICKS_PER_SECOND == 0 && Config.GAMEPLAY.showCleanupWarnings.get()) {
                     //检查并发送警告（仅在特定时间点）
                     int remainingSeconds = (Config.getCleanIntervalTicks() - ticks) / TICKS_PER_SECOND;
 
@@ -63,6 +72,15 @@ public class AutoCleanupEvent {
         CLEANUP_JOB.start();
     }
 
+    public static boolean isDebugEnabled() {
+        return debugEnabled;
+    }
+
+    public static void setDebugEnabled(boolean enabled) {
+        debugEnabled = enabled;
+    }
+
+
     /**
      * CleanupJob 是清理流程的状态机：
      * 1) PREPARE：执行清理前置动作并激活删除信号、发送消息；
@@ -78,7 +96,6 @@ public class AutoCleanupEvent {
         }
 
         private Phase phase = Phase.IDLE;
-        private Component pendingMessage = null;
 
         private boolean isRunning() {
             return phase != Phase.IDLE;
@@ -109,10 +126,7 @@ public class AutoCleanupEvent {
          */
         private void prepare(MinecraftServer server) {
             CleanupManager.pruneExpiredCache();
-            pendingMessage = null;
-            if (CleanupManager.getTotalReportedCount() > 0) {
-                pendingMessage = MessageHelper.buildCleanupResultMessage(server);
-            }
+            CleanupManager.resetCleanedCounts();
             TrashBoxManager.clearAll();
             TrashBoxManager.resetExtractHistory();
             CleanupController.activate(server);
@@ -126,16 +140,21 @@ public class AutoCleanupEvent {
         private void waitForDelete(MinecraftServer server) {
             CleanupController.shouldDelete(server);
             if (!CleanupController.isDeleteSignalActive()) {
-                if (pendingMessage != null) {
-                    MessageHelper.sendToAll(server, pendingMessage);
+                java.util.Map<net.minecraft.resources.ResourceLocation, Integer> itemCounts =
+                        CleanupManager.getCleanedItemCountsByDimension();
+                java.util.Map<net.minecraft.resources.ResourceLocation, Integer> projectileCounts =
+                        CleanupManager.getCleanedProjectileCountsByDimension();
+                if (!itemCounts.isEmpty() || !projectileCounts.isEmpty()) {
+                    Component message = MessageHelper.buildCleanupResultMessage(server, itemCounts, projectileCounts);
+                    MessageHelper.sendToAll(server, message);
                 }
+                CleanupManager.resetCleanedCounts();
                 reset();
             }
         }
 
         private void reset() {
             phase = Phase.IDLE;
-            pendingMessage = null;
         }
     }
 }

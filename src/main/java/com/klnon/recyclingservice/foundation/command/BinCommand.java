@@ -69,6 +69,11 @@ public class BinCommand {
                 .then(Commands.literal("cleanup")
                         .requires(REQUIRE_ADMIN)
                         .executes(BinCommand::executeCleanup))
+                .then(Commands.literal("debug")
+                        .requires(REQUIRE_ADMIN)
+                        .executes(BinCommand::executeDebugToggle)
+                        .then(Commands.literal("on").executes(BinCommand::executeDebugOn))
+                        .then(Commands.literal("off").executes(BinCommand::executeDebugOff)))
                 .then(Commands.literal("reload")
                         .requires(REQUIRE_ADMIN)
                         .executes(BinCommand::executeReload))
@@ -87,6 +92,7 @@ public class BinCommand {
         Config.MESSAGE.cmdHelpMessages.get().forEach(message ->
                 source.sendSuccess(() -> Component.literal(message), false));
         source.sendSuccess(() -> Component.literal("§e/bin cleanup §7- Manually trigger cleanup"), false);
+        source.sendSuccess(() -> Component.literal("§e/bin debug [on|off] §7- Toggle debug actionbar"), false);
         source.sendSuccess(() -> Component.literal("§e/bin reload §7- Reload configuration"), false);
 
         return 1;
@@ -120,6 +126,31 @@ public class BinCommand {
                 () -> Component.literal(Config.MESSAGE.manualCleanupStart.get()), true);
         AutoCleanupEvent.doCleanup();
 
+        return 1;
+    }
+
+    /**
+     * 切换 Debug ActionBar
+     */
+    private static int executeDebugToggle(CommandContext<CommandSourceStack> context) {
+        boolean enabled = !AutoCleanupEvent.isDebugEnabled();
+        AutoCleanupEvent.setDebugEnabled(enabled);
+        context.getSource().sendSuccess(
+                () -> Component.literal("§b[Debug] ActionBar " + (enabled ? "enabled" : "disabled")), false);
+        return 1;
+    }
+
+    private static int executeDebugOn(CommandContext<CommandSourceStack> context) {
+        AutoCleanupEvent.setDebugEnabled(true);
+        context.getSource().sendSuccess(
+                () -> Component.literal("§b[Debug] ActionBar enabled"), false);
+        return 1;
+    }
+
+    private static int executeDebugOff(CommandContext<CommandSourceStack> context) {
+        AutoCleanupEvent.setDebugEnabled(false);
+        context.getSource().sendSuccess(
+                () -> Component.literal("§b[Debug] ActionBar disabled"), false);
         return 1;
     }
 

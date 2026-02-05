@@ -48,6 +48,7 @@ public class ItemEntityReportMixin {
         // 删除信号激活时：处理已上报的实体
         if (deleteSignalActive && alreadyReported) {
             TrashBoxManager.addItemToDimension(dimension, self.getItem());
+            CleanupManager.recordCleanedItem(dimension);
             self.discard();
             return;
         }

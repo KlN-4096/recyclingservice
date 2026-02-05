@@ -22,13 +22,6 @@ public class CleanupManager {
     // === 核心清理功能 ===
 
     /**
-     * 执行自动清理
-     */
-    public static void performAutoCleanup(MinecraftServer server) {
-        CleanupController.performAutoCleanup(server);
-    }
-
-    /**
      * 检查全局删除信号状态
      */
     public static boolean shouldDeleteEntity(MinecraftServer server) {
@@ -92,13 +85,6 @@ public class CleanupManager {
     }
 
     /**
-     * 获取指定维度的实体数量
-     */
-    public static int getEntityCount(EntityCache.EntityType type, ResourceLocation dimension) {
-        return EntityCache.getEntityCount(type, dimension);
-    }
-
-    /**
      * 获取总的上报实体数量
      */
     public static int getTotalReportedCount() {
@@ -136,5 +122,27 @@ public class CleanupManager {
 
     public static boolean isDeleteSignalActive() {
         return CleanupController.isDeleteSignalActive();
+    }
+
+    // === 清理统计（真实被清理的实体数）===
+
+    public static void resetCleanedCounts() {
+        EntityCache.resetCleanedCounts();
+    }
+
+    public static void recordCleanedItem(ResourceLocation dimension) {
+        EntityCache.recordCleanedItem(dimension);
+    }
+
+    public static void recordCleanedProjectile(ResourceLocation dimension) {
+        EntityCache.recordCleanedProjectile(dimension);
+    }
+
+    public static java.util.Map<ResourceLocation, Integer> getCleanedItemCountsByDimension() {
+        return EntityCache.getCleanedItemCountsByDimension();
+    }
+
+    public static java.util.Map<ResourceLocation, Integer> getCleanedProjectileCountsByDimension() {
+        return EntityCache.getCleanedProjectileCountsByDimension();
     }
 }

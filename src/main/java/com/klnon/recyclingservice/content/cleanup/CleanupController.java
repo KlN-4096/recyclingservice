@@ -11,13 +11,6 @@ public class CleanupController {
     private static volatile long signalStartTick = 0;
 
     /**
-     * 执行自动清理
-     */
-    public static void performAutoCleanup(MinecraftServer server) {
-        activate(server);
-    }
-
-    /**
      * 激活删除信号
      */
     public static void activate(MinecraftServer server) {

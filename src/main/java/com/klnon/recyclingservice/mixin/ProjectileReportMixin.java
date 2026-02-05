@@ -50,6 +50,7 @@ public class ProjectileReportMixin {
 
         // 删除信号激活时：删除已上报的实体
         if (deleteSignalActive && alreadyReported) {
+            CleanupManager.recordCleanedProjectile(dimension);
             self.discard();
             return;
         }

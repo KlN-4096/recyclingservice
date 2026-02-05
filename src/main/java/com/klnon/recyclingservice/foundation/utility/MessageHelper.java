@@ -1,7 +1,6 @@
 package com.klnon.recyclingservice.foundation.utility;
 
 import com.klnon.recyclingservice.Config;
-import com.klnon.recyclingservice.content.cleanup.CleanupManager;
 import com.klnon.recyclingservice.content.trashbox.TrashBoxManager;
 import com.klnon.recyclingservice.content.trashbox.data.TrashBox;
 import net.minecraft.ChatFormatting;
@@ -56,15 +55,17 @@ public class MessageHelper {
     }
 
     /**
-     * 构建详细清理完成消息（包含各维度统计和快捷按钮）
+     * 构建清理结果消息（使用清理完成后的统计）
      */
-    public static Component buildCleanupResultMessage(MinecraftServer server) {
+    public static Component buildCleanupResultMessage(MinecraftServer server,
+                                                     Map<ResourceLocation, Integer> itemCounts,
+                                                     Map<ResourceLocation, Integer> projectileCounts) {
         MutableComponent result = Component.literal(Config.MESSAGE.cleanupResultHeader.get());
 
         for (ServerLevel level : server.getAllLevels()) {
             ResourceLocation dimensionId = level.dimension().location();
-            int itemCount = CleanupManager.getEntityCount(CleanupManager.ITEM, dimensionId);
-            int projectileCount = CleanupManager.getEntityCount(CleanupManager.PROJECTILE, dimensionId);
+            int itemCount = itemCounts.getOrDefault(dimensionId, 0);
+            int projectileCount = projectileCounts.getOrDefault(dimensionId, 0);
 
             if (itemCount > 0 || projectileCount > 0) {
                 Component entry = buildDimensionEntry(dimensionId, itemCount, projectileCount);

@@ -30,6 +30,10 @@ public class EntityCache {
      */
     private static final Map<EntityType, Map<ResourceLocation, Map<UUID, Long>>> entityCache = new ConcurrentHashMap<>();
     private static final Map<EntityType, LongAdder> totalCounts = new EnumMap<>(EntityType.class);
+    private static final LongAdder cleanedItemCount = new LongAdder();
+    private static final LongAdder cleanedProjectileCount = new LongAdder();
+    private static final Map<ResourceLocation, LongAdder> cleanedItemsByDimension = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, LongAdder> cleanedProjectilesByDimension = new ConcurrentHashMap<>();
 
     static {
         entityCache.put(EntityType.ITEM, new ConcurrentHashMap<>());
@@ -92,14 +96,6 @@ public class EntityCache {
     }
 
     /**
-     * 获取指定维度的实体数量
-     */
-    public static int getEntityCount(EntityType type, ResourceLocation dimension) {
-        Map<UUID, Long> dimensionCache = entityCache.get(type).get(dimension);
-        return dimensionCache != null ? dimensionCache.size() : 0;
-    }
-
-    /**
      * 获取所有维度的实体数量
      */
     public static int getAllEntityCount(EntityType type) {
@@ -144,5 +140,40 @@ public class EntityCache {
     public static void clearAll() {
         entityCache.values().forEach(Map::clear);
         totalCounts.values().forEach(LongAdder::reset);
+    }
+
+    // ==================== 清理统计（真实被清理的实体数）====================
+
+    public static void resetCleanedCounts() {
+        cleanedItemCount.reset();
+        cleanedProjectileCount.reset();
+        cleanedItemsByDimension.clear();
+        cleanedProjectilesByDimension.clear();
+    }
+
+    public static void recordCleanedItem(ResourceLocation dimension) {
+        cleanedItemCount.increment();
+        cleanedItemsByDimension
+                .computeIfAbsent(dimension, key -> new LongAdder())
+                .increment();
+    }
+
+    public static void recordCleanedProjectile(ResourceLocation dimension) {
+        cleanedProjectileCount.increment();
+        cleanedProjectilesByDimension
+                .computeIfAbsent(dimension, key -> new LongAdder())
+                .increment();
+    }
+
+    public static Map<ResourceLocation, Integer> getCleanedItemCountsByDimension() {
+        Map<ResourceLocation, Integer> result = new java.util.HashMap<>();
+        cleanedItemsByDimension.forEach((dim, count) -> result.put(dim, (int) count.sum()));
+        return result;
+    }
+
+    public static Map<ResourceLocation, Integer> getCleanedProjectileCountsByDimension() {
+        Map<ResourceLocation, Integer> result = new java.util.HashMap<>();
+        cleanedProjectilesByDimension.forEach((dim, count) -> result.put(dim, (int) count.sum()));
+        return result;
     }
 }
